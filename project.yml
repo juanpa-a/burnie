@@ -1,0 +1,36 @@
+name: Burnie
+options:
+  bundleIdPrefix: dev.juanpa
+  deploymentTarget: { macOS: "14.0" }
+packages:
+  BurnieKit: { path: BurnieKit }
+targets:
+  BurnieApp:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes: [AGENTS.md]
+    dependencies:
+      - package: BurnieKit
+        product: BurnieCore
+      - package: BurnieKit
+        product: BurnieSystem
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie
+        PRODUCT_NAME: Burnie
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: App/Burnie.entitlements
+        CODE_SIGN_IDENTITY: "-"
+        INFOPLIST_FILE: App/Info.plist
+      configs:
+        # Release signs with a Developer ID; the team comes from `make release TEAM_ID=…`.
+        Release:
+          CODE_SIGN_IDENTITY: Developer ID Application
+          CODE_SIGN_STYLE: Manual
+          DEVELOPMENT_TEAM: $(BURNIE_TEAM_ID)
+          OTHER_CODE_SIGN_FLAGS: --timestamp
+    scheme: {}

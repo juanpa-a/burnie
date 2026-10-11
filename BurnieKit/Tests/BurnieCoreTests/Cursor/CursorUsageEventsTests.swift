@@ -1,0 +1,28 @@
+import Foundation
+import Testing
+@testable import BurnieCore
+
+struct CursorUsageEventsTests {
+    let window = ActivityWindow.days(endingAt: .day("2026-10-10"))
+    let calendar = Calendar.gregorian(in: .mexicoCity)
+
+    @Test func sumsTotalTokensPerLocalDayInsideTheWindow() throws {
+        let totals = try CursorUsageEvents.dailyTokens(csv: Fixture.text("cursor-events.csv"), in: window, calendar: calendar)
+        #expect(totals == [
+            .day("2026-10-10"): 2_662_000, // includes two events at 01:xx UTC on the 11th
+            .day("2026-10-09"): 29_200,    // 05:30 UTC on the 10th
+            .day("2026-10-08"): 29_200,
+            .day("2026-10-04"): 10,
+        ])
+    }
+
+    @Test func emptyExportHasNoTokens() throws {
+        #expect(try CursorUsageEvents.dailyTokens(csv: "", in: window, calendar: calendar).isEmpty)
+    }
+
+    @Test func exportWithoutTheExpectedColumnsIsUnexpected() {
+        #expect(throws: ProviderIssue.unexpectedResponse("Cursor CSV without Date or Total Tokens")) {
+            try CursorUsageEvents.dailyTokens(csv: "When,Tokens\n", in: window, calendar: calendar)
+        }
+    }
+}

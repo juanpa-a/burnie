@@ -1,0 +1,7 @@
+.DS_Store
+Burnie.xcodeproj/
+build/
+DerivedData/
+.build/
+.swiftpm/
+xcuserdata/
