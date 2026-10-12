@@ -1,12 +1,12 @@
 import SwiftUI
 
 /// A setting on the providers screen: a title, a one-line subtitle and a switch. Each caller sets its own padding.
-/// When disabled, the switch reads off whatever `isOn` holds, so the saved value survives.
+/// Under `.disabled(true)` it dims and reads off whatever `isOn` holds, so the saved value survives.
 struct SwitchRow: View {
     let title: String
     let subtitle: Text
     @Binding var isOn: Bool
-    var isEnabled = true
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         HStack(spacing: 12) {
@@ -25,7 +25,6 @@ struct SwitchRow: View {
                 .toggleStyle(BurnieSwitchStyle(onColor: Tokens.Palette.switchOn))
                 .labelsHidden()
                 .opacity(isEnabled ? 1 : Tokens.disabledSwitchOpacity)
-                .disabled(!isEnabled)
         }
     }
 }

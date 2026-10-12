@@ -27,7 +27,7 @@ struct ProvidersView: View {
             RingInMenuBarRow(favorite: store.effectiveFavorite, isOn: showRing)
             BurnieDivider()
             SwitchRow(title: "Last 7 days", subtitle: Text("Shows daily tokens per provider"), isOn: showWeekChart)
-                .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                .padding(Tokens.Metrics.settingRowInsets)
             BurnieDivider()
             LaunchAtLoginRow()
                 .padding(6)

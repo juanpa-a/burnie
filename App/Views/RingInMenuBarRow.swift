@@ -9,8 +9,9 @@ struct RingInMenuBarRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        SwitchRow(title: "Ring in menu bar", subtitle: subtitle, isOn: $isOn, isEnabled: favorite != nil)
-            .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+        SwitchRow(title: "Ring in menu bar", subtitle: subtitle, isOn: $isOn)
+            .disabled(favorite == nil)
+            .padding(Tokens.Metrics.settingRowInsets)
     }
 
     /// Always visible, so there's no doubt whose ring it is.

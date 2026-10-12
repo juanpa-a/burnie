@@ -64,6 +64,7 @@ enum Tokens {
         static let footerItemHeight: CGFloat = 26
         static let footerItemRadius: CGFloat = 6
         static let providerRowHeight: CGFloat = 52
+        static let settingRowInsets = EdgeInsets(top: 12, leading: contentInset, bottom: 12, trailing: contentInset)
         static let providerRowRadius: CGFloat = 8
         static let tileSize: CGFloat = 28
         static let tileRadius: CGFloat = 7

@@ -28,19 +28,19 @@ extension Setting where Value == ProviderID? {
 }
 
 extension Setting where Value == Bool {
-    /// "showRing": the Ring in menu bar switch, kept even while it's disabled. On by default.
+    /// "showRing": the Ring in menu bar switch, kept even while it's disabled.
     static func showRing(_ defaults: UserDefaults = .standard) -> Setting {
-        let key = "showRing"
-        return Setting(
-            load: { defaults.object(forKey: key) as? Bool ?? true },
-            save: { defaults.set($0, forKey: key) }
-        )
+        onByDefault("showRing", in: defaults)
     }
 
-    /// "showWeekChart": the Last 7 days switch. On by default.
+    /// "showWeekChart": the Last 7 days switch.
     static func showWeekChart(_ defaults: UserDefaults = .standard) -> Setting {
-        let key = "showWeekChart"
-        return Setting(
+        onByDefault("showWeekChart", in: defaults)
+    }
+
+    /// A switch saved under `key`: on until the user turns it off.
+    private static func onByDefault(_ key: String, in defaults: UserDefaults) -> Setting {
+        Setting(
             load: { defaults.object(forKey: key) as? Bool ?? true },
             save: { defaults.set($0, forKey: key) }
         )
