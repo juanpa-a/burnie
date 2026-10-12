@@ -36,4 +36,13 @@ extension Setting where Value == Bool {
             save: { defaults.set($0, forKey: key) }
         )
     }
+
+    /// "showWeekChart": the Last 7 days switch. On by default.
+    static func showWeekChart(_ defaults: UserDefaults = .standard) -> Setting {
+        let key = "showWeekChart"
+        return Setting(
+            load: { defaults.object(forKey: key) as? Bool ?? true },
+            save: { defaults.set($0, forKey: key) }
+        )
+    }
 }

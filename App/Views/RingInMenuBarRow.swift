@@ -9,28 +9,8 @@ struct RingInMenuBarRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ring in menu bar")
-                    .font(Tokens.Typography.title)
-                    .foregroundStyle(Tokens.Palette.fg)
-                    .opacity(hasFavorite ? 1 : Tokens.offOpacity)
-                subtitle
-                    .font(Tokens.Typography.caption)
-                    .foregroundStyle(Tokens.Palette.fg2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Toggle("Ring in menu bar", isOn: hasFavorite ? $isOn : .constant(false))
-                .toggleStyle(BurnieSwitchStyle(onColor: Tokens.Palette.switchOn))
-                .labelsHidden()
-                .opacity(hasFavorite ? 1 : Tokens.disabledSwitchOpacity)
-                .disabled(!hasFavorite)
-        }
-        .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-    }
-
-    private var hasFavorite: Bool {
-        favorite != nil
+        SwitchRow(title: "Ring in menu bar", subtitle: subtitle, isOn: $isOn, isEnabled: favorite != nil)
+            .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
     }
 
     /// Always visible, so there's no doubt whose ring it is.

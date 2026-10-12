@@ -16,6 +16,7 @@ enum PreviewScenario: String, CaseIterable {
     case offline
     case unexpectedResponse
     case allOff
+    case weekChartHidden
 
     @MainActor
     var store: UsageStore {
@@ -50,6 +51,8 @@ enum PreviewScenario: String, CaseIterable {
             .preview(cursor: .ready(PreviewData.cursor.with(issue: .unexpectedResponse("HTTP 404"))))
         case .allOff:
             .preview(enabled: [])
+        case .weekChartHidden:
+            .preview(showWeekChart: false)
         }
     }
 }

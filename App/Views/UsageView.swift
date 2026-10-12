@@ -1,7 +1,7 @@
 import BurnieCore
 import SwiftUI
 
-/// The popover's main screen: header, one section per enabled provider, chart and footer.
+/// The popover's main screen: header, one section per enabled provider, the week chart unless its switch is off, and footer.
 struct UsageView: View {
     @Environment(UsageStore.self) private var store
     let onOpenProviders: () -> Void
@@ -25,8 +25,10 @@ struct UsageView: View {
                     ProviderSection(provider: provider, state: store.states[provider] ?? .loading, now: now, timeZone: store.clock.timeZone)
                     BurnieDivider()
                 }
-                WeekChart(providers: enabledProviders, history: store.history)
-                BurnieDivider()
+                if store.showWeekChart {
+                    WeekChart(providers: enabledProviders, history: store.history)
+                    BurnieDivider()
+                }
             }
             FooterMenu()
         }
