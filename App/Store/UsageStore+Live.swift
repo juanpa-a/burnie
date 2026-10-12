@@ -21,7 +21,8 @@ extension UsageStore {
             clock: environment.clock,
             enabledSetting: .enabledProviders(),
             favoriteSetting: .favoriteProvider(),
-            showRingSetting: .showRing()
+            showRingSetting: .showRing(),
+            showWeekChartSetting: .showWeekChart()
         )
         store.start()
         return store

@@ -10,6 +10,7 @@ extension UsageStore {
         enabled: Set<ProviderID> = Set(ProviderID.allCases),
         favorite: ProviderID? = nil,
         showRing: Bool = true,
+        showWeekChart: Bool = true,
         history: [ProviderID: [DailyPoint]] = PreviewData.history
     ) -> UsageStore {
         UsageStore(
@@ -18,6 +19,7 @@ extension UsageStore {
             enabled: enabled,
             favorite: favorite,
             showRing: showRing,
+            showWeekChart: showWeekChart,
             sourceLocations: [.claude: "~/.claude"],
             clock: PreviewData.clock
         )

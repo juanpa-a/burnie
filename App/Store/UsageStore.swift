@@ -14,6 +14,8 @@ final class UsageStore {
     private(set) var favorite: ProviderID?
     /// The Ring in menu bar switch, kept even while it's disabled.
     private(set) var showRing: Bool
+    /// The Last 7 days switch: whether the popover shows the week chart.
+    private(set) var showWeekChart: Bool
     /// Where each provider reads from, for the providers screen ("~/.claude").
     private(set) var sourceLocations: [ProviderID: String]
 
@@ -41,6 +43,7 @@ final class UsageStore {
     @ObservationIgnored private let enabledSetting: Setting<Set<ProviderID>>
     @ObservationIgnored private let favoriteSetting: Setting<ProviderID?>
     @ObservationIgnored private let showRingSetting: Setting<Bool>
+    @ObservationIgnored private let showWeekChartSetting: Setting<Bool>
     @ObservationIgnored private var usageHistory: UsageHistory
     @ObservationIgnored private var lastPopoverOpen: Date?
     @ObservationIgnored private var schedulerUpdate: Task<Void, Never>?
@@ -55,7 +58,8 @@ final class UsageStore {
         clock: Clock,
         enabledSetting: Setting<Set<ProviderID>>,
         favoriteSetting: Setting<ProviderID?>,
-        showRingSetting: Setting<Bool>
+        showRingSetting: Setting<Bool>,
+        showWeekChartSetting: Setting<Bool>
     ) {
         self.providers = Dictionary(uniqueKeysWithValues: providers.map { ($0.id, $0) })
         sourceLocations = self.providers.compactMapValues(\.sourceLocation)
@@ -64,9 +68,11 @@ final class UsageStore {
         self.enabledSetting = enabledSetting
         self.favoriteSetting = favoriteSetting
         self.showRingSetting = showRingSetting
+        self.showWeekChartSetting = showWeekChartSetting
         enabled = enabledSetting.load()
         favorite = favoriteSetting.load()
         showRing = showRingSetting.load()
+        showWeekChart = showWeekChartSetting.load()
         usageHistory = ((try? cache.load(CacheFile.history)) as UsageHistory?) ?? UsageHistory()
         for id in ProviderID.allCases {
             let cached: UsageSnapshot? = try? cache.load(CacheFile.snapshot(id))
@@ -83,6 +89,7 @@ final class UsageStore {
         enabled: Set<ProviderID>,
         favorite: ProviderID?,
         showRing: Bool,
+        showWeekChart: Bool,
         sourceLocations: [ProviderID: String],
         clock: Clock
     ) {
@@ -92,7 +99,8 @@ final class UsageStore {
             clock: clock,
             enabledSetting: .fixed(enabled),
             favoriteSetting: .fixed(favorite),
-            showRingSetting: .fixed(showRing)
+            showRingSetting: .fixed(showRing),
+            showWeekChartSetting: .fixed(showWeekChart)
         )
         self.states = states
         self.history = history
@@ -162,6 +170,11 @@ final class UsageStore {
     func setShowRing(_ isOn: Bool) {
         showRing = isOn
         showRingSetting.save(isOn)
+    }
+
+    func setShowWeekChart(_ isOn: Bool) {
+        showWeekChart = isOn
+        showWeekChartSetting.save(isOn)
     }
 
     // MARK: Refresh
