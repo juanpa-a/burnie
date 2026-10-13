@@ -73,6 +73,7 @@ Rules: don't use sudo. Don't read, print, or change anything in ~/.claude, ~/.co
 - **What it reads.** Claude Code's sign-in from the Keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json`, and its local logs in `~/.claude/projects` and `~/.config/claude/projects`. Cursor's sign-in from `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`.
 - **Who it talks to.** Only `api.anthropic.com` and `cursor.com`. No analytics, telemetry, or update checks.
 - **What it writes.** Only its cache and history in `~/Library/Application Support/Burnie/`. Tokens and cookies never touch the disk or the logs.
+- **What it runs.** Only when you press **Refresh sign-in** under an expired Claude sign-in: your installed `claude`, asking Haiku for a one-word reply. Claude Code then renews and saves its own sign-in; Burnie never handles the refresh token.
 
 Burnie relies on undocumented Claude and Cursor endpoints. If one changes, Burnie shows "Couldn't read usage. Burnie may need an update." until it's updated.
 

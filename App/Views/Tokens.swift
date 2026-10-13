@@ -53,6 +53,7 @@ enum Tokens {
         static let dividerInset: CGFloat = 12
         static let iconButtonSize: CGFloat = 28
         static let iconButtonRadius: CGFloat = 6
+        static let chipButtonHeight: CGFloat = 24
         static let providerDot: CGFloat = 8
         static let meterBarHeight: CGFloat = 6
         static let meterBarRadius: CGFloat = 3

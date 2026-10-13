@@ -7,6 +7,8 @@ struct ProviderSection: View {
     let state: ProviderState
     let now: Date
     let timeZone: TimeZone
+    /// Renews an expired sign-in through the provider's own app; nil if Burnie can't.
+    var renewSignIn: (() async -> Bool)?
     @Environment(\.locale) private var locale
 
     var body: some View {
@@ -64,8 +66,12 @@ struct ProviderSection: View {
 
     @ViewBuilder
     private func issueRow(_ issue: ProviderIssue?) -> some View {
-        if let message = issue?.message(for: provider) {
-            IssueRow(message: message)
+        if let issue, let message = issue.message(for: provider) {
+            if issue == .signInExpired, let renewSignIn {
+                SignInRenewalRow(message: message, failedMessage: ProviderIssue.renewalFailedMessage(for: provider), renew: renewSignIn)
+            } else {
+                IssueRow(message: message)
+            }
         }
     }
 
