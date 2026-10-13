@@ -22,7 +22,13 @@ struct UsageView: View {
                 BurnieDivider()
             } else {
                 ForEach(enabledProviders, id: \.self) { provider in
-                    ProviderSection(provider: provider, state: store.states[provider] ?? .loading, now: now, timeZone: store.clock.timeZone)
+                    ProviderSection(
+                        provider: provider,
+                        state: store.states[provider] ?? .loading,
+                        now: now,
+                        timeZone: store.clock.timeZone,
+                        renewSignIn: renewSignIn(for: provider)
+                    )
                     BurnieDivider()
                 }
                 if store.showWeekChart {
@@ -32,6 +38,11 @@ struct UsageView: View {
             }
             FooterMenu()
         }
+    }
+
+    private func renewSignIn(for provider: ProviderID) -> (() async -> Bool)? {
+        guard store.canRenewSignIn(provider) else { return nil }
+        return { await store.renewSignIn(provider) }
     }
 
     private var enabledProviders: [ProviderID] {

@@ -45,6 +45,7 @@ final class UsageStore {
     @ObservationIgnored private let showRingSetting: Setting<Bool>
     @ObservationIgnored private let showWeekChartSetting: Setting<Bool>
     @ObservationIgnored private var usageHistory: UsageHistory
+    @ObservationIgnored private var signInRenewers: [ProviderID: any SignInRenewer]
     @ObservationIgnored private var lastPopoverOpen: Date?
     @ObservationIgnored private var schedulerUpdate: Task<Void, Never>?
     @ObservationIgnored private let systemEvents = SystemEventMonitor()
@@ -63,6 +64,7 @@ final class UsageStore {
     ) {
         self.providers = Dictionary(uniqueKeysWithValues: providers.map { ($0.id, $0) })
         sourceLocations = self.providers.compactMapValues(\.sourceLocation)
+        signInRenewers = self.providers.compactMapValues(\.signInRenewer)
         self.cache = cache
         self.clock = clock
         self.enabledSetting = enabledSetting
@@ -91,6 +93,7 @@ final class UsageStore {
         showRing: Bool,
         showWeekChart: Bool,
         sourceLocations: [ProviderID: String],
+        signInRenewers: [ProviderID: any SignInRenewer],
         clock: Clock
     ) {
         self.init(
@@ -105,6 +108,7 @@ final class UsageStore {
         self.states = states
         self.history = history
         self.sourceLocations = sourceLocations
+        self.signInRenewers = signInRenewers
     }
     #endif
 
@@ -145,6 +149,26 @@ final class UsageStore {
         runningRefreshes += 1
         defer { runningRefreshes -= 1 }
         await scheduler.trigger(force ? .manual : .popoverOpened, for: enabled)
+    }
+
+    /// Whether an expired sign-in's row can offer to renew it.
+    func canRenewSignIn(_ id: ProviderID) -> Bool {
+        signInRenewers[id] != nil
+    }
+
+    /// The expired sign-in's button: the provider's own app renews it, then its limits refresh.
+    /// Returns false if the app couldn't renew it.
+    func renewSignIn(_ id: ProviderID) async -> Bool {
+        guard let renewer = signInRenewers[id] else { return false }
+        runningRefreshes += 1
+        defer { runningRefreshes -= 1 }
+        do {
+            try await renewer.renewSignIn()
+        } catch {
+            return false
+        }
+        await scheduler.trigger(.manual, for: [id], source: .limits)
+        return true
     }
 
     /// Turning a provider off deletes nothing: its cache and history stay on disk and come back when it's turned on.

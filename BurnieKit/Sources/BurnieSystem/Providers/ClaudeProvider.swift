@@ -21,7 +21,8 @@ public enum ClaudeProvider {
         return ProviderAssembly(
             provider: CompositeUsageProvider(id: .claude, limits: limits, activity: activity, clock: environment.clock),
             watcher: ClaudeLogDirectoryWatcher(roots: paths.logRoots),
-            sourceLocation: paths.displayName(ofLogRoot: existingRoot ?? paths.defaultLogRoot)
+            sourceLocation: paths.displayName(ofLogRoot: existingRoot ?? paths.defaultLogRoot),
+            signInRenewer: ClaudeCodeSignInRenewer.installed(home: environment.home, userName: environment.userName, logger: logger)
         )
     }
 }

@@ -8,11 +8,19 @@ public struct ProviderAssembly: Sendable {
     public let watcher: (any ActivityWatcher)?
     /// Where it reads from, for the providers screen ("~/.claude"); nil if not applicable.
     public let sourceLocation: String?
+    /// Renews an expired sign-in through the provider's own app; nil if Burnie can't offer it.
+    public let signInRenewer: (any SignInRenewer)?
 
-    public init(provider: any UsageProvider, watcher: (any ActivityWatcher)? = nil, sourceLocation: String? = nil) {
+    public init(
+        provider: any UsageProvider,
+        watcher: (any ActivityWatcher)? = nil,
+        sourceLocation: String? = nil,
+        signInRenewer: (any SignInRenewer)? = nil
+    ) {
         self.provider = provider
         self.watcher = watcher
         self.sourceLocation = sourceLocation
+        self.signInRenewer = signInRenewer
     }
 
     public var id: ProviderID {

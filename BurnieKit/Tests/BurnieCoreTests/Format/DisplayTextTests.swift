@@ -12,6 +12,12 @@ struct DisplayTextTests {
         #expect(ProviderIssue.unexpectedResponse("HTTP 404").message(for: .cursor) == "Couldn't read usage. Burnie may need an update.")
     }
 
+    @Test func renewingAnExpiredSignInPointsToTheProvidersOwnLogin() {
+        #expect(ProviderIssue.renewSignInTitle == "Refresh sign-in")
+        #expect(ProviderIssue.renewalFailedMessage(for: .claude) == "Couldn't refresh sign-in. Run `claude` in Terminal and log in again.")
+        #expect(ProviderIssue.renewalFailedMessage(for: .cursor) == "Couldn't refresh sign-in. Open Cursor to sign in again.")
+    }
+
     @Test func rateLimitsAndOfflineShowNoRow() {
         #expect(ProviderIssue.rateLimited(retryAt: nil).message(for: .claude) == nil)
         #expect(ProviderIssue.offline.message(for: .cursor) == nil)

@@ -21,8 +21,16 @@ extension UsageStore {
             showRing: showRing,
             showWeekChart: showWeekChart,
             sourceLocations: [.claude: "~/.claude"],
+            signInRenewers: [.claude: PreviewSignInRenewer()],
             clock: PreviewData.clock
         )
+    }
+}
+
+/// Takes a second, like `claude` answering, and always renews.
+private struct PreviewSignInRenewer: SignInRenewer {
+    func renewSignIn() async throws {
+        try await Task.sleep(for: .seconds(1))
     }
 }
 
