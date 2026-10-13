@@ -22,7 +22,8 @@ struct SignInRenewalRow: View {
 
     private func renewSignIn() async {
         isRenewing = true
-        hasFailed = !(await renew())
+        let didRenew = await renew()
+        hasFailed = !didRenew
         isRenewing = false
     }
 }
