@@ -3,7 +3,7 @@ import SwiftUI
 /// One stretch of the Refresh arrow spinning, timed from when it started: the angle depends only on the clock,
 /// so no turn schedules the next one and nothing keeps running when the button leaves the screen mid-turn.
 struct Spin {
-    private static let turnDuration: TimeInterval = 1
+    private static let turnDuration: TimeInterval = 0.7
 
     private let start: Date
     /// When the arrow comes to rest; `nil` while Refresh is still in progress.
