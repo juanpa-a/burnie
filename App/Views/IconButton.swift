@@ -6,7 +6,7 @@ struct IconButton: View {
     let accessibilityLabel: String
     var weight: Font.Weight = .medium
     var color = Tokens.Palette.fg2
-    /// Turns 360° per second while true (Refresh in progress) and always finishes the turn it's on,
+    /// Turns 360° every 0.7 s while true (Refresh in progress) and always finishes the turn it's on,
     /// so a quick refresh still shows one full turn and the symbol never snaps back.
     var isSpinning = false
     let action: () -> Void
