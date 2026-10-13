@@ -15,35 +15,45 @@ struct IconButton: View {
     /// The arrowhead makes the bounds taller than the circle, so turning around their middle makes it wobble.
     private static let spinAnchor = UnitPoint(x: 0.5, y: 0.57)
 
-    @State private var turns = 0.0
-    @State private var isTurning = false
-    /// Mirrors `isSpinning` so the end of each turn reads the current value, not the one captured when it started.
-    @State private var keepsSpinning = false
+    @State private var spin: Spin?
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(Tokens.Typography.icon(weight))
-                .foregroundStyle(color)
-                .rotationEffect(.degrees(turns * 360), anchor: Self.spinAnchor)
-                .frame(width: Tokens.Metrics.iconButtonSize, height: Tokens.Metrics.iconButtonSize)
+            TimelineView(.animation(paused: spin == nil)) { timeline in
+                Image(systemName: systemName)
+                    .font(Tokens.Typography.icon(weight))
+                    .foregroundStyle(color)
+                    .rotationEffect(spin?.angle(at: timeline.date) ?? .zero, anchor: Self.spinAnchor)
+                    .frame(width: Tokens.Metrics.iconButtonSize, height: Tokens.Metrics.iconButtonSize)
+            }
         }
         .buttonStyle(HoverHighlightStyle(cornerRadius: Tokens.Metrics.iconButtonRadius))
         .accessibilityLabel(accessibilityLabel)
         .onChange(of: isSpinning, initial: true) {
-            keepsSpinning = isSpinning
-            if isSpinning { turn() }
+            if isSpinning {
+                startSpinning()
+            } else {
+                spin?.stop(at: .now)
+            }
+        }
+        .task(id: spin?.end) {
+            await pauseAfterLastTurn()
         }
     }
 
-    private func turn() {
-        guard !isTurning else { return }
-        isTurning = true
-        withAnimation(.linear(duration: 1)) {
-            turns += 1
-        } completion: {
-            isTurning = false
-            if keepsSpinning { turn() }
+    private func startSpinning() {
+        if spin == nil {
+            spin = Spin(startingAt: .now)
+        } else {
+            spin?.resume()
         }
+    }
+
+    /// Lets the timeline rest once the arrow does. A new `end`, or leaving the screen, cancels the wait.
+    private func pauseAfterLastTurn() async {
+        guard let end = spin?.end else { return }
+        try? await Task.sleep(for: .seconds(end.timeIntervalSinceNow))
+        guard !Task.isCancelled else { return }
+        spin = nil
     }
 }
