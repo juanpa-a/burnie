@@ -8,6 +8,8 @@ Click the flame icon in the menu bar to see:
 - **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens (today's spend on team and enterprise plans).
 - **Last 7 days:** daily tokens for each provider.
 
+Every bar except on-demand has a small tick where you'd be at an even pace: halfway through a 5-hour session, it sits in the middle. If you're using it faster than that, the part of the bar past the tick turns red.
+
 Burnie reuses the sign-ins Claude Code and Cursor already have on your Mac. It never asks for a password and never writes to their files. You can turn each provider on or off from the gear button, and mark one with ♥ so a ring around the flame shows its usage without opening anything.
 
 ## Requirements
@@ -64,6 +66,22 @@ Install the Burnie menu bar app from https://github.com/juanpa-a/burnie on this 
 2. Clone the repo into ~/Developer/burnie, or run `git pull` there if it already exists.
 3. From the repo, run `make install`. If /Applications isn't writable, run `make install APPS_DIR=~/Applications` instead.
 4. Confirm Burnie is running (`pgrep -x Burnie`) and tell me to click the flame icon in the menu bar.
+
+Rules: don't use sudo. Don't read, print, or change anything in ~/.claude, ~/.config/claude, the Keychain, or Cursor's files; Burnie reads what it needs by itself. If a step fails, show me the error and stop.
+```
+
+### Update
+
+Paste this prompt to update a Burnie you already installed:
+
+```text
+Update the Burnie menu bar app on this Mac to the latest version from https://github.com/juanpa-a/burnie.
+
+1. Find my Burnie clone: ~/Developer/burnie if it exists. Otherwise ask me where I cloned it. Check that `git remote get-url origin` points to juanpa-a/burnie before going on.
+2. In the clone, note the current commit (`git rev-parse HEAD`) and run `git pull`. If it reports local changes or a conflict, show me and stop; don't discard anything.
+3. If nothing new came in, tell me Burnie is already up to date and stop.
+4. Run `make install`. If Burnie.app is in ~/Applications rather than /Applications, run `make install APPS_DIR=~/Applications` instead. It quits the running Burnie and opens the new one.
+5. Confirm Burnie is running (`pgrep -x Burnie`) and tell me in a few plain sentences what's new, from `git log --oneline <the commit you noted>..HEAD`.
 
 Rules: don't use sudo. Don't read, print, or change anything in ~/.claude, ~/.config/claude, the Keychain, or Cursor's files; Burnie reads what it needs by itself. If a step fails, show me the error and stop.
 ```
