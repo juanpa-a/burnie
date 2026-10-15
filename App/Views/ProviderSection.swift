@@ -1,7 +1,7 @@
 import BurnieCore
 import SwiftUI
 
-/// A provider's section: title with plan and today's tokens, its meters, and the issue row if any.
+/// A provider's section: title with plan and today's usage, its meters, and the issue row if any.
 struct ProviderSection: View {
     let provider: ProviderID
     let state: ProviderState
@@ -43,8 +43,8 @@ struct ProviderSection: View {
                 PlanChip(plan: plan)
             }
             Spacer(minLength: 8)
-            if let snapshot, let tokens = snapshot.tokensToday {
-                Text("\(TokenCountFormatter(locale: locale).string(from: tokens)) tokens today")
+            if let snapshot, let today = snapshot.today {
+                Text(TodayUsageFormatter(locale: locale).string(for: today))
                     .font(Tokens.Typography.caption)
                     .foregroundStyle(Tokens.Palette.fg2)
                     .monospacedDigit()

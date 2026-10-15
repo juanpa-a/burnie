@@ -12,6 +12,7 @@ enum PreviewScenario: String, CaseIterable {
     case claudeLogsUnreadable
     case cursorNotFound
     case cursorSessionExpired
+    case cursorEnterprise
     case rateLimited
     case offline
     case unexpectedResponse
@@ -30,13 +31,15 @@ enum PreviewScenario: String, CaseIterable {
         case .claudeSignInExpired:
             .preview(claude: .ready(PreviewData.claude.cached(minutesAgo: 40).with(issue: .signInExpired)))
         case .claudeMissingScope:
-            .preview(claude: .ready(UsageSnapshot(provider: .claude, fetchedAt: PreviewData.now, tokensToday: 1_250_000, issue: .missingScope)))
+            .preview(claude: .ready(UsageSnapshot(provider: .claude, fetchedAt: PreviewData.now, today: .tokens(1_250_000), issue: .missingScope)))
         case .claudeLogsUnreadable:
-            .preview(claude: .ready(PreviewData.claude.withoutTokens))
+            .preview(claude: .ready(PreviewData.claude.withoutToday))
         case .cursorNotFound:
             .preview(cursor: .failed(.notFound))
         case .cursorSessionExpired:
             .preview(cursor: .ready(PreviewData.cursor.cached(minutesAgo: 40).with(issue: .signInExpired)))
+        case .cursorEnterprise:
+            .preview(cursor: .ready(PreviewData.cursorEnterprise))
         case .rateLimited:
             .preview(
                 claude: .ready(PreviewData.claude.cached(minutesAgo: 8).with(issue: .rateLimited(retryAt: nil))),
@@ -64,9 +67,9 @@ private extension UsageSnapshot {
         return snapshot
     }
 
-    var withoutTokens: UsageSnapshot {
+    var withoutToday: UsageSnapshot {
         var snapshot = self
-        snapshot.tokensToday = nil
+        snapshot.today = nil
         return snapshot
     }
 }

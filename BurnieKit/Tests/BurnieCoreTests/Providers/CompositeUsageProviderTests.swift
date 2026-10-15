@@ -5,7 +5,7 @@ import Testing
 struct CompositeUsageProviderTests {
     static let now = Date.iso("2026-10-10T20:00:00Z")
     static let reading = LimitsReading(plan: "PRO", meters: [Meter(id: .session, fraction: 0.64, value: .percent(64), caption: .noActiveSession)])
-    static let budget = LimitsReading(plan: "ENTERPRISE", meters: [Meter(id: .included, fraction: 0.47, value: .money(usedCents: 23_614, limitCents: 50_000), caption: .noActiveSession)], unit: .money)
+    static let budget = LimitsReading(plan: "ENTERPRISE", meters: [Meter(id: .included, fraction: 0.37, value: .money(usedCents: 18_420, limitCents: 50_000), caption: .noActiveSession)], unit: .money)
     static let tokens: [LocalDay: Int] = [.day("2026-10-10"): 1_800_000, .day("2026-10-08"): 400]
     static let spentToday: [LocalDay: Int] = [.day("2026-10-10"): 1_240]
 

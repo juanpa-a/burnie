@@ -5,7 +5,7 @@ A small macOS menu bar app that shows how much of your Claude Code and Cursor pl
 Click the flame icon in the menu bar to see:
 
 - **Claude Code:** your plan, the 5-hour session and weekly limits with their reset times, and today's tokens.
-- **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens.
+- **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens (today's spend on team and enterprise plans).
 - **Last 7 days:** daily tokens for each provider.
 
 Burnie reuses the sign-ins Claude Code and Cursor already have on your Mac. It never asks for a password and never writes to their files. You can turn each provider on or off from the gear button, and mark one with ♥ so a ring around the flame shows its usage without opening anything.
