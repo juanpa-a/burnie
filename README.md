@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/icon.png" width="128" alt="Burnie's icon: a smiling flame on black"></p>
+
 # Burnie
 
 A small macOS menu bar app that shows how much of your Claude Code and Cursor plans you've used.
@@ -105,3 +107,7 @@ Burnie relies on undocumented Claude and Cursor endpoints. If one changes, Burni
 | `make install` | Builds a Release copy and installs it, as above. |
 
 The rules for contributing (human or agent) live in [`AGENTS.md`](AGENTS.md).
+
+## Credits
+
+App icon by [Albert Hassey](https://github.com/ahasseyp).
