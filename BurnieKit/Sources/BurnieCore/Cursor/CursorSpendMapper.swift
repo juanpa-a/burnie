@@ -18,7 +18,7 @@ enum CursorSpendMapper {
                 totals[day, default: 0] += cents
             }
         }
-        // Fractions of a cent are summed first and rounded once, like the plan's own total.
+        // Rounded once per day, so many sub-cent charges still add up.
         return totals.mapValues { Int($0.rounded()) }
     }
 

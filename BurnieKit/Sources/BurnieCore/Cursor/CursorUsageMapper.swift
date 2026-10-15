@@ -10,13 +10,13 @@ enum CursorUsageMapper {
         guard let cycleEnd = summary.billingCycleEnd.flatMap(ISO8601DateParser.date(from:)) else {
             throw .unexpectedResponse("Cursor summary without billing cycle end")
         }
-        let (included, unit) = try includedMeters(in: summary, cycleEnd: cycleEnd)
+        let included = try includedUsage(in: summary, cycleEnd: cycleEnd)
         let onDemand = onDemandMeter(in: summary, cycleEnd: cycleEnd)
         let plan = CursorPlanChip.label(membershipType: summary.membershipType)
-        return LimitsReading(plan: plan, meters: included + [onDemand].compactMap { $0 }, unit: unit)
+        return LimitsReading(plan: plan, meters: included.meters + [onDemand].compactMap { $0 }, unit: included.unit)
     }
 
-    private static func includedMeters(in summary: CursorUsageSummaryDTO, cycleEnd: Date) throws(ProviderIssue) -> ([Meter], UsageUnit) {
+    private static func includedUsage(in summary: CursorUsageSummaryDTO, cycleEnd: Date) throws(ProviderIssue) -> (meters: [Meter], unit: UsageUnit) {
         let individual = summary.individualUsage
         if let plan = individual?.plan, let cursorModels = plan.autoPercentUsed, let otherModels = plan.apiPercentUsed {
             let pools: [Meter] = [

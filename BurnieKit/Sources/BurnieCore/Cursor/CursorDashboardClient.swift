@@ -3,7 +3,7 @@ import Foundation
 /// Requests to the cursor.com dashboard's internal endpoints with the desktop app's session.
 public struct CursorDashboardClient: Sendable {
     /// Cursor rejects the dashboard's POSTs without it, like any cross-site request.
-    static let origin = "https://cursor.com"
+    private static let origin = "https://cursor.com"
 
     private let credentials: CursorCredentialsReader
     private let http: HTTPClient
@@ -27,10 +27,10 @@ public struct CursorDashboardClient: Sendable {
     }
 
     private func send(_ method: HTTPRequest.Method, to url: URL, headers: [String: String]) async throws(ProviderIssue) -> Data {
-        let token = try credentials.validToken(at: clock.now)
-        let session = ["Cookie": token.sessionCookie, "User-Agent": userAgent]
-        let request = HTTPRequest(method, url: url, headers: headers.merging(session) { _, session in session })
-        return try await http.fetch(request, now: clock.now, classify: Self.issue)
+        var headers = headers
+        headers["Cookie"] = try credentials.validToken(at: clock.now).sessionCookie
+        headers["User-Agent"] = userAgent
+        return try await http.fetch(HTTPRequest(method, url: url, headers: headers), now: clock.now, classify: Self.issue)
     }
 
     /// 401, 403, a redirect, or HTML instead of data: the dashboard wants to send us to the login page.

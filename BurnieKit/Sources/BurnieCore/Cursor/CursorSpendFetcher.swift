@@ -7,9 +7,9 @@ import Foundation
 /// instead of returning a sum that might be off.
 struct CursorSpendFetcher {
     static let url = URL(string: "https://cursor.com/api/dashboard/get-filtered-usage-events")!
-    static let pageSize = 1_000
+    private static let pageSize = 1_000
     /// Far more than a day of events; past it the sum isn't trusted.
-    static let maxPages = 10
+    private static let maxPages = 10
 
     private struct Query: Encodable {
         let page: Int
@@ -40,8 +40,9 @@ struct CursorSpendFetcher {
             let page = try await page(number, from: start, to: end)
             let pageEvents = page.usageEventsDisplay ?? []
             events += pageEvents
-            guard pageEvents.count == Self.pageSize else {
-                guard Self.matches(events.count, reported: page.totalUsageEventsCount) else {
+            // A short page is the last one.
+            if pageEvents.count < Self.pageSize {
+                guard Self.addsUp(events.count, to: page.totalUsageEventsCount) else {
                     throw .unexpectedResponse("Cursor usage events don't add up")
                 }
                 return events
@@ -61,7 +62,7 @@ struct CursorSpendFetcher {
     }
 
     /// Without a reported count there's nothing to check against.
-    private static func matches(_ count: Int, reported: CursorUsageEventsDTO.Number?) -> Bool {
+    private static func addsUp(_ count: Int, to reported: CursorUsageEventsDTO.Number?) -> Bool {
         guard let reported else { return true }
         return Int(exactly: reported.value) == count
     }

@@ -86,7 +86,7 @@ struct CursorFetchersTests {
         #expect(request.headers["Cookie"] == (try CursorAccessToken(jwt: CursorAccessTokenTests.jwt).sessionCookie))
     }
 
-    @Test func aDayWithoutEventsSpentNothing() async throws {
+    @Test func anEmptyAnswerMeansNothingSpentToday() async throws {
         http.respond(to: CursorSpendFetcher.url, body: Data("{}".utf8))
         #expect(try await spentToday() == [.day("2026-10-10"): 0])
     }
