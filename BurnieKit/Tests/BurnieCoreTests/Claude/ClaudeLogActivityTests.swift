@@ -13,11 +13,11 @@ struct ClaudeLogActivityTests {
 
     @Test func resumesFromTheSavedIndexAfterARestart() async throws {
         files.write(Fixture.data("claude-log-basic.jsonl"), to: ClaudeLogScannerTests.sessionFile, modified: ClaudeLogScannerTests.recently)
-        _ = try await activity().dailyTokens()
+        _ = try await activity().activity()
 
         files.write(Fixture.data("claude-log-dupes.jsonl"), to: ClaudeLogScannerTests.otherFile, modified: ClaudeLogScannerTests.recently)
         let reports = Reports()
-        let afterRestart = try await activity(onScan: reports.append).dailyTokens()
+        let afterRestart = try await activity(onScan: reports.append).activity().tokens
 
         #expect(afterRestart == [.day("2026-10-10"): 76_917, .day("2026-10-09"): 1_500])
         #expect(reports.all.map(\.filesRead) == [1])

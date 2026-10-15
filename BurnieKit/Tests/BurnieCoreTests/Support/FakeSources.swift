@@ -26,18 +26,18 @@ final class FakeLimitsSource: LimitsSource, @unchecked Sendable {
 /// An activity source whose result the test controls.
 final class FakeActivitySource: ActivitySource, @unchecked Sendable {
     private let lock = NSLock()
-    private var result: Result<[LocalDay: Int], ProviderIssue>
+    private var result: Result<ActivityReading, ProviderIssue>
     private(set) var calls = 0
 
-    init(_ result: Result<[LocalDay: Int], ProviderIssue>) {
+    init(_ result: Result<ActivityReading, ProviderIssue>) {
         self.result = result
     }
 
-    func set(_ result: Result<[LocalDay: Int], ProviderIssue>) {
+    func set(_ result: Result<ActivityReading, ProviderIssue>) {
         lock.withLock { self.result = result }
     }
 
-    func dailyTokens() async throws(ProviderIssue) -> [LocalDay: Int] {
+    func activity() async throws(ProviderIssue) -> ActivityReading {
         try lock.withLock {
             calls += 1
             return result

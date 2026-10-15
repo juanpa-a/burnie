@@ -5,10 +5,12 @@ import Testing
 struct CompositeUsageProviderTests {
     static let now = Date.iso("2026-10-10T20:00:00Z")
     static let reading = LimitsReading(plan: "PRO", meters: [Meter(id: .session, fraction: 0.64, value: .percent(64), caption: .noActiveSession)])
+    static let budget = LimitsReading(plan: "ENTERPRISE", meters: [Meter(id: .included, fraction: 0.47, value: .money(usedCents: 23_614, limitCents: 50_000), caption: .noActiveSession)], unit: .money)
     static let tokens: [LocalDay: Int] = [.day("2026-10-10"): 1_800_000, .day("2026-10-08"): 400]
+    static let spentToday: [LocalDay: Int] = [.day("2026-10-10"): 1_240]
 
     let limits = FakeLimitsSource(.success(reading))
-    let activity = FakeActivitySource(.success(tokens))
+    let activity = FakeActivitySource(.success(ActivityReading(tokens: tokens)))
 
     var provider: CompositeUsageProvider {
         CompositeUsageProvider(id: .claude, limits: limits, activity: activity, clock: FixedClock(now: Self.now))
@@ -16,7 +18,7 @@ struct CompositeUsageProviderTests {
 
     @Test func combinesMetersWithTodaysTokens() async throws {
         let snapshot = try await provider.snapshot(refreshing: [.limits, .activity])
-        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, plan: "PRO", tokensToday: 1_800_000, meters: Self.reading.meters))
+        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, plan: "PRO", today: .tokens(1_800_000), meters: Self.reading.meters))
     }
 
     @Test func refreshesOnlyTheRequestedSource() async throws {
@@ -31,14 +33,14 @@ struct CompositeUsageProviderTests {
     @Test func failedLimitsWithActivityIsAPartialSnapshot() async throws {
         limits.set(.failure(.missingScope))
         let snapshot = try await provider.snapshot(refreshing: [.limits, .activity])
-        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, tokensToday: 1_800_000, issue: .missingScope))
+        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, today: .tokens(1_800_000), issue: .missingScope))
     }
 
-    @Test func failedActivityKeepsMetersWithoutTokens() async throws {
+    @Test func failedActivityKeepsMetersWithoutToday() async throws {
         activity.set(.failure(.notFound))
         let snapshot = try await provider.snapshot(refreshing: [.limits, .activity])
         #expect(snapshot.meters == Self.reading.meters)
-        #expect(snapshot.tokensToday == nil)
+        #expect(snapshot.today == nil)
         #expect(snapshot.issue == nil)
     }
 
@@ -50,8 +52,33 @@ struct CompositeUsageProviderTests {
 
     @Test func activityBeforeLimitsShowsTokensAlone() async throws {
         let snapshot = try await provider.snapshot(refreshing: [.activity])
-        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, tokensToday: 1_800_000))
+        #expect(snapshot == UsageSnapshot(provider: .claude, fetchedAt: Self.now, today: .tokens(1_800_000)))
         #expect(limits.calls == 0)
+    }
+
+    @Test func aDollarBudgetShowsTodaysSpend() async throws {
+        limits.set(.success(Self.budget))
+        activity.set(.success(ActivityReading(tokens: Self.tokens, spentCents: Self.spentToday)))
+        #expect(try await provider.snapshot(refreshing: [.limits, .activity]).today == .money(cents: 1_240))
+    }
+
+    @Test func aDollarBudgetWithoutSpendFallsBackToTokens() async throws {
+        limits.set(.success(Self.budget))
+        #expect(try await provider.snapshot(refreshing: [.limits, .activity]).today == .tokens(1_800_000))
+    }
+
+    @Test func tokenPlansIgnoreSpend() async throws {
+        activity.set(.success(ActivityReading(tokens: Self.tokens, spentCents: Self.spentToday)))
+        #expect(try await provider.snapshot(refreshing: [.limits, .activity]).today == .tokens(1_800_000))
+    }
+
+    @Test func failedLimitsKeepTheLastUnit() async throws {
+        limits.set(.success(Self.budget))
+        activity.set(.success(ActivityReading(tokens: Self.tokens, spentCents: Self.spentToday)))
+        let provider = provider
+        _ = try await provider.snapshot(refreshing: [.limits, .activity])
+        limits.set(.failure(.offline))
+        #expect(try await provider.snapshot(refreshing: [.limits]).today == .money(cents: 1_240))
     }
 
     @Test func historyFillsMissingDaysWithZeroAndEndsToday() async throws {

@@ -12,7 +12,7 @@ final class JSONFileStoreTests {
     }
 
     @Test func roundTripsExactDates() throws {
-        let snapshot = UsageSnapshot(provider: .claude, fetchedAt: Date(timeIntervalSince1970: 1_791_689_041.931_156_2), plan: "PRO", tokensToday: 42)
+        let snapshot = UsageSnapshot(provider: .claude, fetchedAt: Date(timeIntervalSince1970: 1_791_689_041.931_156_2), plan: "PRO", today: .tokens(42))
         try store.save(snapshot, as: "snapshot-claude")
         #expect(try store.load("snapshot-claude") == snapshot)
     }

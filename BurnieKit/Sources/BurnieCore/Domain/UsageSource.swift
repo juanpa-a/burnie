@@ -4,6 +4,6 @@ import Foundation
 public enum UsageSource: Sendable, Hashable, CaseIterable {
     /// Meters and plan: Claude's OAuth, Cursor's usage-summary.
     case limits
-    /// Tokens per day: Claude's local logs, Cursor's events CSV.
+    /// Usage per day: Claude's local logs, Cursor's events.
     case activity
 }

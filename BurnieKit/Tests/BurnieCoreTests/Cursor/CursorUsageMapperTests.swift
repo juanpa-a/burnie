@@ -14,7 +14,7 @@ struct CursorUsageMapperTests {
     }
 
     @Test func proShowsBothPoolsLikeTheDashboard() throws {
-        #expect(try limits("cursor-summary-pro.json") == LimitsReading(plan: "PRO", meters: Self.pools))
+        #expect(try limits("cursor-summary-pro.json") == LimitsReading(plan: "PRO", meters: Self.pools, unit: .tokens))
     }
 
     @Test func enabledOnDemandAddsAMoneyMeter() throws {
@@ -35,7 +35,13 @@ struct CursorUsageMapperTests {
 
     @Test func teamPlanWithoutPoolsShowsOneUsageLimitMeter() throws {
         let meter = Meter(id: .included, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(.iso("2026-11-01T00:00:00Z")))
-        #expect(try limits("cursor-summary-team.json") == LimitsReading(plan: "ENTERPRISE", meters: [meter]))
+        #expect(try limits("cursor-summary-team.json") == LimitsReading(plan: "ENTERPRISE", meters: [meter], unit: .money))
+    }
+
+    @Test func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
+        let budget = Meter(id: .included, fraction: 0.421, value: .money(usedCents: 4_210, limitCents: 10_000), caption: .cycleEnds(Self.cycleEnd))
+        let onDemand = Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle)
+        #expect(try limits("cursor-summary-enterprise.json") == LimitsReading(plan: "ENTERPRISE", meters: [budget, onDemand], unit: .money))
     }
 
     @Test func singleMeterPrefersTheReportedPercentage() throws {
