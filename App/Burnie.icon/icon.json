@@ -1,5 +1,7 @@
 {
-  "fill" : "automatic",
+  "fill" : {
+    "solid" : "srgb:0.00000,0.00000,0.00000,1.00000"
+  },
   "groups" : [
     {
       "layers" : [
@@ -13,14 +15,6 @@
           "fill" : "none",
           "glass-specializations" : [
             {
-              "value" : true
-            },
-            {
-              "appearance" : "dark",
-              "value" : false
-            },
-            {
-              "appearance" : "tinted",
               "value" : false
             }
           ],
