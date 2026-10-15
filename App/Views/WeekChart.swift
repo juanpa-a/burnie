@@ -2,7 +2,7 @@ import BurnieCore
 import SwiftUI
 
 /// Tokens over the last 7 days: one bar per enabled provider for each day.
-/// Each series is scaled against its own maximum: the chart compares shape, not magnitude.
+/// Every series shares one scale: the same tokens draw the same height for every provider.
 struct WeekChart: View {
     let providers: [ProviderID]
     /// 7 points per provider, ending today.
@@ -64,9 +64,7 @@ struct WeekChart: View {
 
     /// A day without usage gets a 2 pt `track` mark; a day with usage is never shorter than 2 pt.
     private func bar(_ provider: ProviderID, dayIndex: Int) -> some View {
-        let values = series(provider)
-        let value = values[dayIndex]
-        let peak = values.max() ?? 0
+        let value = series(provider)[dayIndex]
         let height = value > 0 ? max(CGFloat(value) / CGFloat(peak) * Tokens.Metrics.chartHeight, Tokens.Metrics.chartBarMinimum) : Tokens.Metrics.chartBarMinimum
         return RoundedRectangle(cornerRadius: Tokens.Metrics.chartBarRadius)
             .fill(value > 0 ? Tokens.Palette.accent(provider) : Tokens.Palette.track)
@@ -76,6 +74,11 @@ struct WeekChart: View {
     /// Every series shares the same 7 days.
     private var days: [LocalDay] {
         providers.first.flatMap { history[$0] }?.map(\.day) ?? []
+    }
+
+    /// The busiest day of any shown provider; it draws at full height.
+    private var peak: Int {
+        providers.flatMap(series).max() ?? 0
     }
 
     private func series(_ provider: ProviderID) -> [Int] {
