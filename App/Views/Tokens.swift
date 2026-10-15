@@ -17,6 +17,10 @@ enum Tokens {
         static let dotOff = Color("dotOff")
         /// The favorite's filled heart.
         static let favorite = Color("favorite")
+        /// The stretch of a meter's fill that runs past an even pace.
+        static let overPace = Color("overPace")
+        /// The tick on a meter's bar where an even pace would be.
+        static let paceMarker = fg2
         /// A switch that isn't a provider's (Launch at login, Ring in menu bar) uses the system accent, like a native switch.
         static let switchOn = Color.accentColor
 
@@ -57,6 +61,9 @@ enum Tokens {
         static let providerDot: CGFloat = 8
         static let meterBarHeight: CGFloat = 6
         static let meterBarRadius: CGFloat = 3
+        static let paceMarkerWidth: CGFloat = 2
+        /// Taller than the bar, so the tick still shows over a full fill.
+        static let paceMarkerHeight: CGFloat = 10
         static let chartHeight: CGFloat = 40
         static let chartBarWidth: CGFloat = 6
         static let chartBarRadius: CGFloat = 2

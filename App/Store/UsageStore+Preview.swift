@@ -44,9 +44,15 @@ enum PreviewData {
     static let now = Date(timeIntervalSince1970: 1_791_662_400)
     static let clock = FixedClock(now: now, timeZone: TimeZone(identifier: "America/Mexico_City")!)
 
+    /// 2 h 46 m into the 5-hour session, 53 hours into the week, 9 days into a 31-day billing cycle.
+    static let session = DateInterval(start: now.addingTimeInterval(-(2 * 3_600 + 46 * 60)), duration: 5 * 3_600)
+    static let week = DateInterval(start: now.addingTimeInterval(-53 * 3_600), duration: 7 * 86_400)
+    static let cursorCycle = DateInterval(start: now.addingTimeInterval(-9 * 86_400), duration: 31 * 86_400)
+
+    /// The session runs ahead of an even pace and the week behind it.
     static let claudeMeters = [
-        Meter(id: .session, fraction: 0.64, value: .percent(64), caption: .resetsIn(now.addingTimeInterval(2 * 3_600 + 14 * 60))),
-        Meter(id: .weekly, fraction: 0.38, value: .percent(38), caption: .resetsAt(now.addingTimeInterval(5 * 86_400 - 5 * 3_600))),
+        Meter(id: .session, fraction: 0.64, value: .percent(64), caption: .resetsIn(session.end), period: session),
+        Meter(id: .weekly, fraction: 0.24, value: .percent(24), caption: .resetsAt(week.end), period: week),
     ]
 
     static let claude = UsageSnapshot(provider: .claude, fetchedAt: now.addingTimeInterval(-120), plan: "MAX", today: .tokens(1_250_000), meters: claudeMeters)
@@ -57,9 +63,9 @@ enum PreviewData {
         plan: "PRO",
         today: .tokens(2_400_000),
         meters: [
-            Meter(id: .cursorModels, fraction: 0.35, value: .percent(35), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
-            Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
-            Meter(id: .onDemand, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
+            Meter(id: .cursorModels, fraction: 0.2, value: .percent(20), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
+            Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
+            Meter(id: .onDemand, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(cursorCycle.end)),
         ]
     )
 
@@ -70,7 +76,7 @@ enum PreviewData {
         plan: "ENTERPRISE",
         today: .money(cents: 1_240),
         meters: [
-            Meter(id: .included, fraction: 0.37, value: .money(usedCents: 18_420, limitCents: 50_000), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
+            Meter(id: .included, fraction: 0.37, value: .money(usedCents: 18_420, limitCents: 50_000), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
             Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle),
         ]
     )

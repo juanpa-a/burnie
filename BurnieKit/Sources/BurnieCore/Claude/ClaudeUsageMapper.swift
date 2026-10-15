@@ -5,7 +5,15 @@ enum ClaudeUsageMapper {
     private struct Window {
         let percent: Double
         let resetsAt: Date?
+
+        /// The window ends at its reset; without one it hasn't started.
+        func period(lasting length: TimeInterval) -> DateInterval? {
+            resetsAt.map { DateInterval(start: $0.addingTimeInterval(-length), duration: length) }
+        }
     }
+
+    private static let sessionLength: TimeInterval = 5 * 3_600
+    private static let weeklyLength: TimeInterval = 7 * 86_400
 
     static func meters(from usage: ClaudeUsageDTO) throws(ProviderIssue) -> [Meter] {
         let session = window(kind: "session", in: usage) ?? window(usage.fiveHour)
@@ -15,12 +23,22 @@ enum ClaudeUsageMapper {
     }
 
     private static func sessionMeter(_ window: Window) -> Meter {
-        .percent(.session, used: window.percent, caption: window.resetsAt.map(MeterCaption.resetsIn) ?? .noActiveSession)
+        .percent(
+            .session,
+            used: window.percent,
+            caption: window.resetsAt.map(MeterCaption.resetsIn) ?? .noActiveSession,
+            period: window.period(lasting: sessionLength)
+        )
     }
 
     /// Without a reset date, the weekly window hasn't started yet.
     private static func weeklyMeter(_ window: Window) -> Meter {
-        .percent(.weekly, used: window.percent, caption: window.resetsAt.map(MeterCaption.resetsAt) ?? .noActiveSession)
+        .percent(
+            .weekly,
+            used: window.percent,
+            caption: window.resetsAt.map(MeterCaption.resetsAt) ?? .noActiveSession,
+            period: window.period(lasting: weeklyLength)
+        )
     }
 
     private static func window(kind: String, in usage: ClaudeUsageDTO) -> Window? {
