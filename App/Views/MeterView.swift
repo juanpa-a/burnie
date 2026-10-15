@@ -1,12 +1,14 @@
 import BurnieCore
 import SwiftUI
 
-/// One meter: label and value, a bar in the provider's color, and a caption.
+/// One meter: label and value, a bar in the provider's color with a tick at an even pace, and a caption.
 struct MeterView: View {
     let label: String
     /// nil while the first data loads: value "—" and an empty bar.
     let value: (amount: String, limit: String?)?
     let fraction: Double
+    /// Where the bar would be at an even pace; nil hides the tick.
+    let elapsed: Double?
     let caption: String?
     let accent: Color
     var isStale = false
@@ -47,11 +49,39 @@ struct MeterView: View {
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: Tokens.Metrics.meterBarRadius)
                     .fill(Tokens.Palette.track)
-                RoundedRectangle(cornerRadius: Tokens.Metrics.meterBarRadius)
-                    .fill(accent)
-                    .frame(width: geometry.size.width * fraction)
+                fill(width: geometry.size.width)
+            }
+            .overlay(alignment: .leading) {
+                if let elapsed {
+                    paceMarker(at: geometry.size.width * elapsed)
+                }
             }
         }
         .frame(height: Tokens.Metrics.meterBarHeight)
+    }
+
+    /// The provider's color up to an even pace, and the alert color for whatever runs past it.
+    private func fill(width: CGFloat) -> some View {
+        ZStack(alignment: .leading) {
+            Rectangle()
+                .fill(Tokens.Palette.overPace)
+            Rectangle()
+                .fill(accent)
+                .frame(width: width * onPaceFraction)
+        }
+        .frame(width: width * fraction)
+        .clipShape(RoundedRectangle(cornerRadius: Tokens.Metrics.meterBarRadius))
+    }
+
+    /// The part of the fill that isn't ahead of an even pace: all of it without a tick.
+    private var onPaceFraction: Double {
+        min(fraction, elapsed ?? fraction)
+    }
+
+    private func paceMarker(at x: CGFloat) -> some View {
+        Capsule()
+            .fill(Tokens.Palette.paceMarker)
+            .frame(width: Tokens.Metrics.paceMarkerWidth, height: Tokens.Metrics.paceMarkerHeight)
+            .offset(x: x - Tokens.Metrics.paceMarkerWidth / 2)
     }
 }

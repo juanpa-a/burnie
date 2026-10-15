@@ -17,7 +17,7 @@ struct ProviderSection: View {
             switch state {
             case .loading:
                 ForEach(provider.placeholderMeters, id: \.self) { id in
-                    MeterView(label: id.label, value: nil, fraction: 0, caption: nil, accent: accent)
+                    MeterView(label: id.label, value: nil, fraction: 0, elapsed: nil, caption: nil, accent: accent)
                 }
             case .ready(let snapshot):
                 ForEach(snapshot.meters) { meter in
@@ -58,6 +58,7 @@ struct ProviderSection: View {
             label: meter.id.label,
             value: MeterValueFormatter(locale: locale).parts(for: meter.value),
             fraction: meter.fraction,
+            elapsed: meter.elapsedFraction(at: now),
             caption: MeterCaptionFormatter(locale: locale, timeZone: timeZone).string(for: meter.caption, now: now),
             accent: accent,
             isStale: isStale

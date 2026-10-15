@@ -4,9 +4,10 @@ import Testing
 
 struct CursorUsageMapperTests {
     static let cycleEnd = Date.iso("2026-11-01T00:00:00Z")
+    static let cycle = DateInterval(start: .iso("2026-10-01T00:00:00Z"), end: cycleEnd)
     static let pools = [
-        Meter(id: .cursorModels, fraction: 0.3525, value: .percent(35), caption: .cycleEnds(cycleEnd)),
-        Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(cycleEnd)),
+        Meter(id: .cursorModels, fraction: 0.3525, value: .percent(35), caption: .cycleEnds(cycleEnd), period: cycle),
+        Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(cycleEnd), period: cycle),
     ]
 
     func limits(_ fixture: String) throws -> LimitsReading {
@@ -34,12 +35,12 @@ struct CursorUsageMapperTests {
     }
 
     @Test func teamPlanWithoutPoolsShowsOneUsageLimitMeter() throws {
-        let meter = Meter(id: .included, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(.iso("2026-11-01T00:00:00Z")))
+        let meter = Meter(id: .included, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
         #expect(try limits("cursor-summary-team.json") == LimitsReading(plan: "ENTERPRISE", meters: [meter], unit: .money))
     }
 
     @Test func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
-        let budget = Meter(id: .included, fraction: 0.421, value: .money(usedCents: 4_210, limitCents: 10_000), caption: .cycleEnds(Self.cycleEnd))
+        let budget = Meter(id: .included, fraction: 0.421, value: .money(usedCents: 4_210, limitCents: 10_000), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
         let onDemand = Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle)
         #expect(try limits("cursor-summary-enterprise.json") == LimitsReading(plan: "ENTERPRISE", meters: [budget, onDemand], unit: .money))
     }
@@ -48,6 +49,15 @@ struct CursorUsageMapperTests {
         let json = #"{"billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"plan":{"used":500,"limit":2000,"totalPercentUsed":40}}}"#
         let reading = try CursorUsageMapper.limits(from: JSONDecoder().decode(CursorUsageSummaryDTO.self, from: Data(json.utf8)))
         #expect(reading.meters.first?.fraction == 0.4)
+    }
+
+    @Test(arguments: [
+        #"{"billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"plan":{"used":500,"limit":2000}}}"#,
+        #"{"billingCycleStart":"2026-11-02T00:00:00Z","billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"plan":{"used":500,"limit":2000}}}"#,
+    ])
+    func cycleWithoutAValidStartHasNoPeriod(json: String) throws {
+        let reading = try CursorUsageMapper.limits(from: JSONDecoder().decode(CursorUsageSummaryDTO.self, from: Data(json.utf8)))
+        #expect(reading.meters.first?.period == nil)
     }
 
     @Test func summaryWithoutBucketsOrCycleIsUnexpected() throws {
