@@ -49,17 +49,29 @@ enum PreviewData {
         Meter(id: .weekly, fraction: 0.38, value: .percent(38), caption: .resetsAt(now.addingTimeInterval(5 * 86_400 - 5 * 3_600))),
     ]
 
-    static let claude = UsageSnapshot(provider: .claude, fetchedAt: now.addingTimeInterval(-120), plan: "MAX", tokensToday: 1_250_000, meters: claudeMeters)
+    static let claude = UsageSnapshot(provider: .claude, fetchedAt: now.addingTimeInterval(-120), plan: "MAX", today: .tokens(1_250_000), meters: claudeMeters)
 
     static let cursor = UsageSnapshot(
         provider: .cursor,
         fetchedAt: now.addingTimeInterval(-120),
         plan: "PRO",
-        tokensToday: 2_400_000,
+        today: .tokens(2_400_000),
         meters: [
             Meter(id: .cursorModels, fraction: 0.35, value: .percent(35), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
             Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
             Meter(id: .onDemand, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
+        ]
+    )
+
+    /// A dollar budget instead of pools, so today reads in money.
+    static let cursorEnterprise = UsageSnapshot(
+        provider: .cursor,
+        fetchedAt: now.addingTimeInterval(-120),
+        plan: "ENTERPRISE",
+        today: .money(cents: 1_240),
+        meters: [
+            Meter(id: .included, fraction: 0.37, value: .money(usedCents: 18_420, limitCents: 50_000), caption: .cycleEnds(now.addingTimeInterval(22 * 86_400))),
+            Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle),
         ]
     )
 

@@ -23,7 +23,7 @@ public actor ClaudeLogActivity: ActivitySource {
         self.onScan = onScan
     }
 
-    public func dailyTokens() throws(ProviderIssue) -> [LocalDay: Int] {
+    public func activity() throws(ProviderIssue) -> ActivityReading {
         let calendar = Calendar.gregorian(in: clock.timeZone)
         let window = ActivityWindow.days(endingAt: LocalDay(clock.now, in: calendar))
         let previous = index ?? savedIndex()
@@ -35,7 +35,8 @@ public actor ClaudeLogActivity: ActivitySource {
             // If it can't be saved, the next launch just rescans the window.
             try? store.save(updated, as: Self.indexName)
         }
-        return updated.dailyTokens(in: window)
+        // The logs carry no prices, so Claude's reading never has spend.
+        return ActivityReading(tokens: updated.dailyTokens(in: window))
     }
 
     /// An unreadable index, or one from another version, is discarded and rebuilt from the logs.

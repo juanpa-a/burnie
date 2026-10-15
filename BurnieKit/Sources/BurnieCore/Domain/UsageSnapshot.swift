@@ -8,7 +8,7 @@ public struct UsageSnapshot: Codable, Sendable, Equatable {
     /// "MAX", "PRO"; nil hides the chip.
     public var plan: String?
     /// nil if the activity source failed.
-    public var tokensToday: Int?
+    public var today: TodayUsage?
     /// In render order; empty if the limits source failed.
     public var meters: [Meter]
     /// Partial failure: shown inside the section, not instead of it.
@@ -18,14 +18,14 @@ public struct UsageSnapshot: Codable, Sendable, Equatable {
         provider: ProviderID,
         fetchedAt: Date,
         plan: String? = nil,
-        tokensToday: Int? = nil,
+        today: TodayUsage? = nil,
         meters: [Meter] = [],
         issue: ProviderIssue? = nil
     ) {
         self.provider = provider
         self.fetchedAt = fetchedAt
         self.plan = plan
-        self.tokensToday = tokensToday
+        self.today = today
         self.meters = meters
         self.issue = issue
     }

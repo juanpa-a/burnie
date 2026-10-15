@@ -4,14 +4,14 @@ import Testing
 
 struct UsageSnapshotCacheTests {
     static let cached = UsageSnapshot(
-        provider: .claude, fetchedAt: .iso("2026-10-10T18:00:00Z"), plan: "PRO", tokensToday: 10,
+        provider: .claude, fetchedAt: .iso("2026-10-10T18:00:00Z"), plan: "PRO", today: .tokens(10),
         meters: [Meter(id: .weekly, fraction: 0.2, value: .percent(20), caption: .noActiveSession)]
     )
 
     @Test func partialSnapshotKeepsCachedMetersAndTheirAge() {
-        let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), tokensToday: 99, issue: .signInExpired)
+        let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), today: .tokens(99), issue: .signInExpired)
         let shown = partial.keepingMeters(of: Self.cached)
-        #expect(shown == UsageSnapshot(provider: .claude, fetchedAt: Self.cached.fetchedAt, plan: "PRO", tokensToday: 99, meters: Self.cached.meters, issue: .signInExpired))
+        #expect(shown == UsageSnapshot(provider: .claude, fetchedAt: Self.cached.fetchedAt, plan: "PRO", today: .tokens(99), meters: Self.cached.meters, issue: .signInExpired))
     }
 
     @Test func snapshotWithMetersReplacesTheCache() {
@@ -20,7 +20,7 @@ struct UsageSnapshotCacheTests {
     }
 
     @Test func withoutCacheTheSnapshotStaysAsIs() {
-        let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), tokensToday: 99, issue: .missingScope)
+        let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), today: .tokens(99), issue: .missingScope)
         #expect(partial.keepingMeters(of: nil) == partial)
     }
 

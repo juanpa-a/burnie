@@ -1,17 +1,17 @@
 import Foundation
 
-/// Cursor's activity source: tokens per day from the events CSV, requested only for the activity window.
+/// Tokens per day from Cursor's events CSV, requested only for the activity window.
 /// Without a range, the endpoint stops at 7000 rows and takes longer than the timeout.
-public struct CursorEventsFetcher: ActivitySource {
+struct CursorEventsFetcher {
     private let dashboard: CursorDashboardClient
     private let clock: Clock
 
-    public init(dashboard: CursorDashboardClient, clock: Clock) {
+    init(dashboard: CursorDashboardClient, clock: Clock) {
         self.dashboard = dashboard
         self.clock = clock
     }
 
-    public func dailyTokens() async throws(ProviderIssue) -> [LocalDay: Int] {
+    func dailyTokens() async throws(ProviderIssue) -> [LocalDay: Int] {
         let calendar = Calendar.gregorian(in: clock.timeZone)
         let window = ActivityWindow.days(endingAt: LocalDay(clock.now, in: calendar))
         let url = Self.url(from: window.lowerBound.start(in: calendar), to: clock.now)
@@ -23,8 +23,8 @@ public struct CursorEventsFetcher: ActivitySource {
         var components = URLComponents(string: "https://cursor.com/api/dashboard/export-usage-events-csv")!
         components.queryItems = [
             URLQueryItem(name: "strategy", value: "tokens"),
-            URLQueryItem(name: "startDate", value: String(Int64(start.timeIntervalSince1970 * 1_000))),
-            URLQueryItem(name: "endDate", value: String(Int64(end.timeIntervalSince1970 * 1_000))),
+            URLQueryItem(name: "startDate", value: start.unixMillisecondsString),
+            URLQueryItem(name: "endDate", value: end.unixMillisecondsString),
         ]
         return components.url!
     }

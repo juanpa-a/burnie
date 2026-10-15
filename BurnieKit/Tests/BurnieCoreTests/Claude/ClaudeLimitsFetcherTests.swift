@@ -32,8 +32,8 @@ struct ClaudeLimitsFetcherTests {
         let reading = try await limits()
         #expect(reading == LimitsReading(plan: "MAX", meters: ClaudeUsageMapperTests.fixtureMeters))
         #expect(http.requests == [
-            .init(url: ClaudeLimitsFetcher.usageURL, headers: Self.headers),
-            .init(url: ClaudeProfilePlan.url, headers: Self.headers),
+            HTTPRequest(.get, url: ClaudeLimitsFetcher.usageURL, headers: Self.headers),
+            HTTPRequest(.get, url: ClaudeProfilePlan.url, headers: Self.headers),
         ])
     }
 

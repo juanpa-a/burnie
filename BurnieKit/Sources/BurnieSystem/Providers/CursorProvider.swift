@@ -2,7 +2,8 @@ import Foundation
 import os
 import BurnieCore
 
-/// Cursor: meters from usage-summary and tokens from the events CSV, using the desktop app's session.
+/// Cursor: meters from usage-summary, tokens from the events CSV and today's spend from the usage events,
+/// using the desktop app's session.
 public enum CursorProvider {
     public static func assemble(in environment: ProviderEnvironment) -> ProviderAssembly {
         let dashboard = CursorDashboardClient(
@@ -14,7 +15,7 @@ public enum CursorProvider {
         return ProviderAssembly(provider: CompositeUsageProvider(
             id: .cursor,
             limits: CursorSummaryFetcher(dashboard: dashboard),
-            activity: CursorEventsFetcher(dashboard: dashboard, clock: environment.clock),
+            activity: CursorActivity(dashboard: dashboard, clock: environment.clock),
             clock: environment.clock
         ))
     }

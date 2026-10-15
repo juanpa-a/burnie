@@ -1,7 +1,10 @@
 import Foundation
 
-/// GETs to the cursor.com dashboard's internal endpoints with the desktop app's session.
+/// Requests to the cursor.com dashboard's internal endpoints with the desktop app's session.
 public struct CursorDashboardClient: Sendable {
+    /// Cursor rejects the dashboard's POSTs without it, like any cross-site request.
+    private static let origin = "https://cursor.com"
+
     private let credentials: CursorCredentialsReader
     private let http: HTTPClient
     private let clock: Clock
@@ -15,9 +18,19 @@ public struct CursorDashboardClient: Sendable {
     }
 
     func get(_ url: URL, accept: String) async throws(ProviderIssue) -> Data {
-        let token = try credentials.validToken(at: clock.now)
-        let headers = ["Cookie": token.sessionCookie, "Accept": accept, "User-Agent": userAgent]
-        return try await http.fetch(url, headers: headers, now: clock.now, classify: Self.issue)
+        try await send(.get, to: url, headers: ["Accept": accept])
+    }
+
+    func post(_ url: URL, json body: Data) async throws(ProviderIssue) -> Data {
+        let headers = ["Accept": "application/json", "Content-Type": "application/json", "Origin": Self.origin]
+        return try await send(.post(body), to: url, headers: headers)
+    }
+
+    private func send(_ method: HTTPRequest.Method, to url: URL, headers: [String: String]) async throws(ProviderIssue) -> Data {
+        var headers = headers
+        headers["Cookie"] = try credentials.validToken(at: clock.now).sessionCookie
+        headers["User-Agent"] = userAgent
+        return try await http.fetch(HTTPRequest(method, url: url, headers: headers), now: clock.now, classify: Self.issue)
     }
 
     /// 401, 403, a redirect, or HTML instead of data: the dashboard wants to send us to the login page.
