@@ -24,7 +24,7 @@ public struct ClaudeLimitsFetcher: LimitsSource {
         let oauth = try credentials.oauth()
         guard !oauth.isExpired(at: clock.now) else { throw .signInExpired }
         let headers = headers(accessToken: oauth.accessToken)
-        let body = try await http.fetch(Self.usageURL, headers: headers, now: clock.now, classify: Self.issue)
+        let body = try await http.fetch(HTTPRequest(.get, url: Self.usageURL, headers: headers), now: clock.now, classify: Self.issue)
         guard let usage = try? Self.decoder.decode(ClaudeUsageDTO.self, from: body) else {
             throw .unexpectedResponse("Claude usage is not JSON")
         }

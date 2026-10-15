@@ -27,7 +27,8 @@ actor ClaudeProfilePlan {
     }
 
     private func organization(headers: [String: String], now: Date) async -> ClaudeProfileDTO.Organization? {
-        guard let body = try? await http.fetch(Self.url, headers: headers, now: now, classify: { _, _ in nil }) else { return nil }
+        let request = HTTPRequest(.get, url: Self.url, headers: headers)
+        guard let body = try? await http.fetch(request, now: now, classify: { _, _ in nil }) else { return nil }
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
         return (try? decoder.decode(ClaudeProfileDTO.self, from: body))?.organization

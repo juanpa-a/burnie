@@ -25,20 +25,39 @@ public final class URLSessionHTTPClient: HTTPClient {
         session = URLSession(configuration: configuration)
     }
 
-    public func get(_ url: URL, headers: [String: String]) async throws -> (Data, HTTPURLResponse) {
+    public func send(_ request: HTTPRequest) async throws -> (Data, HTTPURLResponse) {
+        let url = request.url
         guard url.scheme == "https", let host = url.host(), allowedHosts.contains(host) else {
             throw Failure.hostNotAllowed(url.host())
         }
-        var request = URLRequest(url: url)
-        for (field, value) in headers {
-            request.setValue(value, forHTTPHeaderField: field)
-        }
         let started = ContinuousClock.now
-        let (body, response) = try await session.data(for: request, delegate: RedirectRefusal())
+        let (body, response) = try await session.data(for: Self.urlRequest(for: request), delegate: RedirectRefusal())
         guard let response = response as? HTTPURLResponse else { throw Failure.notHTTP }
         let elapsed = (ContinuousClock.now - started).formatted(.units(allowed: [.milliseconds]))
-        logger.info("GET \(url.path, privacy: .public) → \(response.statusCode) in \(elapsed, privacy: .public)")
+        logger.info("\(request.method.name, privacy: .public) \(url.path, privacy: .public) → \(response.statusCode) in \(elapsed, privacy: .public)")
         return (body, response)
+    }
+
+    /// What goes on the wire; separate so tests can check it without the network.
+    static func urlRequest(for request: HTTPRequest) -> URLRequest {
+        var urlRequest = URLRequest(url: request.url)
+        urlRequest.httpMethod = request.method.name
+        if case .post(let body) = request.method {
+            urlRequest.httpBody = body
+        }
+        for (field, value) in request.headers {
+            urlRequest.setValue(value, forHTTPHeaderField: field)
+        }
+        return urlRequest
+    }
+}
+
+private extension HTTPRequest.Method {
+    var name: String {
+        switch self {
+        case .get: "GET"
+        case .post: "POST"
+        }
     }
 }
 
