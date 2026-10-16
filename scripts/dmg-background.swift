@@ -94,29 +94,34 @@ func drawText(in context: CGContext) {
 
 // MARK: - Arrow
 
-/// A swoop with a loop in the middle, as if drawn with a marker, ending in an open arrowhead.
+/// A dashed swoop with a loop in the middle, as if drawn with a marker, ending in a solid open arrowhead.
 /// Points are offsets from the midpoint between the two icons.
 func drawArrow(in context: CGContext) {
     let center = CGPoint(x: (Layout.appIcon.x + Layout.applicationsIcon.x) / 2, y: Layout.appIcon.y)
     func point(_ dx: CGFloat, _ dy: CGFloat) -> CGPoint { CGPoint(x: center.x + dx, y: center.y + dy) }
 
     let tip = point(70, 2)
-    let path = CGMutablePath()
-    path.move(to: point(-72, -22))
-    path.addCurve(to: point(-30, 14), control1: point(-78, 6), control2: point(-58, 18))
-    path.addCurve(to: point(0, -8), control1: point(-12, 11), control2: point(6, 2))
-    path.addCurve(to: point(-14, 6), control1: point(-6, -20), control2: point(-26, -6))
-    path.addCurve(to: tip, control1: point(0, 20), control2: point(40, 12))
-    path.move(to: point(57, -7))
-    path.addLine(to: tip)
-    path.addLine(to: point(60, 13))
+    let swoop = CGMutablePath()
+    swoop.move(to: point(-72, -22))
+    swoop.addCurve(to: point(-30, 14), control1: point(-78, 6), control2: point(-58, 18))
+    swoop.addCurve(to: point(0, -8), control1: point(-12, 11), control2: point(6, 2))
+    swoop.addCurve(to: point(-14, 6), control1: point(-6, -20), control2: point(-26, -6))
+    swoop.addCurve(to: tip, control1: point(0, 20), control2: point(40, 12))
+    let head = CGMutablePath()
+    head.move(to: point(57, -7))
+    head.addLine(to: tip)
+    head.addLine(to: point(60, 13))
 
     context.saveGState()
     context.setStrokeColor(Palette.ember.cgColor)
     context.setLineWidth(3.5)
     context.setLineCap(.round)
     context.setLineJoin(.round)
-    context.addPath(path)
+    context.setLineDash(phase: 0, lengths: [7, 7])
+    context.addPath(swoop)
+    context.strokePath()
+    context.setLineDash(phase: 0, lengths: [])
+    context.addPath(head)
     context.strokePath()
     context.restoreGState()
 }
