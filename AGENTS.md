@@ -16,7 +16,7 @@ The repo is public. Nothing sensitive goes into it: not in code, fixtures, docs,
 - Secrets: tokens, cookies, passwords, API keys, private keys (Sparkle EdDSA, `.p8`, `.p12`), and notarization credentials.
 - Identifiers: Apple team ID, certificate hashes, emails (commits use the GitHub noreply address), account or user ids, and device names.
 - Personal data: real home paths (`/Users/<name>`), real usage numbers, and real account dates.
-- Values that must reach the build (team ID, signing identity) come in as `make` arguments or from the local Keychain, never written to a tracked file.
+- Values that must reach the build (team ID, signing identity) come in as `make` arguments or from the local Keychain, never written to a tracked file. The Developer ID signature on released builds shows them anyway; that's expected and isn't a leak.
 - Before every commit, read `git diff --cached` looking for any of the above. If something sensitive was already committed, stop and tell the user: deleting it in a new commit isn't enough.
 
 # Burnie
