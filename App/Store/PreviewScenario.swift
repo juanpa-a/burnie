@@ -18,6 +18,7 @@ enum PreviewScenario: String, CaseIterable {
     case unexpectedResponse
     case allOff
     case weekChartHidden
+    case onDemandHidden
 
     @MainActor
     var store: UsageStore {
@@ -56,6 +57,8 @@ enum PreviewScenario: String, CaseIterable {
             .preview(enabled: [])
         case .weekChartHidden:
             .preview(showWeekChart: false)
+        case .onDemandHidden:
+            .preview(showOnDemand: false)
         }
     }
 }

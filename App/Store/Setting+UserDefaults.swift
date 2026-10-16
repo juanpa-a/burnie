@@ -38,6 +38,11 @@ extension Setting where Value == Bool {
         onByDefault("showWeekChart", in: defaults)
     }
 
+    /// "showOnDemand": the On-demand switch, kept even while no plan spends on-demand.
+    static func showOnDemand(_ defaults: UserDefaults = .standard) -> Setting {
+        onByDefault("showOnDemand", in: defaults)
+    }
+
     /// A switch saved under `key`: on until the user turns it off.
     private static func onByDefault(_ key: String, in defaults: UserDefaults) -> Setting {
         Setting(

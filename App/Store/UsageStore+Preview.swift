@@ -11,6 +11,7 @@ extension UsageStore {
         favorite: ProviderID? = nil,
         showRing: Bool = true,
         showWeekChart: Bool = true,
+        showOnDemand: Bool = true,
         history: [ProviderID: [DailyPoint]] = PreviewData.history
     ) -> UsageStore {
         UsageStore(
@@ -20,6 +21,7 @@ extension UsageStore {
             favorite: favorite,
             showRing: showRing,
             showWeekChart: showWeekChart,
+            showOnDemand: showOnDemand,
             sourceLocations: [.claude: "~/.claude"],
             signInRenewers: [.claude: PreviewSignInRenewer()],
             clock: PreviewData.clock

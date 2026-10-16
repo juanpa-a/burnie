@@ -24,7 +24,7 @@ struct UsageView: View {
                 ForEach(enabledProviders, id: \.self) { provider in
                     ProviderSection(
                         provider: provider,
-                        state: store.states[provider] ?? .loading,
+                        state: store.shownState(for: provider),
                         now: now,
                         timeZone: store.clock.timeZone,
                         renewSignIn: renewSignIn(for: provider)

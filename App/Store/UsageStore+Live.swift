@@ -22,7 +22,8 @@ extension UsageStore {
             enabledSetting: .enabledProviders(),
             favoriteSetting: .favoriteProvider(),
             showRingSetting: .showRing(),
-            showWeekChartSetting: .showWeekChart()
+            showWeekChartSetting: .showWeekChart(),
+            showOnDemandSetting: .showOnDemand()
         )
         store.start()
         return store
