@@ -1,5 +1,5 @@
-// Draws the background of Burnie's DMG window: a headline on warm paper and a hand-drawn
-// arrow from Burnie.app to the Applications shortcut, where Finder places the two icons.
+// Draws the background of Burnie's DMG window: a headline and a hint on dotted warm paper, and a
+// hand-drawn arrow from Burnie.app to the Applications shortcut, where Finder places the two icons.
 //
 // Usage: swift scripts/dmg-background.swift <output folder>
 // Writes background.png (1x) and background@2x.png.
@@ -13,23 +13,43 @@ enum Layout {
     static let appIcon = CGPoint(x: 170, y: 290)
     static let applicationsIcon = CGPoint(x: 490, y: 290)
     static let headlineSize: CGFloat = 40
-    static let headlineLineHeight: CGFloat = 52
-    static let headlineTop: CGFloat = 96
+    static let headlineBaseline: CGFloat = 104
+    static let hintSize: CGFloat = 16
+    static let hintBaseline: CGFloat = 142
+    static let dotSpacing: CGFloat = 22
+    static let dotRadius: CGFloat = 0.9
 }
 
 enum Palette {
     static let paper = CGColor(srgbRed: 1, green: 0.99, blue: 0.94, alpha: 1)
     static let ink = NSColor(srgbRed: 0.08, green: 0.07, blue: 0.06, alpha: 1)
-    static let ember = CGColor(srgbRed: 0xF0 / 255, green: 0x88 / 255, blue: 0x3E / 255, alpha: 1)
+    static let mutedInk = ink.withAlphaComponent(0.55)
+    static let dots = ink.withAlphaComponent(0.07).cgColor
+    static let ember = NSColor(srgbRed: 0xF0 / 255, green: 0x88 / 255, blue: 0x3E / 255, alpha: 1)
 }
 
-// MARK: - Headline
+// MARK: - Paper
 
-/// One array per line; italic runs set the verb apart, the way a hand would underline it.
-let headline: [[(text: String, italic: Bool)]] = [
-    [("Keep your tokens in check,", false)],
-    [("drag ", true), ("Burnie to Applications", false)],
+func drawDots(in context: CGContext) {
+    context.saveGState()
+    context.setFillColor(Palette.dots)
+    let diameter = 2 * Layout.dotRadius
+    for y in stride(from: Layout.dotSpacing / 2, to: Layout.window.height, by: Layout.dotSpacing) {
+        for x in stride(from: Layout.dotSpacing / 2, to: Layout.window.width, by: Layout.dotSpacing) {
+            context.fillEllipse(in: CGRect(x: x - Layout.dotRadius, y: y - Layout.dotRadius, width: diameter, height: diameter))
+        }
+    }
+    context.restoreGState()
+}
+
+// MARK: - Text
+
+/// The serif headline, with the promise set in ember italics, and a quiet sans hint under it.
+let headline: [(text: String, emphasized: Bool)] = [
+    ("Keep your tokens ", false),
+    ("in check", true),
 ]
+let hint = "Drag Burnie to Applications to get started"
 
 func serifFont(italic: Bool) -> NSFont {
     var descriptor = NSFont.systemFont(ofSize: Layout.headlineSize).fontDescriptor.withDesign(.serif)!
@@ -39,55 +59,69 @@ func serifFont(italic: Bool) -> NSFont {
     return NSFont(descriptor: descriptor, size: Layout.headlineSize)!
 }
 
-func attributedLine(_ runs: [(text: String, italic: Bool)]) -> NSAttributedString {
+func headlineLine() -> NSAttributedString {
     let line = NSMutableAttributedString()
-    for run in runs {
+    for run in headline {
         line.append(NSAttributedString(string: run.text, attributes: [
-            .font: serifFont(italic: run.italic),
-            .foregroundColor: Palette.ink,
+            .font: serifFont(italic: run.emphasized),
+            .foregroundColor: run.emphasized ? Palette.ember : Palette.ink,
         ]))
     }
     return line
 }
 
-func drawHeadline(in context: CGContext) {
+func hintLine() -> NSAttributedString {
+    NSAttributedString(string: hint, attributes: [
+        .font: NSFont.systemFont(ofSize: Layout.hintSize, weight: .medium),
+        .foregroundColor: Palette.mutedInk,
+    ])
+}
+
+func drawCentered(_ text: NSAttributedString, baseline: CGFloat, in context: CGContext) {
+    let line = CTLineCreateWithAttributedString(text)
+    let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+    context.textPosition = CGPoint(x: (Layout.window.width - width) / 2, y: baseline)
+    CTLineDraw(line, context)
+}
+
+func drawText(in context: CGContext) {
     context.saveGState()
     context.textMatrix = CGAffineTransform(scaleX: 1, y: -1)
-    for (index, runs) in headline.enumerated() {
-        let line = CTLineCreateWithAttributedString(attributedLine(runs))
-        let width = CTLineGetTypographicBounds(line, nil, nil, nil)
-        let baseline = Layout.headlineTop + CGFloat(index) * Layout.headlineLineHeight
-        context.textPosition = CGPoint(x: (Layout.window.width - width) / 2, y: baseline)
-        CTLineDraw(line, context)
-    }
+    drawCentered(headlineLine(), baseline: Layout.headlineBaseline, in: context)
+    drawCentered(hintLine(), baseline: Layout.hintBaseline, in: context)
     context.restoreGState()
 }
 
 // MARK: - Arrow
 
-/// A swoop with a loop in the middle, as if drawn with a marker, ending in an open arrowhead.
+/// A dashed swoop with a loop in the middle, as if drawn with a marker, ending in a solid open arrowhead.
 /// Points are offsets from the midpoint between the two icons.
 func drawArrow(in context: CGContext) {
     let center = CGPoint(x: (Layout.appIcon.x + Layout.applicationsIcon.x) / 2, y: Layout.appIcon.y)
     func point(_ dx: CGFloat, _ dy: CGFloat) -> CGPoint { CGPoint(x: center.x + dx, y: center.y + dy) }
 
     let tip = point(70, 2)
-    let path = CGMutablePath()
-    path.move(to: point(-72, -22))
-    path.addCurve(to: point(-30, 14), control1: point(-78, 6), control2: point(-58, 18))
-    path.addCurve(to: point(0, -8), control1: point(-12, 11), control2: point(6, 2))
-    path.addCurve(to: point(-14, 6), control1: point(-6, -20), control2: point(-26, -6))
-    path.addCurve(to: tip, control1: point(0, 20), control2: point(40, 12))
-    path.move(to: point(57, -7))
-    path.addLine(to: tip)
-    path.addLine(to: point(60, 13))
+    let swoop = CGMutablePath()
+    swoop.move(to: point(-72, -22))
+    swoop.addCurve(to: point(-30, 14), control1: point(-78, 6), control2: point(-58, 18))
+    swoop.addCurve(to: point(0, -8), control1: point(-12, 11), control2: point(6, 2))
+    swoop.addCurve(to: point(-14, 6), control1: point(-6, -20), control2: point(-26, -6))
+    swoop.addCurve(to: tip, control1: point(0, 20), control2: point(40, 12))
+    let head = CGMutablePath()
+    head.move(to: point(57, -7))
+    head.addLine(to: tip)
+    head.addLine(to: point(60, 13))
 
     context.saveGState()
-    context.setStrokeColor(Palette.ember)
+    context.setStrokeColor(Palette.ember.cgColor)
     context.setLineWidth(3.5)
     context.setLineCap(.round)
     context.setLineJoin(.round)
-    context.addPath(path)
+    context.setLineDash(phase: 0, lengths: [7, 7])
+    context.addPath(swoop)
+    context.strokePath()
+    context.setLineDash(phase: 0, lengths: [])
+    context.addPath(head)
     context.strokePath()
     context.restoreGState()
 }
@@ -108,7 +142,8 @@ func render(scale: CGFloat) -> CGImage {
     context.scaleBy(x: scale, y: -scale)
     context.setFillColor(Palette.paper)
     context.fill(CGRect(origin: .zero, size: Layout.window))
-    drawHeadline(in: context)
+    drawDots(in: context)
+    drawText(in: context)
     drawArrow(in: context)
     return context.makeImage()!
 }
