@@ -5,3 +5,12 @@ DerivedData/
 .build/
 .swiftpm/
 xcuserdata/
+
+# Keys and certificates never enter the repo (see AGENTS.md).
+*.p8
+*.p12
+*.cer
+*.pem
+*.key
+*.mobileprovision
+.env
