@@ -9,6 +9,16 @@ It beats speed, extra features, and "it already works".
 - No dead code, no stray TODOs, no duplication between providers.
 - If you have to choose between finishing today and leaving it clean, leave it clean.
 
+# Never commit sensitive information
+
+The repo is public. Nothing sensitive goes into it: not in code, fixtures, docs, commit messages, PR text, or file names.
+
+- Secrets: tokens, cookies, passwords, API keys, private keys (Sparkle EdDSA, `.p8`, `.p12`), and notarization credentials.
+- Identifiers: Apple team ID, certificate hashes, emails (commits use the GitHub noreply address), account or user ids, and device names.
+- Personal data: real home paths (`/Users/<name>`), real usage numbers, and real account dates.
+- Values that must reach the build (team ID, signing identity) come in as `make` arguments or from the local Keychain, never written to a tracked file.
+- Before every commit, read `git diff --cached` looking for any of the above. If something sensitive was already committed, stop and tell the user: deleting it in a new commit isn't enough.
+
 # Burnie
 
 Menu bar app for macOS 14+ that shows Claude Code and Cursor usage.
