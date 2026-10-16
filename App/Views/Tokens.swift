@@ -23,6 +23,8 @@ enum Tokens {
         static let paceMarker = fg2
         /// A switch that isn't a provider's (Launch at login, Ring in menu bar) uses the system accent, like a native switch.
         static let switchOn = Color.accentColor
+        /// The dot on the gear when a new Burnie is available.
+        static let updateBadge = Color.blue
 
         static func accent(_ provider: ProviderID) -> Color {
             switch provider {
@@ -79,6 +81,9 @@ enum Tokens {
         static let tileDot: CGFloat = 10
         static let switchSize = CGSize(width: 38, height: 22)
         static let switchKnob: CGFloat = 18
+        static let updateBadge: CGFloat = 6
+        /// From the icon button's top-right corner, so the dot sits on the gear's corner.
+        static let updateBadgeInset: CGFloat = 5
     }
 
     /// The menu bar icon, from the "Ícono en la barra" artboard: a 24-unit grid drawn at 18 pt.

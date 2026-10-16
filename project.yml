@@ -4,6 +4,8 @@ options:
   deploymentTarget: { macOS: "14.0" }
 packages:
   BurnieKit: { path: BurnieKit }
+  # Pinned: Sparkle replaces the installed app, so a new version comes in through a reviewed PR.
+  Sparkle: { url: https://github.com/sparkle-project/Sparkle, exactVersion: 2.10.0 }
 targets:
   BurnieApp:
     type: application
@@ -16,10 +18,14 @@ targets:
         product: BurnieCore
       - package: BurnieKit
         product: BurnieSystem
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie
         PRODUCT_NAME: Burnie
+        # 0.x while Burnie is an MVP. Sparkle compares CURRENT_PROJECT_VERSION, so it goes up by one on every release.
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 2
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         ENABLE_HARDENED_RUNTIME: YES

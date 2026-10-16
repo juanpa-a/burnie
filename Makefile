@@ -4,6 +4,10 @@ DERIVED_DATA := build/DerivedData
 DEBUG_APP := $(DERIVED_DATA)/Build/Products/Debug/Burnie.app
 RELEASE_APP := $(DERIVED_DATA)/Build/Products/Release/Burnie.app
 APPS_DIR ?= /Applications
+RELEASE_DIR := build/release
+RELEASES_URL := https://github.com/juanpa-a/burnie/releases
+# Sparkle's command line tools, which SwiftPM downloads with the package.
+SPARKLE_BIN := $(DERIVED_DATA)/SourcePackages/artifacts/sparkle/Sparkle/bin
 
 .PHONY: gen build test run perf install release
 
@@ -33,16 +37,24 @@ install: gen
 	ditto $(RELEASE_APP) "$(APPS_DIR)/Burnie.app"
 	open "$(APPS_DIR)/Burnie.app"
 
-# Signs with a Developer ID, notarizes, and leaves build/Burnie.zip.
-# `burnie-notary` is created once with `xcrun notarytool store-credentials`.
+# Signs with a Developer ID, notarizes, and leaves build/release/Burnie.dmg and the appcast.xml Sparkle reads.
+# Once per Mac: `xcrun notarytool store-credentials burnie-notary`, and Sparkle's `generate_keys` (see README).
 release: gen
 	@test -n "$(TEAM_ID)" || { echo "Usage: make release TEAM_ID=<Apple Developer team>"; exit 1; }
+	rm -rf build/Burnie.xcarchive build/export build/dmg $(RELEASE_DIR)
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
-		-archivePath build/Burnie.xcarchive BURNIE_TEAM_ID=$(TEAM_ID) archive
+		-derivedDataPath $(DERIVED_DATA) -archivePath build/Burnie.xcarchive BURNIE_TEAM_ID=$(TEAM_ID) archive
 	xcodebuild -exportArchive -archivePath build/Burnie.xcarchive \
 		-exportOptionsPlist ExportOptions.plist -exportPath build/export
-	ditto -c -k --keepParent build/export/Burnie.app build/Burnie.zip
-	xcrun notarytool submit build/Burnie.zip --keychain-profile burnie-notary --wait
-	xcrun stapler staple build/export/Burnie.app
-	# Zip again so the archive carries the stapled ticket and opens offline.
-	ditto -c -k --keepParent build/export/Burnie.app build/Burnie.zip
+	# The DMG opens to Burnie next to a shortcut to Applications, to drag one onto the other.
+	mkdir -p build/dmg $(RELEASE_DIR)
+	ditto build/export/Burnie.app build/dmg/Burnie.app
+	ln -s /Applications build/dmg/Applications
+	hdiutil create -volname Burnie -srcfolder build/dmg -format UDZO $(RELEASE_DIR)/Burnie.dmg
+	codesign --sign "Developer ID Application" --timestamp $(RELEASE_DIR)/Burnie.dmg
+	xcrun notarytool submit $(RELEASE_DIR)/Burnie.dmg --keychain-profile burnie-notary --wait
+	xcrun stapler staple $(RELEASE_DIR)/Burnie.dmg
+	# Signs the DMG with the EdDSA key in the Keychain and points the appcast at this version's release.
+	version=$$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" build/export/Burnie.app/Contents/Info.plist) && \
+		$(SPARKLE_BIN)/generate_appcast --download-url-prefix "$(RELEASES_URL)/download/v$$version/" $(RELEASE_DIR) && \
+		echo "Publish with: gh release create v$$version $(RELEASE_DIR)/Burnie.dmg $(RELEASE_DIR)/appcast.xml"

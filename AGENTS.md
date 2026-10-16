@@ -45,10 +45,10 @@ Each module has its own `AGENTS.md`. Read it before touching that module.
 | `make build` | Builds the app in Debug. |
 | `make run` | Builds and opens the app. |
 | `make install` | Builds a Release copy signed ad hoc, installs it in `/Applications` (or `APPS_DIR`), and opens it. |
-| `make release TEAM_ID=…` | Archive, export signed with a Developer ID, notarization, and `build/Burnie.zip`. |
+| `make release TEAM_ID=…` | Archive signed with a Developer ID, notarized `build/release/Burnie.dmg`, and Sparkle's `appcast.xml`. |
 
 ## Workflow
 
 - One ticket = one branch and one PR. It isn't closed without `make test` and `make build` green and a /tidy pass.
 - Tests use Swift Testing (`import Testing`). Fixtures live in `BurnieKit/Tests/BurnieCoreTests/Fixtures` and keep the real shape with invented values: no real tokens, emails, ids, paths, account dates, or usage data.
-- Burnie is read-only over `~/.claude`, `~/.config/claude`, the Keychain, and `state.vscdb`. It only writes to `~/Library/Application Support/Burnie/`.
+- Burnie is read-only over `~/.claude`, `~/.config/claude`, the Keychain, and `state.vscdb`. It only writes to `~/Library/Application Support/Burnie/`, plus what Sparkle needs to install an update the user asked for.
