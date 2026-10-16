@@ -28,10 +28,11 @@ perf:
 	BURNIE_PERF=1 swift test --package-path BurnieKit -c release -Xswiftc -enable-testing --filter ClaudeLogScanPerformanceTests
 
 # Builds a release copy signed ad hoc for this Mac (no Apple account needed), replaces the installed one, and opens it.
+# Without the hardened runtime, which an ad hoc app can't have and still load Sparkle.framework.
 install: gen
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 		-derivedDataPath $(DERIVED_DATA) -destination "platform=macOS,arch=$(shell uname -m)" -quiet \
-		CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS= build
+		CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= OTHER_CODE_SIGN_FLAGS= ENABLE_HARDENED_RUNTIME=NO build
 	pkill -x Burnie || true
 	rm -rf "$(APPS_DIR)/Burnie.app"
 	ditto $(RELEASE_APP) "$(APPS_DIR)/Burnie.app"
