@@ -16,6 +16,8 @@ final class UsageStore {
     private(set) var showRing: Bool
     /// The Last 7 days switch: whether the popover shows the week chart.
     private(set) var showWeekChart: Bool
+    /// The On-demand switch: whether sections show the on-demand meter.
+    private(set) var showOnDemand: Bool
     /// Where each provider reads from, for the providers screen ("~/.claude").
     private(set) var sourceLocations: [ProviderID: String]
 
@@ -28,6 +30,11 @@ final class UsageStore {
 
     var ring: RingState {
         Favorite.ring(stored: favorite, enabled: enabled, showRing: showRing, states: states)
+    }
+
+    /// Whether any enabled provider has on-demand enabled, which is when the On-demand switch appears.
+    var hasOnDemand: Bool {
+        enabled.contains { snapshot(for: $0)?.hasOnDemand == true }
     }
 
     /// The most recent data among the enabled providers.
@@ -44,6 +51,7 @@ final class UsageStore {
     @ObservationIgnored private let favoriteSetting: Setting<ProviderID?>
     @ObservationIgnored private let showRingSetting: Setting<Bool>
     @ObservationIgnored private let showWeekChartSetting: Setting<Bool>
+    @ObservationIgnored private let showOnDemandSetting: Setting<Bool>
     @ObservationIgnored private var usageHistory: UsageHistory
     @ObservationIgnored private var signInRenewers: [ProviderID: any SignInRenewer]
     @ObservationIgnored private var lastPopoverOpen: Date?
@@ -60,7 +68,8 @@ final class UsageStore {
         enabledSetting: Setting<Set<ProviderID>>,
         favoriteSetting: Setting<ProviderID?>,
         showRingSetting: Setting<Bool>,
-        showWeekChartSetting: Setting<Bool>
+        showWeekChartSetting: Setting<Bool>,
+        showOnDemandSetting: Setting<Bool>
     ) {
         self.providers = Dictionary(uniqueKeysWithValues: providers.map { ($0.id, $0) })
         sourceLocations = self.providers.compactMapValues(\.sourceLocation)
@@ -71,10 +80,12 @@ final class UsageStore {
         self.favoriteSetting = favoriteSetting
         self.showRingSetting = showRingSetting
         self.showWeekChartSetting = showWeekChartSetting
+        self.showOnDemandSetting = showOnDemandSetting
         enabled = enabledSetting.load()
         favorite = favoriteSetting.load()
         showRing = showRingSetting.load()
         showWeekChart = showWeekChartSetting.load()
+        showOnDemand = showOnDemandSetting.load()
         usageHistory = ((try? cache.load(CacheFile.history)) as UsageHistory?) ?? UsageHistory()
         for id in ProviderID.allCases {
             let cached: UsageSnapshot? = try? cache.load(CacheFile.snapshot(id))
@@ -92,6 +103,7 @@ final class UsageStore {
         favorite: ProviderID?,
         showRing: Bool,
         showWeekChart: Bool,
+        showOnDemand: Bool,
         sourceLocations: [ProviderID: String],
         signInRenewers: [ProviderID: any SignInRenewer],
         clock: Clock
@@ -103,7 +115,8 @@ final class UsageStore {
             enabledSetting: .fixed(enabled),
             favoriteSetting: .fixed(favorite),
             showRingSetting: .fixed(showRing),
-            showWeekChartSetting: .fixed(showWeekChart)
+            showWeekChartSetting: .fixed(showWeekChart),
+            showOnDemandSetting: .fixed(showOnDemand)
         )
         self.states = states
         self.history = history
@@ -115,6 +128,13 @@ final class UsageStore {
     func snapshot(for id: ProviderID) -> UsageSnapshot? {
         guard case .ready(let snapshot) = states[id] else { return nil }
         return snapshot
+    }
+
+    /// What a section shows: the provider's state, without the on-demand meter while its switch is off.
+    func shownState(for id: ProviderID) -> ProviderState {
+        let state = states[id] ?? .loading
+        guard !showOnDemand, case .ready(let snapshot) = state else { return state }
+        return .ready(snapshot.hidingOnDemand())
     }
 
     /// Starts timers, watchers and system events. Only the real app calls it; previews don't.
@@ -199,6 +219,11 @@ final class UsageStore {
     func setShowWeekChart(_ isOn: Bool) {
         showWeekChart = isOn
         showWeekChartSetting.save(isOn)
+    }
+
+    func setShowOnDemand(_ isOn: Bool) {
+        showOnDemand = isOn
+        showOnDemandSetting.save(isOn)
     }
 
     // MARK: Refresh

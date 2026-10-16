@@ -2,7 +2,7 @@ import BurnieCore
 import SwiftUI
 
 /// Turns each provider on or off (turning one off keeps its history), picks the favorite for the menu bar ring,
-/// shows or hides the week chart, and Launch at login.
+/// shows or hides the week chart and the on-demand meter, and Launch at login.
 struct ProvidersView: View {
     @Environment(UsageStore.self) private var store
     let onBack: () -> Void
@@ -29,6 +29,11 @@ struct ProvidersView: View {
             SwitchRow(title: "Last 7 days", subtitle: Text("Shows daily tokens per provider"), isOn: showWeekChart)
                 .padding(Tokens.Metrics.settingRowInsets)
             BurnieDivider()
+            if store.hasOnDemand {
+                SwitchRow(title: "On-demand", subtitle: Text("Show on-demand spend"), isOn: showOnDemand)
+                    .padding(Tokens.Metrics.settingRowInsets)
+                BurnieDivider()
+            }
             LaunchAtLoginRow()
                 .padding(6)
         }
@@ -64,6 +69,10 @@ struct ProvidersView: View {
 
     private var showWeekChart: Binding<Bool> {
         Binding(get: { store.showWeekChart }, set: { store.setShowWeekChart($0) })
+    }
+
+    private var showOnDemand: Binding<Bool> {
+        Binding(get: { store.showOnDemand }, set: { store.setShowOnDemand($0) })
     }
 }
 

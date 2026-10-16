@@ -23,4 +23,5 @@ private func usage(_ scenario: PreviewScenario) -> some View {
 #Preview("Unexpected response") { usage(.unexpectedResponse) }
 #Preview("All providers off") { usage(.allOff) }
 #Preview("Last 7 days hidden") { usage(.weekChartHidden) }
+#Preview("On-demand hidden") { usage(.onDemandHidden) }
 #endif
