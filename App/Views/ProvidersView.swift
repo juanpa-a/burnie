@@ -1,16 +1,21 @@
 import BurnieCore
 import SwiftUI
 
-/// Turns each provider on or off (turning one off keeps its history), picks the favorite for the menu bar ring,
-/// shows or hides the week chart and the on-demand meter, and Launch at login.
+/// Offers a new Burnie when there is one, turns each provider on or off (turning one off keeps its history),
+/// picks the favorite for the menu bar ring, shows or hides the week chart and the on-demand meter, and Launch at login.
 struct ProvidersView: View {
     @Environment(UsageStore.self) private var store
+    @Environment(AppUpdater.self) private var updater
     let onBack: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             header
             BurnieDivider()
+            if let version = updater.availableVersion {
+                UpdateRow(version: version, onUpdate: updater.installUpdate)
+                BurnieDivider()
+            }
             VStack(spacing: 0) {
                 ForEach(ProviderID.allCases, id: \.self) { provider in
                     ProviderRow(

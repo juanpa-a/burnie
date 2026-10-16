@@ -17,31 +17,19 @@ Burnie reuses the sign-ins Claude Code and Cursor already have on your Mac. It n
 ## Requirements
 
 - macOS 14 Sonoma or later.
-- Xcode 26 or later, opened once so it finishes setting up. The Command Line Tools alone aren't enough.
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
 - Claude Code and/or Cursor installed and signed in on the same Mac.
 
 ## Install
 
-```sh
-git clone https://github.com/juanpa-a/burnie.git
-cd burnie
-make install
-```
+1. Download `Burnie.dmg` from the [latest release](https://github.com/juanpa-a/burnie/releases/latest).
+2. Open it and drag **Burnie** onto **Applications**.
+3. Open Burnie from Applications. The flame icon shows up in the menu bar; Burnie has no Dock icon.
 
-`make install` builds a release copy, signs it for this Mac only (no Apple developer account needed), copies it to `/Applications/Burnie.app`, and opens it. The flame icon shows up in the menu bar; Burnie has no Dock icon.
-
-To install it somewhere else, pass a folder: `make install APPS_DIR=~/Applications`.
-
-To start Burnie when you log in, open it, click the gear button, and turn on **Launch at login**.
+To start Burnie when you log in, click the flame, then the gear button, and turn on **Launch at login**.
 
 ### Update
 
-```sh
-cd burnie
-git pull
-make install
-```
+Burnie checks for a new version once a day. When there is one, a blue dot shows on the gear button: click the gear, then **Update**, and Burnie installs it and relaunches.
 
 ### Uninstall
 
@@ -54,7 +42,19 @@ make install
    defaults delete dev.juanpa.burnie
    ```
 
-## Install with an agent
+## Build from source
+
+Needs Xcode 26 or later, opened once so it finishes setting up (the Command Line Tools alone aren't enough), and [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`.
+
+```sh
+git clone https://github.com/juanpa-a/burnie.git
+cd burnie
+make install
+```
+
+`make install` builds a release copy, signs it for this Mac only (no Apple developer account needed), copies it to `/Applications/Burnie.app`, and opens it. To install it somewhere else, pass a folder: `make install APPS_DIR=~/Applications`. To update it, run `git pull` and `make install` again.
+
+### With an agent
 
 Paste this prompt into Claude Code, or any coding agent that can run commands on your Mac:
 
@@ -72,7 +72,7 @@ Install the Burnie menu bar app from https://github.com/juanpa-a/burnie on this 
 Rules: don't use sudo. Don't read, print, or change anything in ~/.claude, ~/.config/claude, the Keychain, or Cursor's files; Burnie reads what it needs by itself. If a step fails, show me the error and stop.
 ```
 
-### Update
+### Update with an agent
 
 Paste this prompt to update a Burnie you already installed:
 
@@ -91,7 +91,7 @@ Rules: don't use sudo. Don't read, print, or change anything in ~/.claude, ~/.co
 ## Privacy
 
 - **What it reads.** Claude Code's sign-in from the Keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json`, and its local logs in `~/.claude/projects` and `~/.config/claude/projects`. Cursor's sign-in from `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`.
-- **Who it talks to.** Only `api.anthropic.com` and `cursor.com`. No analytics, telemetry, or update checks.
+- **Who it talks to.** `api.anthropic.com` and `cursor.com` for usage, and `github.com` once a day to check for a new Burnie. No analytics or telemetry.
 - **What it writes.** Only its cache and history in `~/Library/Application Support/Burnie/`. Tokens and cookies never touch the disk or the logs.
 - **What it runs.** Only when you press **Refresh sign-in** under an expired Claude sign-in: your installed `claude`, asking Haiku for a one-word reply. Claude Code then renews and saves its own sign-in; Burnie never handles the refresh token.
 
@@ -105,6 +105,17 @@ Burnie relies on undocumented Claude and Cursor endpoints. If one changes, Burni
 | `make test` | Runs the `BurnieKit` tests. |
 | `make perf` | Release-mode performance test of the log scan. |
 | `make install` | Builds a Release copy and installs it, as above. |
+| `make release TEAM_ID=…` | Builds a signed, notarized `Burnie.dmg` and the `appcast.xml` for updates. |
+
+### Releasing
+
+Once per Mac: install a Developer ID Application certificate (Xcode → Settings → Accounts → Manage Certificates), store the notarization credentials with `xcrun notarytool store-credentials burnie-notary`, and keep Sparkle's private EdDSA key in the Keychain (`generate_keys` creates it; `generate_keys -x` exports a backup and `-f` imports it on another Mac).
+
+1. In `project.yml`, raise `MARKETING_VERSION` (0.x while Burnie is an MVP) and add one to `CURRENT_PROJECT_VERSION`. Merge that change.
+2. Run `make release TEAM_ID=<your team>`.
+3. Run the `gh release create` command it prints. Installed copies see the update on their next daily check.
+
+Sparkle's tools live in `build/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin` after any `make build`.
 
 The rules for contributing (human or agent) live in [`AGENTS.md`](AGENTS.md).
 

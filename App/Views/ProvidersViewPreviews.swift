@@ -2,8 +2,8 @@
 import SwiftUI
 
 @MainActor
-private func providers(_ store: UsageStore) -> some View {
-    PreviewFrame { ProvidersView(onBack: {}) }
+private func providers(_ store: UsageStore, availableUpdate: String? = nil) -> some View {
+    PreviewFrame(availableUpdate: availableUpdate) { ProvidersView(onBack: {}) }
         .environment(store)
 }
 
@@ -17,4 +17,5 @@ private func providers(_ store: UsageStore) -> some View {
 #Preview("Claude not found") { providers(PreviewScenario.claudeNotFound.store) }
 #Preview("Cursor session expired") { providers(PreviewScenario.cursorSessionExpired.store) }
 #Preview("All off") { providers(PreviewScenario.allOff.store) }
+#Preview("Update available") { providers(.preview(), availableUpdate: "0.3.0") }
 #endif

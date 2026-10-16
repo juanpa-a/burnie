@@ -4,8 +4,8 @@ import SwiftUI
 // One preview per `PreviewScenario`, each in light and dark.
 
 @MainActor
-private func usage(_ scenario: PreviewScenario) -> some View {
-    PreviewFrame { UsageView(onOpenProviders: {}) }
+private func usage(_ scenario: PreviewScenario, availableUpdate: String? = nil) -> some View {
+    PreviewFrame(availableUpdate: availableUpdate) { UsageView(onOpenProviders: {}) }
         .environment(scenario.store)
 }
 
@@ -24,4 +24,5 @@ private func usage(_ scenario: PreviewScenario) -> some View {
 #Preview("All providers off") { usage(.allOff) }
 #Preview("Last 7 days hidden") { usage(.weekChartHidden) }
 #Preview("On-demand hidden") { usage(.onDemandHidden) }
+#Preview("Update available") { usage(.ready, availableUpdate: "0.3.0") }
 #endif
