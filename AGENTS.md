@@ -45,6 +45,7 @@ Each module has its own `AGENTS.md`. Read it before touching that module.
 | `make build` | Builds the app in Debug. |
 | `make run` | Builds and opens the app. |
 | `make install` | Builds a Release copy signed ad hoc, installs it in `/Applications` (or `APPS_DIR`), and opens it. |
+| `make dmg` | Builds the same ad hoc copy, packs it into `build/Burnie.dmg` with the install window, and opens it. |
 | `make release TEAM_ID=…` | Archive signed with a Developer ID, notarized `build/release/Burnie.dmg`, and Sparkle's `appcast.xml`. |
 
 ## Workflow

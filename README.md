@@ -54,6 +54,8 @@ make install
 
 `make install` builds a release copy, signs it for this Mac only (no Apple developer account needed), copies it to `/Applications/Burnie.app`, and opens it. To install it somewhere else, pass a folder: `make install APPS_DIR=~/Applications`. To update it, run `git pull` and `make install` again.
 
+To see the install window that `Burnie.dmg` opens to, run `make dmg`.
+
 ### With an agent
 
 Paste this prompt into Claude Code, or any coding agent that can run commands on your Mac:
