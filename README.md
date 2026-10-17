@@ -101,10 +101,13 @@ Burnie relies on undocumented Claude and Cursor endpoints. If one changes, Burni
 
 ## Development
 
+Burnie is built in layers, one Swift package module each, with a pure core and every effect behind a port; [`SPEC.md`](SPEC.md) describes the architecture, its rules and the behavior it keeps.
+
 | Command | What it does |
 | --- | --- |
 | `make run` | Builds a Debug copy and opens it. |
-| `make test` | Generates the project, runs the `BurnieKit` tests, then the app's `BurnieAppTests` with `xcodebuild`. |
+| `make test` | Runs the `BurnieKit` tests. |
+| `make verify` | The architecture and sensitive-data checks, the tests and the Debug build: what CI runs on every pull request. |
 | `make perf` | Release-mode performance test of the log scan. |
 | `make install` | Builds a Release copy and installs it, as above. |
 | `make release TEAM_ID=…` | Builds a signed, notarized `Burnie.dmg` and the `appcast.xml` for updates. |
