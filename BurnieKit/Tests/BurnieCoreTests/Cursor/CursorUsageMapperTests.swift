@@ -15,38 +15,53 @@ struct CursorUsageMapperTests {
         try CursorUsageMapper.limits(from: JSONDecoder().decode(CursorUsageSummaryDTO.self, from: Fixture.data(fixture)))
     }
 
-    @Test func proShowsBothPoolsLikeTheDashboard() throws {
+    @Test("B-48 individual plans show Cursor Models and Other Models as percents, in tokens")
+    func proShowsBothPoolsLikeTheDashboard() throws {
         #expect(try limits("cursor-summary-pro.json") == LimitsReading(plan: "PRO", meters: Self.pools, unit: .tokens))
     }
 
-    @Test func enabledOnDemandAddsAMoneyMeter() throws {
+    @Test("B-48 enabled on-demand adds a money meter after the others")
+    func enabledOnDemandAddsAMoneyMeter() throws {
         let onDemand = Meter(id: .onDemand, fraction: 0.248, value: .money(usedCents: 1_240, limitCents: 5_000), caption: .cycleEnds(Self.cycleEnd))
         #expect(try limits("cursor-summary-on-demand.json").meters == Self.pools + [onDemand])
     }
 
-    @Test func onDemandWithoutLimitHasAnEmptyBar() throws {
+    @Test("B-4 on-demand has no period, so it shows no pace tick")
+    func onDemandHasNoPace() throws {
+        let onDemand = try #require(try limits("cursor-summary-on-demand.json").meters.last)
+        #expect(onDemand.id == .onDemand)
+        #expect(onDemand.period == nil)
+        #expect(onDemand.elapsedFraction(at: .iso("2026-10-15T00:00:00Z")) == nil)
+    }
+
+    @Test("B-48 unused on-demand without a limit has an empty bar and kicks in after included usage runs out")
+    func onDemandWithoutLimitHasAnEmptyBar() throws {
         let onDemand = Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: nil), caption: .onDemandIdle)
         #expect(try limits("cursor-summary-unlimited.json").meters.last == onDemand)
     }
 
-    @Test func freeShowsPoolsWithoutOnDemand() throws {
+    @Test("B-48 a free plan shows both pools and no on-demand, which it hasn't enabled")
+    func freeShowsPoolsWithoutOnDemand() throws {
         let reading = try limits("cursor-summary-free.json")
         #expect(reading.plan == "FREE")
         #expect(reading.meters.map(\.value) == [.percent(12), .percent(0)])
     }
 
-    @Test func teamPlanWithoutPoolsShowsOneUsageLimitMeter() throws {
+    @Test("B-48 team plans show one Included usage meter in money")
+    func teamPlanWithoutPoolsShowsOneUsageLimitMeter() throws {
         let meter = Meter(id: .included, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
         #expect(try limits("cursor-summary-team.json") == LimitsReading(plan: "ENTERPRISE", meters: [meter], unit: .money))
     }
 
-    @Test func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
+    @Test("B-48 enterprise shows the member's own budget, not the team pool")
+    func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
         let budget = Meter(id: .included, fraction: 0.421, value: .money(usedCents: 4_210, limitCents: 10_000), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
         let onDemand = Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle)
         #expect(try limits("cursor-summary-enterprise.json") == LimitsReading(plan: "ENTERPRISE", meters: [budget, onDemand], unit: .money))
     }
 
-    @Test func singleMeterPrefersTheReportedPercentage() throws {
+    @Test("B-48 the Included usage meter fills to the reported percentage when there is one")
+    func singleMeterPrefersTheReportedPercentage() throws {
         let json = #"{"billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"plan":{"used":500,"limit":2000,"totalPercentUsed":40}}}"#
         let reading = try CursorUsageMapper.limits(from: JSONDecoder().decode(CursorUsageSummaryDTO.self, from: Data(json.utf8)))
         #expect(reading.meters.first?.fraction == 0.4)
@@ -61,7 +76,8 @@ struct CursorUsageMapperTests {
         #expect(reading.meters.first?.period == nil)
     }
 
-    @Test func summaryWithoutBucketsOrCycleIsUnexpected() throws {
+    @Test("B-48 a summary without usage buckets or billing cycle end is unexpected")
+    func summaryWithoutBucketsOrCycleIsUnexpected() throws {
         let decoder = JSONDecoder()
         let noBuckets = try decoder.decode(CursorUsageSummaryDTO.self, from: Data(#"{"billingCycleEnd":"2026-11-01T00:00:00Z","teamUsage":{}}"#.utf8))
         #expect(throws: ProviderIssue.unexpectedResponse("Cursor summary without usage buckets")) { try CursorUsageMapper.limits(from: noBuckets) }

@@ -32,6 +32,11 @@ final class SQLiteKeyValueReaderTests {
         }
     }
 
+    /// The bytes of the database and of its write-ahead log, which only the app that owns them may change.
+    func databaseAndLog() throws -> [Data] {
+        try [database, URL(filePath: database.path + "-wal")].map { try Data(contentsOf: $0) }
+    }
+
     @Test func readsAValueAndNilForAMissingKey() throws {
         let writer = try open(journalMode: "WAL")
         defer { sqlite3_close(writer) }
@@ -60,6 +65,19 @@ final class SQLiteKeyValueReaderTests {
         #expect(try reader.valueFromCopy(forKey: "cursorAuth/accessToken", table: "ItemTable", of: database) == "only-in-wal")
         let leftovers = try FileManager.default.contentsOfDirectory(atPath: directory.path).filter { !$0.hasPrefix("state.vscdb") }
         #expect(leftovers.isEmpty)
+    }
+
+    @Test("B-62 reading state.vscdb never changes it, not even through the copy")
+    func readingLeavesTheDatabaseAsItWas() throws {
+        let writer = try open(journalMode: "WAL")
+        defer { sqlite3_close(writer) }
+        try execute("PRAGMA wal_autocheckpoint=0", on: writer)
+        try execute("INSERT INTO ItemTable VALUES ('cursorAuth/accessToken', 'only-in-wal')", on: writer)
+        let before = try databaseAndLog()
+
+        _ = try reader.value(forKey: "cursorAuth/accessToken", table: "ItemTable", at: database)
+        _ = try reader.valueFromCopy(forKey: "cursorAuth/accessToken", table: "ItemTable", of: database)
+        #expect(try databaseAndLog() == before)
     }
 
     @Test func missingDatabaseThrows() {

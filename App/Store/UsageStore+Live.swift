@@ -19,6 +19,8 @@ extension UsageStore {
             providers: [ClaudeProvider.assemble(in: environment), CursorProvider.assemble(in: environment)],
             cache: cache,
             clock: environment.clock,
+            sleeper: TaskSleeper(),
+            systemEvents: SystemEventMonitor(),
             enabledSetting: .enabledProviders(),
             favoriteSetting: .favoriteProvider(),
             showRingSetting: .showRing(),

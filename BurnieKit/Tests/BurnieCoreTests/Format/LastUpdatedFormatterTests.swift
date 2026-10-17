@@ -6,7 +6,7 @@ import BurnieTestSupport
 struct LastUpdatedFormatterTests {
     let now = Date.iso("2026-10-10T18:00:00Z")
 
-    @Test(arguments: [
+    @Test("B-55 the header says how old the data is", arguments: [
         (0.0, "Updated just now"),
         (59.0, "Updated just now"),
         (120.0, "Updated 2 min ago"),
@@ -18,7 +18,8 @@ struct LastUpdatedFormatterTests {
         #expect(LastUpdatedFormatter().string(lastUpdated: now.addingTimeInterval(-age), now: now) == expected)
     }
 
-    @Test func saysUpdatingWithoutData() {
+    @Test("B-55 the header says Updating… before any data")
+    func saysUpdatingWithoutData() {
         #expect(LastUpdatedFormatter().string(lastUpdated: nil, now: now) == "Updating…")
     }
 }

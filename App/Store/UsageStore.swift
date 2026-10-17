@@ -47,6 +47,8 @@ final class UsageStore {
     @ObservationIgnored private let cache: SnapshotStore
     /// Views take `now` from here, so previews with a fixed clock are deterministic.
     @ObservationIgnored let clock: Clock
+    @ObservationIgnored private let sleeper: Sleeper
+    @ObservationIgnored private let systemEvents: SystemEvents
     @ObservationIgnored private let enabledSetting: Setting<Set<ProviderID>>
     @ObservationIgnored private let favoriteSetting: Setting<ProviderID?>
     @ObservationIgnored private let showRingSetting: Setting<Bool>
@@ -56,8 +58,7 @@ final class UsageStore {
     @ObservationIgnored private var signInRenewers: [ProviderID: any SignInRenewer]
     @ObservationIgnored private var lastPopoverOpen: Date?
     @ObservationIgnored private var schedulerUpdate: Task<Void, Never>?
-    @ObservationIgnored private let systemEvents = SystemEventMonitor()
-    @ObservationIgnored private lazy var scheduler = RefreshScheduler(clock: clock) { [weak self] job in
+    @ObservationIgnored private lazy var scheduler = RefreshScheduler(clock: clock, sleeper: sleeper) { [weak self] job in
         await self?.refresh(job)
     }
 
@@ -65,6 +66,8 @@ final class UsageStore {
         providers: [ProviderAssembly],
         cache: SnapshotStore,
         clock: Clock,
+        sleeper: Sleeper,
+        systemEvents: SystemEvents,
         enabledSetting: Setting<Set<ProviderID>>,
         favoriteSetting: Setting<ProviderID?>,
         showRingSetting: Setting<Bool>,
@@ -76,6 +79,8 @@ final class UsageStore {
         signInRenewers = self.providers.compactMapValues(\.signInRenewer)
         self.cache = cache
         self.clock = clock
+        self.sleeper = sleeper
+        self.systemEvents = systemEvents
         self.enabledSetting = enabledSetting
         self.favoriteSetting = favoriteSetting
         self.showRingSetting = showRingSetting
@@ -112,6 +117,8 @@ final class UsageStore {
             providers: [],
             cache: NoCache(),
             clock: clock,
+            sleeper: TaskSleeper(),
+            systemEvents: NoSystemEvents(),
             enabledSetting: .fixed(enabled),
             favoriteSetting: .fixed(favorite),
             showRingSetting: .fixed(showRing),
@@ -137,12 +144,12 @@ final class UsageStore {
         return .ready(snapshot.hidingOnDemand())
     }
 
-    /// Starts timers, watchers and system events. Only the real app calls it; previews don't.
+    /// Starts timers, watchers and system events. Previews never call it, so they touch neither network nor disk.
     func start() {
         systemEvents.start(
-            onWake: { [scheduler] in
+            onWake: { [scheduler, sleeper] in
                 Task {
-                    try? await Task.sleep(for: .seconds(3))
+                    try? await sleeper.sleep(for: 3)
                     await scheduler.trigger(.wake)
                 }
             },
@@ -157,11 +164,13 @@ final class UsageStore {
     }
 
     /// Opening the popover refreshes whatever is stale; both open signals arrive together, hence the debounce.
-    func popoverOpened() {
+    /// Returns the refresh it started, so tests can wait for it, or nil when the debounce dropped the open.
+    @discardableResult
+    func popoverOpened() -> Task<Void, Never>? {
         let now = clock.now
-        if let lastPopoverOpen, now.timeIntervalSince(lastPopoverOpen) < 1 { return }
+        if let lastPopoverOpen, now.timeIntervalSince(lastPopoverOpen) < 1 { return nil }
         lastPopoverOpen = now
-        Task { await refreshAll(force: false) }
+        return Task { await refreshAll(force: false) }
     }
 
     /// `force` is the Refresh button: every enabled source regardless of age, except during an active `retryAt`.
@@ -293,6 +302,11 @@ final class UsageStore {
     private struct NoCache: SnapshotStore {
         func load<T: Codable>(_ name: String) throws -> T? { nil }
         func save<T: Codable>(_ value: T, as name: String) throws {}
+    }
+
+    /// The previews' system events: previews never start the store, so nothing ever reports.
+    private struct NoSystemEvents: SystemEvents {
+        func start(onWake: @escaping @Sendable () -> Void, onNetworkChange: @escaping @Sendable (_ isOnline: Bool) -> Void) {}
     }
     #endif
 

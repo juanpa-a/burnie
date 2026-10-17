@@ -3,8 +3,12 @@ import os
 import Testing
 @testable import BurnieSystem
 
-struct ClaudeCodeSignInRenewerTests {
+final class ClaudeCodeSignInRenewerTests {
     let home = FileManager.default.temporaryDirectory.appending(path: "burnie-renewer-\(UUID().uuidString)")
+
+    deinit {
+        try? FileManager.default.removeItem(at: home)
+    }
 
     @Test func succeedsWhenClaudeExitsCleanly() async throws {
         try await renewer(running: "exit 0").renewSignIn()
@@ -16,17 +20,48 @@ struct ClaudeCodeSignInRenewerTests {
         }
     }
 
-    @Test func givesUpWhenClaudeHangs() async throws {
+    @Test("B-71 a renewal that runs past its timeout is stopped and counts as failed")
+    func givesUpWhenClaudeHangs() async throws {
         await #expect(throws: ClaudeCodeSignInRenewer.Failure.self) {
             try await renewer(running: "sleep 5", timeout: .milliseconds(200)).renewSignIn()
         }
     }
 
-    @Test func claudeGetsOnlyHomeUserAndSystemPath() async throws {
+    @Test("B-63 the renewal gets a clean environment: home, user and the system path")
+    func claudeGetsOnlyHomeUserAndSystemPath() async throws {
         try await renewer(running: #"env | cut -d= -f1 | sort > "$HOME/environment""#).renewSignIn()
         let names = try String(contentsOf: home.appending(path: "environment"), encoding: .utf8)
         // `sh` adds PWD, SHLVL and _ to what it was given.
         #expect(names.split(separator: "\n").filter { !["PWD", "SHLVL", "_"].contains($0) } == ["HOME", "LOGNAME", "PATH", "USER"])
+    }
+
+    @Test("B-63 the renewal runs in a folder without .claude/")
+    func claudeRunsOutsideAnyClaudeFolder() async throws {
+        // The home has one, so running there would load its settings.
+        try FileManager.default.createDirectory(at: home.appending(path: ".claude"), withIntermediateDirectories: true)
+        try await renewer(running: #"pwd -P > "$HOME/folder""#).renewSignIn()
+        let folder = try String(contentsOf: home.appending(path: "folder"), encoding: .utf8).trimmingCharacters(in: .newlines)
+        #expect(!FileManager.default.fileExists(atPath: URL(filePath: folder).appending(path: ".claude").path(percentEncoded: false)))
+    }
+
+    @Test("B-63 the renewal asks for one word with no tools, no user settings and no session persistence")
+    func claudeGetsOnlyTheFixedArguments() async throws {
+        try await renewer(running: #"printf '%s\n' "$@" > "$HOME/arguments""#).renewSignIn()
+        let arguments = try String(contentsOf: home.appending(path: "arguments"), encoding: .utf8)
+        // `--tools` gets an empty argument, so empty lines count; the last piece is past printf's final newline.
+        #expect(Array(arguments.split(separator: "\n", omittingEmptySubsequences: false).dropLast()) == [
+            "-p", "Reply with the single word: ok",
+            "--model", "haiku",
+            "--tools", "",
+            "--no-session-persistence",
+            "--setting-sources", "project",
+        ])
+    }
+
+    @Test("B-63 the renewal reads nothing and its output is discarded")
+    func claudesInputAndOutputAreTheNullDevice() async throws {
+        // The script fails unless its standard input, output and error are all /dev/null.
+        try await renewer(running: "[ /dev/fd/0 -ef /dev/null ] && [ /dev/fd/1 -ef /dev/null ] && [ /dev/fd/2 -ef /dev/null ]").renewSignIn()
     }
 
     @Test func findsTheNativeInstallInHome() throws {

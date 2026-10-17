@@ -7,11 +7,14 @@ let package = Package(
     products: [
         .library(name: "BurnieCore", targets: ["BurnieCore"]),
         .library(name: "BurnieSystem", targets: ["BurnieSystem"]),
+        // For the app's Xcode test target (BurnieAppTests), which links packages only through products. The refactor
+        // deletes both (SPEC 15.4).
+        .library(name: "BurnieTestSupport", targets: ["BurnieTestSupport"]),
     ],
     targets: [
         .target(name: "BurnieCore", exclude: ["AGENTS.md", "CLAUDE.md"]),
         .target(name: "BurnieSystem", dependencies: ["BurnieCore"], exclude: ["AGENTS.md", "CLAUDE.md"]),
-        // Test code: only test targets link it, so it's no product.
+        // Test code: only test targets link it.
         .target(
             name: "BurnieTestSupport",
             dependencies: ["BurnieCore"],

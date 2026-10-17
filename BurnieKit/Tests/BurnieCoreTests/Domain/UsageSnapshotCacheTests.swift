@@ -9,23 +9,27 @@ struct UsageSnapshotCacheTests {
         meters: [Meter(id: .weekly, fraction: 0.2, value: .percent(20), caption: .noActiveSession)]
     )
 
-    @Test func partialSnapshotKeepsCachedMetersAndTheirAge() {
+    @Test("B-17 a snapshot without meters keeps the cached meters, plan and age")
+    func partialSnapshotKeepsCachedMetersAndTheirAge() {
         let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), today: .tokens(99), issue: .signInExpired)
         let shown = partial.keepingMeters(of: Self.cached)
         #expect(shown == UsageSnapshot(provider: .claude, fetchedAt: Self.cached.fetchedAt, plan: "PRO", today: .tokens(99), meters: Self.cached.meters, issue: .signInExpired))
     }
 
-    @Test func snapshotWithMetersReplacesTheCache() {
+    @Test("B-17 a snapshot with meters replaces the cache")
+    func snapshotWithMetersReplacesTheCache() {
         let fresh = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), meters: [Meter(id: .weekly, fraction: 0.3, value: .percent(30), caption: .noActiveSession)])
         #expect(fresh.keepingMeters(of: Self.cached) == fresh)
     }
 
-    @Test func withoutCacheTheSnapshotStaysAsIs() {
+    @Test("B-17 without a cache a snapshot without meters stays as it is")
+    func withoutCacheTheSnapshotStaysAsIs() {
         let partial = UsageSnapshot(provider: .claude, fetchedAt: .iso("2026-10-10T20:00:00Z"), today: .tokens(99), issue: .missingScope)
         #expect(partial.keepingMeters(of: nil) == partial)
     }
 
-    @Test func totalFailureMarksTheCachedSnapshot() {
+    @Test("B-18 a total failure shows the cached snapshot with the issue on top")
+    func totalFailureMarksTheCachedSnapshot() {
         #expect(Self.cached.with(issue: .offline).issue == .offline)
         #expect(Self.cached.with(issue: .offline).meters == Self.cached.meters)
     }
