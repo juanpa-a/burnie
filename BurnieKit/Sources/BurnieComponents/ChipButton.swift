@@ -34,9 +34,11 @@ public struct ChipButton: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         ChipButton(title: Copy.chooseProviders) {}
         ChipButton(title: Copy.renewSignIn, isBusy: true) {}
     }
 }
+#endif

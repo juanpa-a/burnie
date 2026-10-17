@@ -44,9 +44,11 @@ public struct MenuBarIcon: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         MenuBarIcon(ring: .hidden)
         MenuBarIcon(ring: .visible(PreviewValues.northwind.id, percent: 64))
     }
 }
+#endif

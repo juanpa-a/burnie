@@ -48,9 +48,11 @@ public struct FooterItem: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         FooterItem(title: PreviewValues.footerTitle, accessory: .external) {}
         FooterItem(title: Copy.quit, accessory: .shortcut(Copy.quitShortcut)) {}
     }
 }
+#endif

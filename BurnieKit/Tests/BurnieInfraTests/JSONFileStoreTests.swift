@@ -41,6 +41,12 @@ final class JSONFileStoreTests {
         #expect(store.snapshot(for: .alpha) == nil)
     }
 
+    @Test("SPEC 12 a history.json that doesn't decode reads as no history, never a crash")
+    func undecodableHistoryIsNil() throws {
+        try write("not a history", to: "history.json")
+        #expect(store.history() == nil)
+    }
+
     @Test func missingFilesAreNil() {
         #expect(store.snapshot(for: .beta) == nil)
         #expect(store.history() == nil)

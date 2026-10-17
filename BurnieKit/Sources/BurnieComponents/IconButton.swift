@@ -75,8 +75,10 @@ public struct IconButton: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         IconButton(systemName: "arrow.clockwise", accessibilityLabel: Copy.refresh, isSpinning: true) {}
     }
 }
+#endif

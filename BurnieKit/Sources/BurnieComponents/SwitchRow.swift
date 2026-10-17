@@ -35,6 +35,7 @@ public struct SwitchRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         SwitchRow(title: PreviewValues.switchTitle, subtitle: Text(PreviewValues.switchSubtitle), isOn: .constant(true))
@@ -42,3 +43,4 @@ public struct SwitchRow: View {
             .disabled(true)
     }
 }
+#endif

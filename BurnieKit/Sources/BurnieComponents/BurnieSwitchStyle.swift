@@ -38,6 +38,7 @@ public struct BurnieSwitchStyle: ToggleStyle {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         Toggle(PreviewValues.switchTitle, isOn: .constant(true))
@@ -45,3 +46,4 @@ public struct BurnieSwitchStyle: ToggleStyle {
             .labelsHidden()
     }
 }
+#endif

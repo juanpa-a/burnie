@@ -12,8 +12,10 @@ public struct BurnieDivider: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         BurnieDivider()
     }
 }
+#endif

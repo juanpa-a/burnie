@@ -102,8 +102,10 @@ public struct WeekChartView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin])
     }
 }
+#endif

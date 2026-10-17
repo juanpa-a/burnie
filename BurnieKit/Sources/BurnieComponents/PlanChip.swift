@@ -20,8 +20,10 @@ public struct PlanChip: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         PlanChip(plan: PreviewValues.plan)
     }
 }
+#endif

@@ -38,6 +38,17 @@ extension RuntimeStateTests {
         #expect(harness.state.requests.isEmpty)
     }
 
+    @Test("B-59 a second Refresh while the first runs closes at once, and the first keeps the spinner")
+    func spinnerStaysWhileAnyRequestIsOpen() {
+        var harness = ReducerHarness.launched()
+        let first = harness.newRequest()
+        harness.send(.refreshRequested(first))
+        let second = harness.newRequest()
+        #expect(harness.send(.refreshRequested(second)) == [.finishRequest(second, result: true)])
+        #expect(AppState.derive(from: harness.state).isRefreshing)
+        #expect(harness.state.requests.keys.contains(first))
+    }
+
     @Test("B-59 a request that starts no run closes at once")
     func requestWithoutRunsClosesAtOnce() {
         var harness = ReducerHarness()

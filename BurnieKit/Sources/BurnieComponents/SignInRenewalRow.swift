@@ -35,8 +35,10 @@ public struct SignInRenewalRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         SignInRenewalRow(message: PreviewValues.issue, failedMessage: PreviewValues.failedRenewal) { false }
     }
 }
+#endif

@@ -30,9 +30,11 @@ public struct HoverHighlightStyle: ButtonStyle {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         Button(PreviewValues.footerTitle) {}
             .buttonStyle(HoverHighlightStyle(cornerRadius: DesignTokens.Metrics.footerItemRadius))
     }
 }
+#endif

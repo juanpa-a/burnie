@@ -14,8 +14,10 @@ public struct UpdateBadge: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         UpdateBadge()
     }
 }
+#endif

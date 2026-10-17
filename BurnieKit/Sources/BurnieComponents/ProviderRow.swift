@@ -81,6 +81,7 @@ public struct ProviderRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         ProviderRow(
@@ -93,3 +94,4 @@ public struct ProviderRow: View {
         )
     }
 }
+#endif

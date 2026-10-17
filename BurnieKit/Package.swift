@@ -4,6 +4,7 @@ import PackageDescription
 /// What every module folder holds besides its sources: the module's agent instructions.
 let instructions = ["AGENTS.md", "CLAUDE.md"]
 
+/// One module per layer (SPEC 3). Dependencies go one way, as SPEC 3.2 lists them.
 let package = Package(
     name: "BurnieKit",
     platforms: [.macOS(.v14)],
@@ -11,13 +12,9 @@ let package = Package(
         .library(name: "BurnieDomain", targets: ["BurnieDomain"]),
         .library(name: "BurnieInterface", targets: ["BurnieInterface"]),
         .library(name: "BurnieProviders", targets: ["BurnieProviders"]),
-        .library(name: "BurnieInfra", targets: ["BurnieInfra"]),
         .library(name: "BurnieApplication", targets: ["BurnieApplication"]),
         .library(name: "BurnieComponents", targets: ["BurnieComponents"]),
-        .library(name: "BurnieCore", targets: ["BurnieCore"]),
-        .library(name: "BurnieSystem", targets: ["BurnieSystem"]),
-        // For the app's Xcode test target (BurnieAppTests), which links packages only through products.
-        .library(name: "LegacyTestSupport", targets: ["LegacyTestSupport"]),
+        .library(name: "BurnieInfra", targets: ["BurnieInfra"]),
     ],
     dependencies: [
         // Pinned: Sparkle replaces the installed app, so a new version comes in through a reviewed PR.
@@ -39,19 +36,11 @@ let package = Package(
             dependencies: ["BurnieDomain", "BurnieInterface", .product(name: "Sparkle", package: "Sparkle")],
             exclude: instructions
         ),
-        .target(name: "BurnieCore", exclude: instructions),
-        .target(name: "BurnieSystem", dependencies: ["BurnieCore"], exclude: instructions),
-        // Test code: only test targets link it.
+        // Test code: only test targets link it, so it's no product.
         .target(
             name: "BurnieTestSupport",
             dependencies: ["BurnieDomain", "BurnieInterface"],
             path: "Tests/BurnieTestSupport",
-            exclude: instructions
-        ),
-        .target(
-            name: "LegacyTestSupport",
-            dependencies: ["BurnieCore"],
-            path: "Tests/LegacyTestSupport",
             exclude: instructions
         ),
         .testTarget(
@@ -68,8 +57,5 @@ let package = Package(
         .testTarget(name: "BurnieApplicationTests", dependencies: ["BurnieApplication", "BurnieTestSupport"]),
         .testTarget(name: "BurnieComponentsTests", dependencies: ["BurnieComponents", "BurnieTestSupport"]),
         .testTarget(name: "BurnieInfraTests", dependencies: ["BurnieInfra", "BurnieTestSupport"]),
-        .testTarget(name: "EquivalenceTests", dependencies: ["BurnieCore", "LegacyTestSupport", "BurnieDomain"]),
-        .testTarget(name: "BurnieCoreTests", dependencies: ["BurnieCore", "LegacyTestSupport"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "BurnieSystemTests", dependencies: ["BurnieSystem"]),
     ]
 )

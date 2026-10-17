@@ -110,6 +110,7 @@ public struct MeterView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         MeterView(
@@ -123,3 +124,4 @@ public struct MeterView: View {
         MeterView(label: PreviewValues.label, value: nil, fill: .zero, pace: nil, overPace: .zero, caption: nil, accent: PreviewValues.orange)
     }
 }
+#endif

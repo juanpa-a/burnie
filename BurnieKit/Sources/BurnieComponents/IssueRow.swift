@@ -20,8 +20,10 @@ public struct IssueRow: View {
     }
 }
 
+#if DEBUG
 #Preview {
     PreviewFrame {
         IssueRow(message: PreviewValues.failedRenewal)
     }
 }
+#endif
