@@ -3,8 +3,7 @@
 The target architecture for Burnie's refactor, the internal language it is written in, the behavior it must keep,
 the migration that gets there, and how every step is verified.
 
-- **Status:** agreed design, implementation not started. Section 13 records every decision; decisions 1–33 are
-  agreed, and 34–48 (from the second and third spec reviews) are proposed until the PR that adds them merges. The open
+- **Status:** agreed design, implementation not started. Section 13 records every decision, all agreed. The open
   questions in section 18 are verified during implementation, not before.
 - **Audience:** humans and agents. Every rule has an ID (`D-3`, `A-7`…) so that reviews, commit messages and the
   architecture check can point at it.
@@ -288,11 +287,12 @@ Notes:
   the script catches raw strings (`"claude"`, `ProviderID(rawValue: "cursor")`).
 - **G-6** No `Date()`, `Date.now`, `.now` as an implicit member (`fetchedAt: .now`), `Date(timeIntervalSinceNow:)`,
   `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`,
-  `Calendar.current` outside `BurnieInfra` (and its tests, which exercise the real APIs) and the composition root. Time comes from `Clock`; the time zone comes in
-  the events (`today`) or as a parameter; views take the locale from SwiftUI's `@Environment(\.locale)` and pass it
-  to formatters. The exceptions only pace drawing, inside Components and views: the start of a SwiftUI `TimelineView` schedule
-  (`.periodic(from: .now, …)`) and a component's own animation in `IconButton` (`Spin(startingAt: .now)`,
-  `spin?.stop(at: .now)` and the wait for it to end). The values drawn still take `now` from the app model's clock.
+  `Calendar.current` outside `BurnieInfra` (and its tests, which exercise the real APIs) and the composition root.
+  Time comes from `Clock`; the time zone comes in the events (`today`) or as a parameter; views take the locale from
+  SwiftUI's `@Environment(\.locale)` and pass it to formatters. The exceptions only pace drawing, inside Components
+  and views: the start of a SwiftUI `TimelineView` schedule (`.periodic(from: .now, …)`) and a component's own
+  animation in `IconButton` (`Spin(startingAt: .now)`, `spin?.stop(at: .now)` and the wait for it to end). The values
+  drawn still take `now` from the app model's clock.
 - **G-7** No `print`, `NSLog` or `debugPrint` in sources or the app. Diagnostics go through the `DiagnosticsLog` port.
   Tests may print only in the performance test, which reports its timings.
 - **G-8** No `TODO`, `FIXME`, `XXX`, commented-out code or unused declarations.
@@ -1152,21 +1152,21 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 31 | 2026-10-16 | Refresh requests are tracked until every run they started finishes; the spinner follows them and awaiting use cases resume through `finishRequest`. | Agreed |
 | 32 | 2026-10-16 | Ports that need a provider's data reach it as factories in its provider ports. `ProcessRunner`'s allowlist is a parameter; the Keychain adapter runs `security` itself. | Agreed |
 | 33 | 2026-10-16 | `HTTPClient` returns an `HTTPResponse` (status, headers, MIME type, body) or throws an `HTTPFailure`; `RingState` carries a whole percent, not a `Fraction`. | Agreed |
-| 34 | 2026-10-16 | Settings are saved one key at a time (`SettingChange`), so an absent `enabledProviders` stays absent until a provider switch changes; the reducer drops ids the registry doesn't know. | Proposed |
-| 35 | 2026-10-16 | `compose` returns `Result<UsageSnapshot, ProviderIssue>`; the cache is saved only after a compose success, partial issue included; the snapshot wire format is written by hand, dates as seconds since 1970. | Proposed |
-| 36 | 2026-10-16 | Every armed timer carries a never-reused `TimerID`, so a `timerFired` from a cancelled or replaced timer is dropped. | Proposed |
-| 37 | 2026-10-16 | `DiagnosticsLog` takes a `StaticString` event and numeric `Measure`s only; a provider's log and storage come bound to its id, so there is no `makeLog(category:)`. | Proposed |
-| 38 | 2026-10-16 | A GitHub Actions workflow runs `make verify` on every PR, from the guardrails PR on. | Proposed |
-| 39 | 2026-10-16 | "Feature" only means a snapshot feature; what the user can do is a use case. | Proposed |
-| 40 | 2026-10-16 | Module `AGENTS.md` files point to this spec's sections and list their rule IDs; the rules' text lives only here. | Proposed |
-| 41 | 2026-10-16 | Each provider exposes its `descriptor` besides `bundle`, so previews read it without ports; component previews take invented values from a DEBUG `PreviewValues` file, the only one exempt from C-4 and C-5. | Proposed |
-| 42 | 2026-10-16 | Adapters built for a provider log only through its `DiagnosticsLog`; the rest use `os.Logger` with every non-number `.private`. The HTTP log keeps status and time and drops today's public method and path. | Proposed |
-| 43 | 2026-10-16 | `AppModel.live` loads the persisted state through synchronous ports and reduces `launched` before returning, so the first frame shows the cache; `state` is assigned only when it changes. | Proposed |
-| 44 | 2026-10-16 | One event per display switch instead of a generic setting event; `providerToggled` ignores no-op toggles; `RefreshUsage` takes no `force`, since only the button calls it. | Proposed |
-| 45 | 2026-10-16 | The renewal-failed copy lives in `SignInRenewal`, so a provider that can't renew has no dead copy; `Link` becomes `DashboardLink` so it doesn't clash with SwiftUI's. | Proposed |
-| 46 | 2026-10-16 | `LimitsView` folds into `LimitsPart`, so the cached snapshot keeps its unit and `compose` uses it until limits succeed again (B-8 across launches). | Proposed |
-| 47 | 2026-10-16 | After network restored, a job that doesn't run arms its timer: every job has a run or a timer unless it waits for the network. | Proposed |
-| 48 | 2026-10-16 | The checks skip comments, see unstaged new files and leave `scripts/` out; `make check` scans the whole tree for sensitive data; G-9 gets a check; C-4 covers every literal measurement and stays dormant until the refactor PR. | Proposed |
+| 34 | 2026-10-16 | Settings are saved one key at a time (`SettingChange`), so an absent `enabledProviders` stays absent until a provider switch changes; the reducer drops ids the registry doesn't know. | Agreed |
+| 35 | 2026-10-16 | `compose` returns `Result<UsageSnapshot, ProviderIssue>`; the cache is saved only after a compose success, partial issue included; the snapshot wire format is written by hand, dates as seconds since 1970. | Agreed |
+| 36 | 2026-10-16 | Every armed timer carries a never-reused `TimerID`, so a `timerFired` from a cancelled or replaced timer is dropped. | Agreed |
+| 37 | 2026-10-16 | `DiagnosticsLog` takes a `StaticString` event and numeric `Measure`s only; a provider's log and storage come bound to its id, so there is no `makeLog(category:)`. | Agreed |
+| 38 | 2026-10-16 | A GitHub Actions workflow runs `make verify` on every PR, from the guardrails PR on. | Agreed |
+| 39 | 2026-10-16 | "Feature" only means a snapshot feature; what the user can do is a use case. | Agreed |
+| 40 | 2026-10-16 | Module `AGENTS.md` files point to this spec's sections and list their rule IDs; the rules' text lives only here. | Agreed |
+| 41 | 2026-10-16 | Each provider exposes its `descriptor` besides `bundle`, so previews read it without ports; component previews take invented values from a DEBUG `PreviewValues` file, the only one exempt from C-4 and C-5. | Agreed |
+| 42 | 2026-10-16 | Adapters built for a provider log only through its `DiagnosticsLog`; the rest use `os.Logger` with every non-number `.private`. The HTTP log keeps status and time and drops today's public method and path. | Agreed |
+| 43 | 2026-10-16 | `AppModel.live` loads the persisted state through synchronous ports and reduces `launched` before returning, so the first frame shows the cache; `state` is assigned only when it changes. | Agreed |
+| 44 | 2026-10-16 | One event per display switch instead of a generic setting event; `providerToggled` ignores no-op toggles; `RefreshUsage` takes no `force`, since only the button calls it. | Agreed |
+| 45 | 2026-10-16 | The renewal-failed copy lives in `SignInRenewal`, so a provider that can't renew has no dead copy; `Link` becomes `DashboardLink` so it doesn't clash with SwiftUI's. | Agreed |
+| 46 | 2026-10-16 | `LimitsView` folds into `LimitsPart`, so the cached snapshot keeps its unit and `compose` uses it until limits succeed again (B-8 across launches). | Agreed |
+| 47 | 2026-10-16 | After network restored, a job that doesn't run arms its timer: every job has a run or a timer unless it waits for the network. | Agreed |
+| 48 | 2026-10-16 | The checks skip comments, see unstaged new files and leave `scripts/` out; `make check` scans the whole tree for sensitive data; G-9 gets a check; C-4 covers every literal measurement and stays dormant until the refactor PR. | Agreed |
 
 ---
 
@@ -1450,8 +1450,7 @@ through the PR) and the summary of its test output, which the squash commit mess
 - certificate hashes (40-hex strings next to `codesign` or `identity`).
 
 A symlink is scanned as the path it points to, which is what git commits. It never prints a matched value, only the
-file, line and rule. Reading `git diff --cached` by eye before every commit
-stays mandatory (root `AGENTS.md`).
+file, line and rule. Reading `git diff --cached` by eye before every commit stays mandatory (root `AGENTS.md`).
 
 ### 16.7 Manual QA matrix
 
