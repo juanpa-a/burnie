@@ -14,7 +14,7 @@ public struct Gen: RandomNumberGenerator {
     /// The range of `Tokens` and `Cents` the arithmetic laws run over.
     public static let quantities = 0...1_000_000_000_000
     private static let edgeDoubles: [Double] = [.nan, .infinity, -.infinity, .greatestFiniteMagnitude, -.greatestFiniteMagnitude, 0, -0.0, 1]
-    private static let meterIDs: [MeterID] = [.daily, .weekly, .budget]
+    private static let meterIDs: [MeterID] = [.daily, .monthly, .budget]
     private static let plans = ["PRO", "MAX", "TEAM"].map(PlanName.init(rawValue:))
 
     private var state: UInt64

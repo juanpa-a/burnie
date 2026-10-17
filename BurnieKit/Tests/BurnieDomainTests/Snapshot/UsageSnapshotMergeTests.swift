@@ -4,7 +4,7 @@ import Testing
 @testable import BurnieDomain
 
 struct UsageSnapshotMergeTests {
-    static let meters = MeterSet(primary: Meter(id: .weekly, fill: Fraction(0.2), value: .percent(20), caption: .noActiveSession))
+    static let meters = MeterSet(primary: Meter(id: .monthly, fill: Fraction(0.2), value: .percent(20), caption: .noActiveSession))
     static let cachedView = Stamped(LimitsPart(plan: PlanName(rawValue: "PRO"), meters: meters, unit: .money), at: .iso("2026-10-10T18:00:00Z"))
     static let cached = UsageSnapshot(provider: .alpha, content: .limits(view: cachedView, today: .tokens(Tokens(10))))
 

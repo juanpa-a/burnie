@@ -25,7 +25,7 @@ struct PersistenceContractTests {
                             caption: .cycleEnds(.iso("2026-11-01T00:00:00Z")),
                             period: DateInterval(start: .iso("2026-10-01T00:00:00Z"), end: .iso("2026-11-01T00:00:00Z"))
                         ),
-                        others: [Meter(id: .weekly, fill: Fraction(0.38), value: .percent(38), caption: .resetsAt(.iso("2026-10-15T15:00:00Z")))]
+                        others: [Meter(id: MeterID(rawValue: "weekly"), fill: Fraction(0.38), value: .percent(38), caption: .resetsAt(.iso("2026-10-15T15:00:00Z")))]
                     ),
                     unit: .money,
                     features: SnapshotFeatures(onDemand: Meter(id: .extra, fill: .zero, value: .money(used: .zero, limit: nil), caption: .onDemandIdle))

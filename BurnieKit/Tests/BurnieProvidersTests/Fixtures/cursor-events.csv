@@ -1,0 +1,8 @@
+Date,Cloud Agent ID,Automation ID,Kind,Model,Max Mode,Input (w/ Cache Write),Input (w/o Cache Write),Cache Read,Output Tokens,Total Tokens,Cost
+"2026-10-11T01:15:00.000Z","","","Included","gpt-5","No","0","20000","700000","5000","725000","Included"
+"2026-10-11T01:05:00.000Z","","","Included","gpt-5","No","0","8000","1900000","2000","1910000","Included"
+"2026-10-10T16:00:00.000Z","bc-0000","","On-Demand","claude-4.6-sonnet, thinking","Yes","1200","5000","20000","800","27000","$0.12"
+"2026-10-10T05:30:00.000Z","","","Included","composer-2","No","0","3000","26000","200","29200","Free"
+"2026-10-08T14:00:00.000Z","","auto-0000","Included","grok-bot-automation","No","0","3000","26000","200","29200","Included"
+"2026-10-04T09:00:00.000Z","","","Errored, Not Charged","gpt-5 ""high""","No","0","10","0","0","10","0"
+"2026-10-02T12:00:00.000Z","","","Included","composer-2","No","0","100","0","20","120","Included"

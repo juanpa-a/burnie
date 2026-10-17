@@ -176,6 +176,7 @@ token_lines() {
 is_jwt_fixture() {
 	case $1 in
 		BurnieKit/Tests/BurnieCoreTests/Fixtures/cursor-jwt.txt) return 0 ;;
+		BurnieKit/Tests/BurnieProvidersTests/Fixtures/cursor-jwt.txt) return 0 ;;
 	esac
 	return 1
 }

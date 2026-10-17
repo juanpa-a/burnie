@@ -6,7 +6,7 @@ import Testing
 
 struct ProviderDescriptorTests {
     @Test func aMeterReadsItsDeclaredLabel() {
-        #expect(ProviderDescriptor.alpha.label(for: .weekly) == "Weekly")
+        #expect(ProviderDescriptor.alpha.label(for: .monthly) == "Monthly")
     }
 
     @Test func anUndeclaredMeterReadsItsIdNeverAnEmptyRow() {

@@ -29,7 +29,7 @@ struct MeterSetTests {
     @Test("B-53 the first meter in display order is the primary one")
     func theFirstMeterIsPrimary() {
         let daily = Meter(id: .daily, fill: Fraction(0.6), value: .percent(60), caption: .noActiveSession)
-        let weekly = Meter(id: .weekly, fill: Fraction(0.2), value: .percent(20), caption: .noActiveSession)
-        #expect(MeterSet([daily, weekly]) == MeterSet(primary: daily, others: [weekly]))
+        let monthly = Meter(id: .monthly, fill: Fraction(0.2), value: .percent(20), caption: .noActiveSession)
+        #expect(MeterSet([daily, monthly]) == MeterSet(primary: daily, others: [monthly]))
     }
 }

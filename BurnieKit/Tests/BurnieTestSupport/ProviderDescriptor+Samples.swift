@@ -10,8 +10,8 @@ extension ProviderDescriptor {
         shortName: "Alpha",
         color: ColorPair(light: RGB(red: 0.8, green: 0.4, blue: 0.2), dark: RGB(red: 0.9, green: 0.5, blue: 0.3)),
         dashboard: DashboardLink(title: "Open Alpha usage page", url: URL(string: "https://alpha.example/usage")!),
-        meters: [MeterDescriptor(id: .daily, label: "Daily"), MeterDescriptor(id: .weekly, label: "Weekly")],
-        placeholderMeters: [.daily, .weekly],
+        meters: [MeterDescriptor(id: .daily, label: "Daily"), MeterDescriptor(id: .monthly, label: "Monthly")],
+        placeholderMeters: [.daily, .monthly],
         copy: ProviderCopy(
             notFound: "Alpha Code not found.",
             signInExpired: "Alpha sign-in expired.",

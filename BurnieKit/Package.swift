@@ -18,6 +18,7 @@ let package = Package(
     targets: [
         .target(name: "BurnieDomain", exclude: instructions),
         .target(name: "BurnieInterface", dependencies: ["BurnieDomain"], exclude: instructions),
+        .target(name: "BurnieProviders", dependencies: ["BurnieDomain", "BurnieInterface"], exclude: instructions),
         .target(name: "BurnieCore", exclude: instructions),
         .target(name: "BurnieSystem", dependencies: ["BurnieCore"], exclude: instructions),
         // Test code: only test targets link it.
@@ -39,6 +40,11 @@ let package = Package(
             resources: [.copy("Fixtures")]
         ),
         .testTarget(name: "BurnieInterfaceTests", dependencies: ["BurnieInterface", "BurnieTestSupport"]),
+        .testTarget(
+            name: "BurnieProvidersTests",
+            dependencies: ["BurnieProviders", "BurnieTestSupport"],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "BurnieCoreTests", dependencies: ["BurnieCore", "LegacyTestSupport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "BurnieSystemTests", dependencies: ["BurnieSystem"]),
     ]

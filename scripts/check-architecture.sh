@@ -53,10 +53,9 @@ readonly ICON_BUTTON='(^|/)IconButton[.]swift$'
 readonly DESIGN_TOKENS='(^|/)DesignTokens[.]swift$'
 readonly PREVIEW_VALUES='(^|/)PreviewValues[.]swift$'
 
-# Persistence fixtures and tests of SPEC section 12 that must spell the frozen provider ids ("claude", "cursor"), so G-5
-# skips them. One path per line, relative to the root. Empty while G-5 is dormant: the refactor PR fills it with the
-# paths those tests land on.
-readonly PROVIDER_ID_ALLOWLIST=''
+# Persistence tests of SPEC section 12 that must spell the frozen provider ids ("claude", "cursor"), as the files on
+# users' disks do, so G-5 skips them. One path per line, relative to the root.
+readonly PROVIDER_ID_ALLOWLIST='BurnieKit/Tests/BurnieDomainTests/PersistenceContractTests.swift'
 
 # --- What may be imported (SPEC 3.2), space separated. Each module's own list is in allowed_imports.
 
