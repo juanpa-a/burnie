@@ -14,8 +14,8 @@ It beats speed, extra features, and "it already works".
 Burnie is moving to the layered, functional architecture in [`SPEC.md`](SPEC.md): its glossary, modules, rules,
 behavior catalog, delivery plan, and verification gates.
 
-- Before any work that touches layers, names, ports, providers, state or tests, read `SPEC.md`. For the refactor,
-  it wins over the module `AGENTS.md` files; it never relaxes the rules in this file.
+- Before any work that touches layers, names, ports, providers, state or tests, read `SPEC.md`. During and
+  after the refactor it wins over the module `AGENTS.md` files; it never relaxes the rules in this file.
 - Rules have IDs: `G` global, `D` domain, `I` interface, `P` providers, `A` application, `X` infra, `C` components,
   `V` app views, `T` tests, `B` behaviors to keep. Cite them in reviews, commits and PR bodies.
 - Name things from the glossary (`SPEC.md` section 2). A new concept is a spec change in the same PR.
