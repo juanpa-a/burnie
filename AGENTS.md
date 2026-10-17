@@ -54,7 +54,7 @@ Each module has its own `AGENTS.md`. Read it before touching that module.
 | --- | --- |
 | `make gen` | Generates `Burnie.xcodeproj` with XcodeGen. The project is generated: never edit it, change `project.yml`. |
 | `make check` | The architecture check (`SPEC.md` section 16.2) and the sensitive-data check over every file. |
-| `make test` | `swift test` for the `BurnieKit` package. |
+| `make test` | Generates the project, runs `swift test` for the `BurnieKit` package, then the app's `BurnieAppTests` with `xcodebuild`. |
 | `make perf` | Release-mode performance test of the log scan (200 MB). |
 | `make build` | Builds the app in Debug. |
 | `make verify` | `check`, `test` and `build`: what CI runs on every pull request. |

@@ -31,7 +31,8 @@ struct UsageHistoryTests {
         try JSONDecoder().decode([ProviderID: [LocalDay: Int]].self, from: JSONEncoder().encode(history))
     }
 
-    @Test func overwritesTheWindowAndFreezesOlderDays() {
+    @Test("B-42 history rewrites the window's days and freezes older ones")
+    func overwritesTheWindowAndFreezesOlderDays() {
         var history = UsageHistory()
         history.record(window(endingAt: "2026-10-10", value: 5), for: .claude, today: .day("2026-10-10"))
         history.record(window(endingAt: "2026-10-12", value: 9), for: .claude, today: .day("2026-10-12"))
@@ -40,7 +41,8 @@ struct UsageHistoryTests {
         #expect(points.map(\.value) == [0, 5, 5, 9, 9, 9, 9, 9, 9, 9, 9]) // 10-02 never existed; 10-03 and 10-04 are frozen
     }
 
-    @Test func prunesToThirtyFiveDays() throws {
+    @Test("B-42 history prunes days past 35")
+    func prunesToThirtyFiveDays() throws {
         var history = UsageHistory()
         history.record([DailyPoint(day: .day("2026-09-01"), value: 1)], for: .cursor, today: .day("2026-09-01"))
         history.record(window(endingAt: "2026-10-10", value: 2), for: .cursor, today: .day("2026-10-10"))
@@ -50,11 +52,41 @@ struct UsageHistoryTests {
         #expect(history.points(for: .cursor, endingAt: .day("2026-10-10"), count: 41).first?.value == 0)
     }
 
-    @Test func providersAreIndependent() {
+    @Test("B-42 each provider has its own history")
+    func providersAreIndependent() {
         var history = UsageHistory()
         history.record(window(endingAt: "2026-10-10", value: 7), for: .claude, today: .day("2026-10-10"))
         #expect(history.points(for: .cursor, endingAt: .day("2026-10-10")).allSatisfy { $0.value == 0 })
         #expect(history.points(for: .claude, endingAt: .day("2026-10-10")).count == 7)
+    }
+
+    @Test("B-42 pruning is per provider: a provider's days stay until it records again")
+    func pruningIsPerProvider() {
+        var history = UsageHistory()
+        history.record([DailyPoint(day: .day("2026-09-01"), value: 3)], for: .claude, today: .day("2026-09-01"))
+        history.record(window(endingAt: "2026-10-10", value: 2), for: .cursor, today: .day("2026-10-10"))
+        #expect(history.points(for: .claude, endingAt: .day("2026-09-01"), count: 1).map(\.value) == [3])
+
+        history.record(window(endingAt: "2026-10-10", value: 2), for: .claude, today: .day("2026-10-10"))
+        #expect(history.points(for: .claude, endingAt: .day("2026-09-01"), count: 1).map(\.value) == [0])
+    }
+
+    @Test("B-43 the week chart reads the 7 days ending today, zero-filled")
+    func weekChartReadsTheSevenDaysEndingToday() {
+        var history = UsageHistory()
+        let recorded = [DailyPoint(day: .day("2026-10-08"), value: 400), DailyPoint(day: .day("2026-10-10"), value: 9)]
+        history.record(recorded, for: .claude, today: .day("2026-10-10"))
+
+        let week = history.points(for: .claude, endingAt: .day("2026-10-10"))
+        #expect(week.map(\.day.iso) == ["2026-10-04", "2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09", "2026-10-10"])
+        #expect(week.map(\.value) == [0, 0, 0, 0, 400, 0, 9])
+    }
+
+    @Test("history.json keeps its shape")
+    func historyFileKeepsItsShape() throws {
+        let history = try Fixture.persisted(UsageHistory.self, from: "history.json")
+        #expect(history.points(for: .claude, endingAt: .day("2026-10-10"), count: 4).map(\.value) == [0, 18_420_000, 25_310_000, 1_250_000])
+        #expect(history.points(for: .cursor, endingAt: .day("2026-10-10"), count: 3).map(\.value) == [0, 2_662_000, 29_200])
     }
 
     @Test func encodesAsProviderThenDay() throws {

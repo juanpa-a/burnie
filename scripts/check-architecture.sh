@@ -4,10 +4,11 @@
 #
 # Usage: scripts/check-architecture.sh [root]
 #
-# root is a folder laid out like the repo (App/, BurnieKit/) inside a git work tree; it defaults to the repo that
-# holds this script. The check reads the Swift files under root's App/ and BurnieKit/ that git tracks or would track
-# (git ls-files --cached --others --exclude-standard), so a new file counts before it's staged and ignored folders
-# (.build/, generated code) never do.
+# root is a folder laid out like the repo (App/, AppTests/, BurnieKit/) inside a git work tree; it defaults to the repo
+# that holds this script. The check reads the Swift files under root's App/, AppTests/ and BurnieKit/ that git tracks or
+# would track (git ls-files --cached --others --exclude-standard), so a new file counts before it's staged and ignored
+# folders (.build/, generated code) never do. AppTests/, the app's Xcode test target until the refactor, is test code
+# like BurnieKit/Tests/.
 #
 # Output: one line per failure, "SPEC <rule>: <file>:<line>: <fix>", with <file> relative to root. If anything fails,
 # a summary goes to stderr and the exit status is 1; otherwise one OK line is printed and the status is 0. A check that
@@ -39,7 +40,7 @@ readonly INFRA='^BurnieKit/Sources/BurnieInfra/'
 readonly COMPONENTS='^BurnieKit/Sources/BurnieComponents/'
 readonly LEGACY_CORE='^BurnieKit/Sources/BurnieCore/'
 readonly LEGACY_SYSTEM='^BurnieKit/Sources/BurnieSystem/'
-readonly TESTS='^BurnieKit/Tests/'
+readonly TESTS='^(BurnieKit/Tests|AppTests)/'
 readonly TEST_SUPPORT='^BurnieKit/Tests/BurnieTestSupport/'
 readonly PROVIDERS_TESTS='^BurnieKit/Tests/BurnieProvidersTests/'
 readonly INFRA_TESTS='^BurnieKit/Tests/Burnie(Infra|System)Tests/'
@@ -53,7 +54,8 @@ readonly DESIGN_TOKENS='(^|/)DesignTokens[.]swift$'
 readonly PREVIEW_VALUES='(^|/)PreviewValues[.]swift$'
 
 # Persistence fixtures and tests of SPEC section 12 that must spell the frozen provider ids ("claude", "cursor"), so G-5
-# skips them. One path per line, relative to the root; empty until the characterization PR adds them.
+# skips them. One path per line, relative to the root. Empty while G-5 is dormant: the refactor PR fills it with the
+# paths those tests land on.
 readonly PROVIDER_ID_ALLOWLIST=''
 
 # --- What may be imported (SPEC 3.2), space separated. Each module's own list is in allowed_imports.
@@ -149,9 +151,10 @@ die() {
 	exit 2
 }
 
-# The Swift files under App/ and BurnieKit/ that git tracks or would track and that are on disk, one per line.
+# The Swift files under App/, AppTests/ and BurnieKit/ that git tracks or would track and that are on disk, one
+# per line.
 swift_files() {
-	git -c core.quotePath=false ls-files --cached --others --exclude-standard -- App BurnieKit |
+	git -c core.quotePath=false ls-files --cached --others --exclude-standard -- App AppTests BurnieKit |
 		{ grep '\.swift$' || true; } |
 		sort -u |
 		while IFS= read -r path; do

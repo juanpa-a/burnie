@@ -897,7 +897,7 @@ Dumb adapters. Each implements one port and nothing else.
 | Adapter | Port | From |
 | --- | --- | --- |
 | `SystemClock` | `Clock` | `BurnieSystem/SystemClock.swift` |
-| `TaskSleeper` | `Sleeper` | new (today `Task.sleep` inline in the scheduler) |
+| `TaskSleeper` | `Sleeper` | `BurnieSystem/TaskSleeper.swift` (from the characterization PR) |
 | `URLSessionHTTPClient` | `HTTPClient` | `BurnieSystem` |
 | `LocalFileReader` | `FileReading` | `BurnieSystem` (+ `exists`, `isExecutable`) |
 | `SecurityCLIKeychain` | `SecretReader` | `BurnieSystem` |
@@ -1227,6 +1227,10 @@ because they are the net that proves the big one changed structure and not behav
 - Persistence fixtures and decoding tests for every row of section 12 (`T-7`).
 - Tests for behaviors in section 11 that have none today, written against today's code (notably the store and
   scheduler: B-11, B-19, B-32…B-40, B-50, B-51, B-59). Where today's code can't be tested without a seam, add the smallest seam.
+  The store, the scheduler and the settings live in the app target, so their tests go in an Xcode unit-test target,
+  `BurnieAppTests` (`AppTests/`, not hosted by the app), which `make test` runs after `swift test`. The seams are the
+  `Sleeper` and `SystemEvents` ports in `BurnieCore/Ports`, `popoverOpened()` returning the refresh it starts, and
+  `RefreshScheduler.timerFired(for:)` made internal so a test can fire a timer while offline.
 - B-8 across launches, B-35's timer after network restored, B-43's rollover and B-51's dropped refresh change on
   purpose (decisions 29, 30, 46, 47): their tests pin today's part here, and the refactor PR adds the new part.
 - **Done when:** every B-ID has a test, or is listed in the PR as covered manually with a reason.
@@ -1298,7 +1302,7 @@ Where every current file goes. "→ …" is the destination; notes say what chan
 
 | Current | Destination | Notes |
 | --- | --- | --- |
-| `SystemClock.swift`, `URLSessionHTTPClient.swift`, `LocalFileReader.swift`, `SecurityCLIKeychain.swift`, `SQLiteKeyValueReader.swift`, `JSONFileStore.swift` | → Infra | |
+| `SystemClock.swift`, `TaskSleeper.swift`, `URLSessionHTTPClient.swift`, `LocalFileReader.swift`, `SecurityCLIKeychain.swift`, `SQLiteKeyValueReader.swift`, `JSONFileStore.swift` | → Infra | |
 | `ClaudeLogDirectoryWatcher.swift` | → Infra `DirectoryWatcher.swift` | generic over roots |
 | `ClaudeCodeSignInRenewer.swift` | split | process mechanics → Infra `FoundationProcessRunner`; arguments, candidates → Providers `Claude/ClaudeSignInRenewal.swift` |
 | `Providers/ClaudeProvider.swift`, `CursorProvider.swift` | → Providers entry points | take ports, not concrete adapters |
@@ -1333,6 +1337,7 @@ Where every current file goes. "→ …" is the destination; notes say what chan
 | `BurnieCoreTests/Providers` | → `BurnieDomainTests` (compose) + `BurnieApplicationTests` |
 | `BurnieCoreTests/Support` | → `BurnieTestSupport` |
 | `BurnieSystemTests` | → `BurnieInfraTests` |
+| `AppTests/` (Xcode target `BurnieAppTests`, from the characterization PR) | `UsageStoreTests*`, `RefreshSchedulerTests` → `BurnieApplicationTests`, retargeted to the reducer and `AppModel` (16.5); `SettingTests` → `BurnieInfraTests` (`UserDefaultsSettingsStore`, keys of section 12). Then the target, its scheme, the `BurnieTestSupport` library product and `make test`'s `xcodebuild` line are deleted. |
 | new | `BurnieApplicationTests`, `BurnieComponentsTests` |
 
 ---
@@ -1358,11 +1363,11 @@ author runs the rest and says so in the PR body.
 
 ### 16.2 Architecture check
 
-`scripts/check-architecture.sh` greps the Swift files under `App/` and `BurnieKit/` that git tracks or would track
-(`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/` and generated
-code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the layers and isn't
-checked. Every pattern except G-8's skips comment lines (`//`, `///`), so a doc comment that names a forbidden call
-doesn't fail; G-8 reads them, because that's where its markers live.
+`scripts/check-architecture.sh` greps the Swift files under `App/`, `AppTests/` and `BurnieKit/` that git tracks or
+would track (`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/`
+and generated code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the
+layers and isn't checked. Every pattern except G-8's skips comment lines (`//`, `///`), so a doc comment that names a
+forbidden call doesn't fail; G-8 reads them, because that's where its markers live.
 Rules:
 
 | Rule | Check |

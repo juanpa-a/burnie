@@ -16,12 +16,14 @@ struct CursorCredentialsReaderTests {
         #expect(try token(database, at: beforeExpiry).jwt == CursorAccessTokenTests.jwt)
     }
 
-    @Test func missingRowOrDatabaseIsNotFound() {
+    @Test("B-26 no database or no row is not found")
+    func missingRowOrDatabaseIsNotFound() {
         #expect(throws: ProviderIssue.notFound) { try token(FakeKeyValueDatabase(), at: beforeExpiry) }
         #expect(throws: ProviderIssue.notFound) { try token(FakeKeyValueDatabase(failure: CocoaError(.fileNoSuchFile)), at: beforeExpiry) }
     }
 
-    @Test func expiredTokenIsSignInExpired() {
+    @Test("B-26 an expired token is sign-in expired")
+    func expiredTokenIsSignInExpired() {
         let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
         #expect(throws: ProviderIssue.signInExpired) { try token(database, at: .iso("2026-11-27T00:00:00Z")) }
     }

@@ -1,9 +1,10 @@
 import AppKit
 import Network
+import BurnieCore
 
 /// Reports when the Mac wakes up and when the network comes and goes.
 @MainActor
-final class SystemEventMonitor {
+final class SystemEventMonitor: SystemEvents {
     private let pathMonitor = NWPathMonitor()
     private var wakeObserver: NSObjectProtocol?
 

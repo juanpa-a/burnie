@@ -14,12 +14,14 @@ actor RefreshScheduler {
     }
 
     private let clock: Clock
+    private let sleeper: Sleeper
     private let refresh: Refresh
     private var jobs: [RefreshJob: JobState] = [:]
     private var isOnline = true
 
-    init(clock: Clock, refresh: @escaping Refresh) {
+    init(clock: Clock, sleeper: Sleeper, refresh: @escaping Refresh) {
         self.clock = clock
+        self.sleeper = sleeper
         self.refresh = refresh
     }
 
@@ -98,14 +100,15 @@ actor RefreshScheduler {
 
     private func timer(for job: RefreshJob, after delay: TimeInterval) -> Task<Void, Never> {
         Task {
-            try? await Task.sleep(for: .seconds(delay))
+            try? await sleeper.sleep(for: delay)
             guard !Task.isCancelled else { return }
             await self.timerFired(for: job)
         }
     }
 
     /// The timer lets go of itself before running: if `run` cancelled it, it would also cancel the request in flight.
-    private func timerFired(for job: RefreshJob) async {
+    /// Not private so tests can fire a timer and wait for what it runs.
+    func timerFired(for job: RefreshJob) async {
         jobs[job]?.timer = nil
         await run([job], for: .timer)
     }

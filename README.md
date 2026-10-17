@@ -104,7 +104,7 @@ Burnie relies on undocumented Claude and Cursor endpoints. If one changes, Burni
 | Command | What it does |
 | --- | --- |
 | `make run` | Builds a Debug copy and opens it. |
-| `make test` | Runs the `BurnieKit` tests. |
+| `make test` | Generates the project, runs the `BurnieKit` tests, then the app's `BurnieAppTests` with `xcodebuild`. |
 | `make perf` | Release-mode performance test of the log scan. |
 | `make install` | Builds a Release copy and installs it, as above. |
 | `make release TEAM_ID=…` | Builds a signed, notarized `Burnie.dmg` and the `appcast.xml` for updates. |

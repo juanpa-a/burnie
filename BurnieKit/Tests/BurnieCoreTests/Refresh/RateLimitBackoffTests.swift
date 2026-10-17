@@ -6,14 +6,16 @@ import BurnieTestSupport
 struct RateLimitBackoffTests {
     let now = Date.iso("2026-10-10T20:00:00Z")
 
-    @Test func honorsTheServerRetryAfter() {
+    @Test("B-33 nothing is requested before the server's Retry-After")
+    func honorsTheServerRetryAfter() {
         var backoff = RateLimitBackoff()
         backoff.recordRateLimit(retryAt: now.addingTimeInterval(90), now: now)
         #expect(!backoff.allowsRequest(at: now.addingTimeInterval(89)))
         #expect(backoff.allowsRequest(at: now.addingTimeInterval(90)))
     }
 
-    @Test func doublesFromOneMinuteUpToAnHour() {
+    @Test("B-33 without Retry-After the wait doubles from 1 minute up to 60")
+    func doublesFromOneMinuteUpToAnHour() {
         var backoff = RateLimitBackoff()
         var waits: [TimeInterval] = []
         for _ in 0..<8 {
@@ -23,7 +25,8 @@ struct RateLimitBackoffTests {
         #expect(waits == [1, 2, 4, 8, 16, 32, 60, 60])
     }
 
-    @Test func resetClearsTheWait() {
+    @Test("B-33 any other outcome resets the wait")
+    func resetClearsTheWait() {
         var backoff = RateLimitBackoff()
         backoff.recordRateLimit(retryAt: nil, now: now)
         backoff.recordRateLimit(retryAt: nil, now: now)

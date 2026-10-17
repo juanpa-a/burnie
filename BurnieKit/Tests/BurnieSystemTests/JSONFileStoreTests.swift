@@ -17,6 +17,15 @@ final class JSONFileStoreTests {
         #expect(try store.load("snapshot-claude") == snapshot)
     }
 
+    @Test("a snapshot file's dates read as seconds since 1970")
+    func readsDatesAsSecondsSince1970() throws {
+        let bytes = #"{"fetchedAt":1791661800,"meters":[],"plan":"PRO","provider":"claude","today":{"tokens":{"_0":42}}}"#
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data(bytes.utf8).write(to: directory.appending(path: "snapshot-claude.json"))
+        let loaded: UsageSnapshot? = try store.load("snapshot-claude")
+        #expect(loaded?.fetchedAt == Date(timeIntervalSince1970: 1_791_661_800))
+    }
+
     @Test func missingFileIsNil() throws {
         let missing: UsageSnapshot? = try store.load("snapshot-cursor")
         #expect(missing == nil)

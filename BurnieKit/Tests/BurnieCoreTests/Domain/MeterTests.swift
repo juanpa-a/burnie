@@ -10,7 +10,9 @@ struct MeterTests {
         Meter(id: .session, fraction: 0.2, value: .percent(20), caption: .noActiveSession, period: period)
     }
 
-    @Test(arguments: [(1.04, 1.0), (-0.2, 0.0), (0.64, 0.64), (.nan, 0.0), (.infinity, 1.0)])
+    @Test("B-1 a meter's fill is clamped to 0…1 and NaN reads as 0", arguments: [
+        (1.04, 1.0), (-0.2, 0.0), (0.64, 0.64), (.nan, 0.0), (.infinity, 1.0),
+    ])
     func clampsFractionToZeroThroughOne(raw: Double, expected: Double) {
         let meter = Meter(id: .session, fraction: raw, value: .percent(0), caption: .noActiveSession)
         #expect(meter.fraction == expected)
@@ -31,18 +33,34 @@ struct MeterTests {
         #expect(clampedAgain == meter, "seed \(seed)")
     }
 
-    @Test(arguments: [("2026-10-10T10:00:00Z", 0.0), ("2026-10-10T12:30:00Z", 0.5), ("2026-10-10T15:00:00Z", 1.0)])
+    @Test("B-3 the pace is how far through the period now is", arguments: [
+        ("2026-10-10T10:00:00Z", 0.0), ("2026-10-10T12:30:00Z", 0.5), ("2026-10-10T15:00:00Z", 1.0),
+    ])
     func elapsedFractionIsHowFarThroughThePeriodNowIs(now: String, expected: Double) {
         #expect(meter(period: Self.session).elapsedFraction(at: .iso(now)) == expected)
     }
 
-    @Test(arguments: ["2026-10-10T09:59:00Z", "2026-10-10T15:01:00Z"])
+    @Test("B-3 no pace while now is outside the period", arguments: ["2026-10-10T09:59:00Z", "2026-10-10T15:01:00Z"])
     func noElapsedFractionOutsideThePeriod(now: String) {
         #expect(meter(period: Self.session).elapsedFraction(at: .iso(now)) == nil)
     }
 
-    @Test func noElapsedFractionWithoutAPeriod() {
+    @Test("B-3 no pace without a period")
+    func noElapsedFractionWithoutAPeriod() {
         #expect(meter(period: nil).elapsedFraction(at: .iso("2026-10-10T12:30:00Z")) == nil)
+    }
+
+    @Test("B-3 no pace with a zero-duration period")
+    func noElapsedFractionForAnInstantPeriod() {
+        let instant = DateInterval(start: .iso("2026-10-10T12:30:00Z"), duration: 0)
+        #expect(meter(period: instant).elapsedFraction(at: instant.start) == nil)
+    }
+
+    @Test("B-2 a percent meter clamps the API's 0–100 value and rounds the shown percent", arguments: [
+        (64.4, 64), (64.5, 65), (35.25, 35), (104.4, 100), (-3.0, 0),
+    ])
+    func percentMeterClampsAndRounds(used: Double, shown: Int) {
+        #expect(Meter.percent(.session, used: used, caption: .noActiveSession).value == .percent(shown))
     }
 
     @Test func meterCachedBeforePeriodsStillDecodes() throws {

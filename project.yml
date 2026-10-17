@@ -43,3 +43,36 @@ targets:
           DEVELOPMENT_TEAM: $(BURNIE_TEAM_ID)
           OTHER_CODE_SIGN_FLAGS: --timestamp
     scheme: {}
+  # Characterizes UsageStore, RefreshScheduler and the settings before the refactor replaces them (SPEC 14.2).
+  # Not hosted by the app, which would start the real providers: it compiles the store's sources itself, without
+  # the previews and the ones that pull Sparkle, SMAppService or the live adapters.
+  BurnieAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: App/Store
+        excludes:
+          - UsageStore+Live.swift
+          - UsageStore+Preview.swift
+          - PreviewData.swift
+          - PreviewScenario.swift
+          - AppUpdater.swift
+          - LaunchAtLogin.swift
+          - SystemEventMonitor.swift
+      - path: AppTests
+    dependencies:
+      - package: BurnieKit
+        product: BurnieCore
+      - package: BurnieKit
+        product: BurnieSystem
+      - package: BurnieKit
+        product: BurnieTestSupport
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie.app-tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGN_IDENTITY: "-"
+    scheme:
+      testTargets: [BurnieAppTests]

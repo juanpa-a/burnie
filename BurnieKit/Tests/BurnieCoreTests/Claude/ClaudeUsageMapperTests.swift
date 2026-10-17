@@ -23,12 +23,15 @@ struct ClaudeUsageMapperTests {
         ),
     ]
 
-    @Test(arguments: ["claude-usage-both.json", "claude-usage-flat.json", "claude-usage-limits.json"])
+    @Test("B-49 session and weekly come from either shape of the usage response", arguments: [
+        "claude-usage-both.json", "claude-usage-flat.json", "claude-usage-limits.json",
+    ])
     func mapsSessionAndWeeklyFromEitherShape(fixture: String) throws {
         #expect(try meters(Fixture.data(fixture)) == Self.fixtureMeters)
     }
 
-    @Test func sessionLastsFiveHoursAndWeeklyAWeekUpToTheirReset() throws {
+    @Test("B-49 the session lasts 5 hours and the week 7 days, up to their reset")
+    func sessionLastsFiveHoursAndWeeklyAWeekUpToTheirReset() throws {
         let json = #"{"five_hour":{"utilization":10,"resets_at":"2026-10-11T07:00:00Z"},"seven_day":{"utilization":20,"resets_at":"2026-10-16T18:00:00Z"}}"#
         #expect(try meters(Data(json.utf8)).map(\.period) == [
             DateInterval(start: .iso("2026-10-11T02:00:00Z"), end: .iso("2026-10-11T07:00:00Z")),
@@ -36,24 +39,34 @@ struct ClaudeUsageMapperTests {
         ])
     }
 
-    @Test func prefersLimitsWhenBothShapesDisagree() throws {
+    @Test("B-49 limits[] wins over the flat windows")
+    func prefersLimitsWhenBothShapesDisagree() throws {
         let json = #"{"five_hour":{"utilization":50,"resets_at":null},"limits":[{"kind":"session","percent":12,"resets_at":null}]}"#
         #expect(try meters(Data(json.utf8)).first?.value == .percent(12))
     }
 
-    @Test func sessionWithoutResetHasNoActiveSession() throws {
+    @Test("B-49 a session without reset shows no active session")
+    func sessionWithoutResetHasNoActiveSession() throws {
         let session = try meters(Fixture.data("claude-usage-no-session.json")).first
         #expect(session == Meter(id: .session, fraction: 0, value: .percent(0), caption: .noActiveSession))
     }
 
-    @Test func clampsPercentagesOutsideZeroToHundred() throws {
+    @Test("B-49 a weekly window without reset shows no active session")
+    func weeklyWithoutResetHasNoActiveSession() throws {
+        let json = #"{"seven_day":{"utilization":5,"resets_at":null}}"#
+        #expect(try meters(Data(json.utf8)) == [Meter(id: .weekly, fraction: 0.05, value: .percent(5), caption: .noActiveSession)])
+    }
+
+    @Test("B-2 percentages outside 0–100 are clamped")
+    func clampsPercentagesOutsideZeroToHundred() throws {
         let json = #"{"five_hour":{"utilization":104.4,"resets_at":null},"seven_day":{"utilization":-3,"resets_at":"2026-10-16T18:00:00Z"}}"#
         let mapped = try meters(Data(json.utf8))
         #expect(mapped.map(\.value) == [.percent(100), .percent(0)])
         #expect(mapped.map(\.fraction) == [1, 0])
     }
 
-    @Test func responseWithoutWindowsIsUnexpected() {
+    @Test("B-49 a response without windows is unexpected")
+    func responseWithoutWindowsIsUnexpected() {
         #expect(throws: ProviderIssue.unexpectedResponse("Claude usage without windows")) {
             try meters(Data(#"{"seven_day_opus":null,"limits":[]}"#.utf8))
         }

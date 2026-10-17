@@ -7,13 +7,15 @@ import BurnieCore
 struct URLSessionHTTPClientTests {
     let client = URLSessionHTTPClient(allowedHosts: ["api.anthropic.com"], logger: Logger(subsystem: "dev.juanpa.burnie.tests", category: "http"))
 
-    @Test func rejectsHostsOutsideTheAllowList() async {
+    @Test("B-60 a host outside the allowed ones is refused before any header is sent")
+    func rejectsHostsOutsideTheAllowList() async {
         await #expect(throws: URLSessionHTTPClient.Failure.hostNotAllowed("example.com")) {
             try await client.send(HTTPRequest(.get, url: URL(string: "https://example.com/api/oauth/usage")!, headers: ["Authorization": "Bearer secret"]))
         }
     }
 
-    @Test func rejectsPlainHTTPEvenForAllowedHosts() async {
+    @Test("B-60 plain HTTP is refused even for an allowed host")
+    func rejectsPlainHTTPEvenForAllowedHosts() async {
         await #expect(throws: URLSessionHTTPClient.Failure.hostNotAllowed("api.anthropic.com")) {
             try await client.send(HTTPRequest(.get, url: URL(string: "http://api.anthropic.com/api/oauth/usage")!, headers: [:]))
         }
