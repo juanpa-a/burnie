@@ -4,7 +4,7 @@ The target architecture for Burnie's refactor, the internal language it is writt
 the migration that gets there, and how every step is verified.
 
 - **Status:** agreed design, implementation not started. Section 13 records every decision; decisions 1–33 are
-  agreed, and 34–40 (from the second spec review) are proposed until the PR that adds them merges. The open
+  agreed, and 34–48 (from the second and third spec reviews) are proposed until the PR that adds them merges. The open
   questions in section 18 are verified during implementation, not before.
 - **Audience:** humans and agents. Every rule has an ID (`D-3`, `A-7`…) so that reviews, commit messages and the
   architecture check can point at it.
@@ -80,11 +80,11 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Provider registry** | The ordered list of bundles the app runs. Order is display order. | `[ProviderBundle]` | Composition root |
 | **Enabled** | Whether the user tracks a provider. Turning one off deletes nothing. | `Set<ProviderID>` in settings | Domain |
 | **Meter descriptor** | A meter kind as its provider declares it: id and label, in display order. | `MeterDescriptor` | Interface |
-| **Provider copy** | The provider's own user-visible text: not found, sign-in expired, renewal failed, its specific issues, and its healthy status line. | `ProviderCopy` | Interface |
+| **Provider copy** | The provider's own user-visible text: not found, sign-in expired, its specific issues, and its healthy status line. | `ProviderCopy` | Interface |
 | **Status context** | What the healthy status line is built from: the plan, if known, and the source location, if any. | `StatusContext` | Interface |
-| **Link** | A title and a URL, for the footer's dashboard item. | `Link` | Interface |
+| **Dashboard link** | A title and a URL, for the footer's dashboard item. Not `Link`, which SwiftUI already names. | `DashboardLink` | Interface |
 | **Color pair** | A provider's accent as light and dark RGB values (`RGB`: red, green, blue in 0…1); Components turns it into a `Color`. | `ColorPair`, `RGB` | Interface |
-| **Sign-in renewal** | A capability: a closure the provider builds that runs its own app to renew the sign-in and reports whether it worked. | `SignInRenewal` | Interface |
+| **Sign-in renewal** | A capability: a closure the provider builds that runs its own app to renew the sign-in and reports whether it worked, and the copy shown when it didn't. | `SignInRenewal` | Interface |
 
 ### 2.2 Usage
 
@@ -106,7 +106,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Usage unit** | How a plan measures usage: tokens (percentage windows) or money (dollar budget). | `UsageUnit` | Domain |
 | **Today's usage** | What the section header shows for today: tokens or money. | `TodayUsage` | Domain |
 | **On-demand** | Spend past the included usage, when the plan has it on. A *feature* of a snapshot, drawn after the meter set. | `SnapshotFeatures.onDemand: Meter?` | Domain |
-| **Snapshot features** | What a snapshot carries besides its meter set, each optional (today only on-demand). Part of the limits view. | `SnapshotFeatures` | Domain |
+| **Snapshot features** | What a snapshot carries besides its meter set, each optional (today only on-demand). Travel inside the limits part. | `SnapshotFeatures` | Domain |
 
 ### 2.3 Reading and composing
 
@@ -116,14 +116,13 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Part** | One piece of information a provider reports, with its data: a limits part or an activity part. *How* and *where* a provider gets it is its own business. | `Part` (`.limits(LimitsPart)` / `.activity(ActivityPart)`) | Domain |
 | **Part kind** | Which of the two parts a refresh task yields, without the data. | `PartKind` (`.limits` / `.activity`) | Domain |
 | **Provider parts** | The latest limits and the latest activity of one provider, each optional until it first arrives. | `ProviderParts` (`Latest<LimitsPart>?`, `Latest<ActivityPart>?`) | Application |
-| **Limits part** | Plan, meter set, usage unit and features, as of one moment. | `LimitsPart` | Domain |
+| **Limits part** | Plan, meter set, usage unit and features, as of one moment. A snapshot carries it stamped, as one value, which is what merge keeps; its unit survives in the cache, so today's usage keeps it across launches (B-8). | `LimitsPart` | Domain |
 | **Activity part** | Tokens per local day and, when the provider can add it up exactly, cents per local day. | `ActivityPart` | Domain |
 | **Outcome** | The result of one refresh task: a part, or an issue. | `Result<Part, ProviderIssue>` | Domain |
 | **Stamped** | A value and the moment it arrived. | `Stamped<Value>` | Domain |
 | **Latest** | The most recent outcome of a part kind: a stamped success, or a failure with its moment and the last stamped success, if any. A sum type: a success never lacks its own stamp. | `Latest<Value>` | Domain |
-| **Snapshot** | What the UI shows for a provider: its content and a partial issue. Its features are those of its limits view. | `UsageSnapshot` | Domain |
-| **Snapshot content** | What a snapshot is made of: a stamped limits view with today's usage if known, or a stamped today's usage alone. A sum type: a snapshot with neither can't be built, and `fetchedAt` is the stamp of whichever case it is. | `SnapshotContent` | Domain |
-| **Limits view** | What limits contribute to a snapshot: plan, meter set and features. Travels with its stamp as one value, which is what merge keeps. | `LimitsView` | Domain |
+| **Snapshot** | What the UI shows for a provider: its content and a partial issue. Its features are those of its limits part. | `UsageSnapshot` | Domain |
+| **Snapshot content** | What a snapshot is made of: a stamped limits part with today's usage if known, or a stamped today's usage alone. A sum type: a snapshot with neither can't be built, and `fetchedAt` is the stamp of whichever case it is. | `SnapshotContent` | Domain |
 | **Compose** | Pure function from the latest limits and activity to a snapshot or an issue, never to loading. | `UsageSnapshot.compose(…) -> Result<UsageSnapshot, ProviderIssue>` | Domain |
 | **Merge** | Pure function that keeps what a new snapshot lacks from the previous one ("stale data beats a gap"). | `UsageSnapshot.merge(_:_:)` | Domain |
 | **Provider state** | Loading (no data yet), ready (a snapshot, maybe with a partial issue) or failed (nothing to show). | `ProviderState` | Domain |
@@ -207,7 +206,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **HTTP failure** | Why the HTTP port got no response: offline (any URL loading error: no network, timeout…), or another error. | Interface (`HTTPFailure`) |
 | **App environment** | What the composition root hands Application: every port and the provider bundles. | Application (`AppEnvironment`) |
 | **Runtime state** | Everything Application knows: the registry, settings, parts, what is shown, history, jobs and open requests. Only the reducer changes it. | Application (`RuntimeState`) |
-| **Registered provider** | What the reducer keeps of a bundle: its descriptor, whether it can renew sign-in, its source location, and its tasks as name, part kind and policy. No closures; those stay with the interpreter. | Application (`RegisteredProvider`, `RegisteredTask`) |
+| **Registered provider** | What the reducer keeps of a bundle: its descriptor, its renewal's failed copy if it can renew sign-in, its source location, and its tasks as name, part kind and policy. No closures; those stay with the interpreter. | Application (`RegisteredProvider`, `RegisteredTask`) |
 | **Interpreter** | The one piece that performs effects: it calls ports, holds the live timer tasks and the use cases' continuations, and feeds results back as events. | Application |
 | **App model** | The observable holder of the app state and the use cases; the only Application type the views see. | Application |
 | **Event** | Something that happened that may change state. | Application |
@@ -216,6 +215,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Composition root** | The single place that builds adapters, providers and the app model, and connects them. | App target |
 | **Component** | A SwiftUI view that takes values and closures and knows nothing about the app model. | Components |
 | **Design tokens** | The colors, fonts and measurements every component uses. Provider colors aren't here; they come from descriptors. | Components (`DesignTokens`) |
+| **Preview values** | The invented descriptors, snapshots and copy that component previews use (`#if DEBUG`), never a real provider's. | Components (`PreviewValues`) |
 | **View** | A SwiftUI view that reads the app model and wires components to use cases. | App target |
 | **Copy** | Every user-visible string. | Interface (`Presentation/`) |
 
@@ -262,7 +262,7 @@ Dependencies go one way. The table is the whole truth; `Package.swift` and `proj
 | `BurnieComponents` | `SwiftUI`, `BurnieDomain`, `BurnieInterface` | `Application`, `Providers`, `Infra`, AppKit |
 | App target, views | `SwiftUI`, `AppKit`, `BurnieDomain`, `BurnieInterface`, `BurnieComponents`, `BurnieApplication` (only `AppModel`) | `Providers`, `Infra` |
 | App target, composition root (`App/Composition/`) | everything | — |
-| App target, previews (`App/Previews/`, `DEBUG`) | as views, plus `BurnieProviders` for descriptors | `Infra` |
+| App target, previews (`App/Previews/`, `DEBUG`) | as views, plus `BurnieProviders` for each provider's `descriptor` (P-3) | `Infra` |
 | `BurnieTestSupport` (linked only by test targets) | `Foundation`, `BurnieDomain`, `BurnieInterface` | `Testing`, every other Burnie module, SwiftUI, AppKit |
 | `<Module>Tests` | `Testing`, `BurnieTestSupport`, its module (`@testable import` only of it), and what its module may import | any other module's internals |
 
@@ -286,18 +286,19 @@ Notes:
 - **G-5** No `switch` on a provider and no comparison with a specific `ProviderID` outside `BurnieProviders`.
   The compiler enforces it for the `ProviderID` constants (`.claude`, `.cursor`), which are `internal` to Providers;
   the script catches raw strings (`"claude"`, `ProviderID(rawValue: "cursor")`).
-- **G-6** No `Date()`, `Date.now`, `Date(timeIntervalSinceNow:)`, `.timeIntervalSinceNow`, `ContinuousClock.now`,
-  `SuspendingClock.now`, `TimeZone.current`, `Locale.current`, `Calendar.current` outside `BurnieInfra` and the
-  composition root. Time comes from `Clock`; the time zone comes in the events (`today`) or as a parameter;
-  views take the locale from SwiftUI's `@Environment(\.locale)` and pass it to formatters. The exceptions only
-  pace drawing, inside Components and views: the start of a SwiftUI `TimelineView` schedule
-  (`.periodic(from: .now, …)`) and a component's own animation (`Spin(startingAt: .now)` and the wait for it to end
-  in `IconButton`). The values drawn still take `now` from the app model's clock.
+- **G-6** No `Date()`, `Date.now`, `.now` as an implicit member (`fetchedAt: .now`), `Date(timeIntervalSinceNow:)`,
+  `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`,
+  `Calendar.current` outside `BurnieInfra` and the composition root. Time comes from `Clock`; the time zone comes in
+  the events (`today`) or as a parameter; views take the locale from SwiftUI's `@Environment(\.locale)` and pass it
+  to formatters. The exceptions only pace drawing, inside Components and views: the start of a SwiftUI `TimelineView` schedule
+  (`.periodic(from: .now, …)`) and a component's own animation in `IconButton` (`Spin(startingAt: .now)`,
+  `spin?.stop(at: .now)` and the wait for it to end). The values drawn still take `now` from the app model's clock.
 - **G-7** No `print`, `NSLog` or `debugPrint` in sources or the app. Diagnostics go through the `DiagnosticsLog` port.
   Tests may print only in the performance test, which reports its timings.
 - **G-8** No `TODO`, `FIXME`, `XXX`, commented-out code or unused declarations.
 - **G-9** No force unwrap or `try!` outside tests, except on values that are compile-time constants
-  (a literal URL, a fixed time zone identifier) with a comment saying so.
+  (a literal URL, a fixed time zone identifier) or a call that can't fail for the values involved (encoding a struct of
+  plain fields), with a comment on the line above saying so.
 - **G-10** Public API is the minimum the next layer needs. Default to `internal`.
 - **G-11** Swift 6 strict concurrency stays `complete`. No `@unchecked Sendable` outside `BurnieInfra` and the test
   targets (port fakes), and there only with a comment naming what serializes the state.
@@ -351,16 +352,15 @@ enum UsageUnit { case tokens, money }
 enum TodayUsage { case tokens(Tokens), money(Cents) }
 struct SnapshotFeatures { var onDemand: Meter? }
 struct Stamped<Value> { var value: Value; var at: Date }
-struct LimitsView { var plan: PlanName?; var meters: MeterSet; var features: SnapshotFeatures }
 enum SnapshotContent {
-    case limits(Stamped<LimitsView>, today: TodayUsage?)   // today nil if activity failed or never loaded
-    case activityOnly(Stamped<TodayUsage>)                 // limits failed or never loaded
+    case limits(view: Stamped<LimitsPart>, today: TodayUsage?)   // today nil if activity failed or never loaded
+    case activityOnly(Stamped<TodayUsage>)                       // limits failed or never loaded
 }
 struct UsageSnapshot {
     var provider: ProviderID
     var content: SnapshotContent
     var issue: ProviderIssue?    // partial issue; persisted with the snapshot, as today
-    // Computed, for views and formatters: fetchedAt (the content's stamp), plan, meters, features (none when
+    // Computed, for views and formatters: fetchedAt (the content's stamp), plan, meters, unit, features (none when
     // `.activityOnly`), today.
 }
 enum ProviderState { case loading, ready(UsageSnapshot), failed(ProviderIssue) }
@@ -397,7 +397,7 @@ struct RateLimitBackoff      // as today
 // Settings and the menu bar
 enum Favorite                // effective(stored:enabled:), toggling(_:stored:enabled:), ring(…)
 enum RingState { case hidden, visible(ProviderID, percent: Int) }   // the primary meter's fill, rounded, 0…100
-enum FeatureToggle: String, CaseIterable { case onDemand }      // raw value = settings key suffix
+enum FeatureToggle: CaseIterable { case onDemand }              // the settings store maps each to its key (section 12)
 struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; var showRing: Bool;
                      var showWeekChart: Bool; var hiddenFeatures: Set<FeatureToggle> }
 ```
@@ -406,11 +406,11 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 
 | Operation | Meaning | Replaces |
 | --- | --- | --- |
-| `UsageSnapshot.compose(provider:limits:activity:today:)` | From the latest limits and activity to `Result<UsageSnapshot, ProviderIssue>`: a snapshot, or the issue of a total failure (B-14). It can't return loading. Rules B-10…B-16. | `CompositeUsageProvider.composedSnapshot` |
+| `UsageSnapshot.compose(provider:limits:activity:today:cachedUnit:)` | From the latest limits and activity to `Result<UsageSnapshot, ProviderIssue>`: a snapshot, or the issue of a total failure (B-14). It can't return loading. Today's usage reads in the unit of the latest successful limits; before any since launch, in `cachedUnit` (the shown snapshot's unit), and tokens without one (B-7, B-8). A failed limits never contributes its `lastSuccess` meters: those come back through merge. Rules B-10…B-16. | `CompositeUsageProvider.composedSnapshot` |
 | `Latest.recording(_ outcome:, at:)` | A success becomes `.success(stamped)`; a failure becomes `.failure` carrying the previous `lastSuccess`. Rule B-8. | the `unit` variable in `CompositeUsageProvider` |
-| `UsageSnapshot.merge(_ previous:, _ next:)` | When `next` is `.activityOnly` and `previous` is `.limits`, the result is `previous`'s stamped limits view (plan, meters and features) with `next`'s today's usage and issue; otherwise `next`. Rule B-17. | `keepingMeters(of:)` |
+| `UsageSnapshot.merge(_ previous:, _ next:)` | When `next` is `.activityOnly` and `previous` is `.limits`, the result is `previous`'s stamped limits part (plan, meters, unit and features) with `next`'s today's usage and issue; otherwise `next`. Rule B-17. | `keepingMeters(of:)` |
 | `ProviderState.failing(_ issue:, previous:)` | A total failure over a cached snapshot becomes `.ready(previous with issue)`; without one, `.failed(issue)`. Rule B-18. | `with(issue:)` + store code |
-| `UsageSnapshot.hiding(_ toggles:)` | Removes hidden features from the limits view. Rule B-40. | `hidingOnDemand()` |
+| `UsageSnapshot.hiding(_ toggles:)` | Removes hidden features from the limits part. Rule B-40. | `hidingOnDemand()` |
 | `UsageHistory.record(_ tokens:for:today:)` | Writes every day of the activity window ending `today`, 0 for the days `tokens` doesn't mention; prunes that provider's days past retention and leaves every other provider untouched, as today. `today` is the event's day: a part read just before midnight lands one day short, and the next refresh corrects it. Rule B-42. | `history(days:)` + `record` |
 | `WeekChart.make(history:providers:today:)` | 7 days ending today, zero-filled, shared peak. | logic in `WeekChart` view |
 | `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent. | `meters.first` |
@@ -422,7 +422,8 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means equal by `Equatable`.
 
 - **Fraction**: `Fraction(x).value ∈ [0, 1]` for every `Double` including ±∞ and NaN; `Fraction(Fraction(x).value) ≡ Fraction(x)` (idempotent clamp).
-- **Tokens / Cents**: `AdditiveArithmetic` laws: associativity, commutativity, `.zero` identity.
+- **Tokens / Cents**: `AdditiveArithmetic` laws: associativity, commutativity, `.zero` identity, over `Gen`'s range
+  (0…10¹²). Addition saturates at `Int.max` instead of trapping (D-5); no real usage gets near it.
 - **Latest**: `recording(.success(v), at: t).lastSuccess ≡ Stamped(v, t)`; `recording(.failure(e), at: t).lastSuccess ≡ lastSuccess`
   (a failure never loses the last success); `recording(.failure(e), at: t).issue ≡ e`.
 - **Merge** (a semigroup: "last snapshot with limits wins the limits"):
@@ -430,7 +431,7 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
   - idempotence: `merge(a, a) ≡ a`
   - right-biased: if `b.content` is `.limits` then `merge(a, b) ≡ b`
   - `today` and `issue` always come from the right.
-  - the limits view is never split: plan, meters and features of the result all come from the same side.
+  - the limits part is never split: plan, meters, unit and features of the result all come from the same side.
 - **MeterSet**: `s.all.first ≡ s.primary`; `s.all.count == s.others.count + 1`; `MeterSet(s.all) ≡ s`;
   `MeterSet(ms)` is nil exactly when `ms` is empty.
 - **Compose**: total over every combination of `Latest<LimitsPart>?` × `Latest<ActivityPart>?` (nil, success, failure).
@@ -446,15 +447,18 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
 - **WeekChart**: `days` are 7 consecutive local days ending today; `series[p].count == 7` for every `p` in
   `providers`, which keep the order they were given; `peak` is the largest value of every series, `.zero` when all are
   zero.
-- **Favorite**: `toggling(id, toggling(id, s, e), e) ≡ s` when `id ∈ e`; `effective` result is always in `enabled` or nil;
-  toggling a disabled provider is the identity.
+- **Favorite**: when `id ∈ e`, `toggling(id, s, e)` is nil if `s == id`, else `id`; so tapping twice gives back `s` when
+  `s` is nil or `id`, and nil when `s` was another provider (the first tap replaced it). `effective` result is always
+  in `enabled` or nil; toggling a disabled provider is the identity.
 - **LocalDay**: `d.advanced(by: n).advanced(by: -n) ≡ d`; `d.distance(to: d.advanced(by: n)) == n`;
   `LocalDay(iso: d.iso) ≡ d`; ordering agrees with `distance`.
 - **UsageHistory**: `record(p)` twice ≡ once (idempotent); after `record(p, for: id)`, no day of `id` older than
   retention remains, every day of the window has a value (0 if `p` didn't mention it), and every other provider's
-  days are unchanged; `points(count: n)` always has `n` consecutive days ending today.
+  days are unchanged; `points(count: n)` has `n` consecutive days ending today for `n ≥ 1`, and is empty for `n ≤ 0`
+  (D-5: never a reversed range).
 - **RingState**: `visible` percent is in 0…100 and equals the primary meter's fill × 100, rounded.
-- **RateLimitBackoff**: waits are non-decreasing across consecutive 429s and capped at 60 minutes; `reset` returns to the initial value.
+- **RateLimitBackoff**: without `Retry-After`, waits are non-decreasing across consecutive 429s and capped at 60
+  minutes; with it, `retryAt` is exactly the server's date, whatever its length; `reset` returns to the initial value.
 - **Codable**: `decode(encode(x)) ≡ x` for every persisted type; every newtype encodes to its bare raw value.
 - **Scheduling** (in `BurnieApplicationTests`, since `Scheduling` lives in Application): for every trigger,
   `canRun` is false while the job is running or before its backoff's `retryAt`, and false when offline for a policy
@@ -495,9 +499,9 @@ The contract between the UI, the runtime and the providers. Types, protocols and
 | `ProviderStorage` | Load and save one provider's private JSON (Claude's log index) by name. The composition root binds it to the provider's id: `name` is stored as `<provider id>-<name>.json`, so Claude's `log-index` stays `claude-log-index.json` (section 12). | `JSONFileStore` | Providers |
 | `ProcessRunner` | Run an executable from the allowlist it was built with, with fixed arguments, clean environment, no output, a timeout; return the exit status. | `FoundationProcessRunner` | Providers |
 | `ActivityWatcher` | `start(onChange:)` / `stop()` over the directories it was built for. | `DirectoryWatcher` (FSEvents) | Providers (build and declare), Application (start and stop) |
-| `DiagnosticsLog` | `record(_ event: StaticString, _ measures: [Measure])` under the category it was built for (the provider's id, or `app`). It takes no `String`, so a secret can't reach it (B-64). | `OSDiagnosticsLog` | Providers, Application |
-| `SnapshotCache` | Load and save the app's own files: snapshots and history. | `JSONFileStore` | Application |
-| `SettingsStore` | `load(defaultEnabled:) -> AppSettings` with the keys of section 12, where a missing key loads as its default and a missing `enabledProviders` as `defaultEnabled` (the registry's ids); `save(_ change: SettingChange)` writes only the key that changed. | `UserDefaultsSettingsStore` | Application |
+| `DiagnosticsLog` | `record(_ event: StaticString, _ measures: [Measure])` under the category it was built for (the provider's id, or `app`). It takes no `String`, so a secret can't reach it (B-64). | `OSDiagnosticsLog` | Providers and the adapters their factories build, Application, the composition root (B-73) |
+| `SnapshotCache` | Load and save the app's own files: snapshots and history. Synchronous; a file that doesn't decode loads as nil, and a failed save is ignored (the next one retries). | `JSONFileStore` | Application |
+| `SettingsStore` | `load(defaultEnabled:) -> AppSettings` (synchronous) with the keys of section 12, where a missing key loads as its default and a missing `enabledProviders` as `defaultEnabled` (the registry's ids); `save(_ change: SettingChange)` writes only the key that changed. | `UserDefaultsSettingsStore` | Application |
 | `SystemEvents` | `start(onWake:onNetworkChange:)`: wake and network reachability callbacks. | `MacSystemEvents` | Application |
 | `LoginItem` | `status() -> LoginItemStatus`, `set(_ enabled:)`, `openSystemSettings()`. | `SMAppLoginItem` | Application |
 | `Updater` | `start(onUpdate:)` reports the available version or nil after each scheduled check; `install()` opens the installer. | `SparkleUpdater` | Application |
@@ -520,7 +524,8 @@ enum SettingChange: Equatable, Sendable { case enabled(Set<ProviderID>), favorit
 Ports whose adapter needs a provider's data (allowed hosts, watched directories, allowed executables) reach the
 provider as factories in its provider ports (`P-3`), never as adapters built with that data hard-coded. The
 composition root builds one provider's ports at a time, so its storage, its log and every adapter its factories make
-(the HTTP client logs method, path, status and time, as today) are bound to its id without the provider passing it.
+(the HTTP client records each response's status and elapsed time, the process runner its exit status and duration)
+ log through that provider's `DiagnosticsLog`, bound to its id without the provider passing it.
 
 ### 5.3 Provider contract
 
@@ -530,23 +535,22 @@ struct ProviderDescriptor: Sendable {
     let displayName: String              // "Claude Code"
     let shortName: String                // "Claude", chart legend
     let color: ColorPair                 // light and dark RGB; Components turns it into a Color
-    let dashboard: Link                  // title + URL for the footer
+    let dashboard: DashboardLink         // title + URL for the footer
     let meters: [MeterDescriptor]        // id + label, in display order; `placeholderMeters` while loading
     let placeholderMeters: [MeterID]
-    let copy: ProviderCopy               // issue rows, renewal failed, status lines
+    let copy: ProviderCopy               // issue rows, status lines
 }
 
 struct ProviderCopy: Sendable {
     let notFound: String
     let signInExpired: String
-    let renewalFailed: String
     let specific: [SpecificIssue: String]   // a code without copy shows the common unexpected copy
     let status: @Sendable (StatusContext) -> String   // healthy status line on the providers screen
 }
 
 struct StatusContext: Sendable { let plan: PlanName?; let sourceLocation: String? }
 struct MeterDescriptor: Sendable { let id: MeterID; let label: String }
-struct Link: Sendable { let title: String; let url: URL }
+struct DashboardLink: Sendable { let title: String; let url: URL }
 struct ColorPair: Sendable { let light: RGB; let dark: RGB }   // RGB: three Doubles in 0…1
 
 struct ProviderCapabilities: Sendable {
@@ -556,6 +560,7 @@ struct ProviderCapabilities: Sendable {
 
 struct SignInRenewal: Sendable {
     let run: @Sendable () async -> Bool  // true once the provider's own app renewed the sign-in
+    let failedCopy: String               // the row's text when `run` returns false (B-22)
 }
 // Claude builds it over ProcessRunner with the executable it found and fixed arguments (B-61, B-63).
 
@@ -592,7 +597,7 @@ a struct of closures, so previews and tests replace them with no-ops or recorder
 | Use case | Signature | What it does |
 | --- | --- | --- |
 | `OpenPopover` | `() -> Void` | Opening the popover refreshes what's stale. Debounced 1 s. (Landing on the usage screen is the view's own route state, B-39.) |
-| `RefreshUsage` | `(force: Bool) async -> Void` | The Refresh button (`force: true`): every enabled task regardless of age, except during backoff. |
+| `RefreshUsage` | `() async -> Void` | The Refresh button: every enabled task regardless of age, except during backoff. |
 | `RenewSignIn` | `(ProviderID) async -> Bool` | The expired sign-in button: the provider's app renews it, then its limits refresh. Returns false at once for a provider that is disabled or can't renew. |
 | `SetProviderEnabled` | `(ProviderID, Bool) -> Void` | Track or stop tracking a provider. Keeps cache and history. |
 | `ToggleFavorite` | `(ProviderID) -> Void` | The heart. One favorite at a time. |
@@ -628,7 +633,7 @@ struct ProviderPanel: Equatable, Sendable {
     var isEnabled: Bool
     var isFavorite: Bool                 // effective favorite
     var state: ProviderState             // already filtered by feature toggles
-    var canRenewSignIn: Bool
+    var renewalFailedCopy: String?       // nil: Burnie can't renew this sign-in
     var sourceLocation: String?
 }
 ```
@@ -639,7 +644,7 @@ Everything that turns domain values into text, moved from `BurnieCore/Format/`:
 `TokenCountFormatter`, `MoneyFormatter`, `MeterValueFormatter`, `MeterCaptionFormatter`, `TodayUsageFormatter`,
 `LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `StatusLine`, `IssueMessage`, and `Copy`
 (every fixed string the views show: "Usage", "Providers", "Last 7 days", "Refresh sign-in", "Quit"…).
-Provider-specific text comes from `ProviderDescriptor.copy`, never from a switch. `StatusLine` builds the
+Provider-specific text comes from `ProviderDescriptor.copy`, never from a switch. `StatusLine` (B-29) builds the
 non-healthy lines as common templates over `displayName` ("Off", "{displayName} not found",
 "Sign-in expired · open {displayName}"); every other state, a specific issue included, shows the provider's healthy
 line (`copy.status`; Cursor's reads the chip as a name: "PRO+" → "Signed in · Pro+ plan").
@@ -656,7 +661,9 @@ what it reads, how often, or in how many calls.
 - **P-1** Imports `Foundation`, `BurnieDomain`, `BurnieInterface` only. All I/O through ports.
 - **P-2** Folder per provider: `Claude/`, `Cursor/`. Shared helpers in `Shared/` (HTTP fetch rules, ISO 8601, CSV,
   `Retry-After`). Nothing in `Shared/` mentions a provider.
-- **P-3** Each provider exposes exactly one public entry point: `enum ClaudeProvider { static func bundle(_ ports: ClaudePorts) -> ProviderBundle }`.
+- **P-3** Each provider exposes exactly two public members on one entry point: `enum ClaudeProvider { static let descriptor:
+  ProviderDescriptor; static func bundle(_ ports: ClaudePorts) -> ProviderBundle }`. `descriptor` is pure data, so
+  previews read it without ports; `bundle` hands out that same descriptor.
   `ClaudePorts` / `CursorPorts` are structs of the ports and values it needs (home, user name, user agent), plus
   factories for the ports built from the provider's own data: `makeHTTPClient(allowedHosts:)`,
   `makeWatcher(directories:)`, `makeProcessRunner(allowedExecutables:)`. Its `ProviderStorage` and its
@@ -709,6 +716,7 @@ The runtime: the only owner of state, the scheduler, and the implementation of t
 ### 7.1 Rules (`A-*`)
 
 - **A-1** The only public types are `AppModel` and its factory input `AppEnvironment` (ports + provider bundles).
+  `AppModel`'s public members are `state`, `useCases`, `clock`, `live(_:)` and, under `DEBUG`, `preview(_:)` (7.4).
 - **A-2** State changes only in the reducer: `reduce(_ state: RuntimeState, _ event: Event) -> (RuntimeState, [Effect])`,
   pure and synchronous.
 - **A-3** Effects are performed by one interpreter that calls ports and feeds results back as events.
@@ -740,7 +748,7 @@ struct RuntimeState: Equatable {
     var nextRun: RunID
     var nextTimer: TimerID
     var requests: [RequestID: PendingRequest]    // open refresh requests; isRefreshing = !requests.isEmpty
-    var lastPopoverOpen: Date?
+    var lastPopoverOpen: Date?                   // the last popoverOpened that wasn't debounced (B-39)
     var isOnline: Bool                           // true until SystemEvents reports otherwise (B-34)
     var launchAtLogin: Bool
     var availableUpdate: String?
@@ -748,7 +756,7 @@ struct RuntimeState: Equatable {
 
 struct RegisteredProvider: Equatable {           // a bundle without its closures
     let descriptor: ProviderDescriptor           // Equatable by id
-    let canRenewSignIn: Bool
+    let renewalFailedCopy: String?               // the SignInRenewal's failedCopy; nil if it can't renew
     let sourceLocation: String?
     let tasks: [RegisteredTask]
 }
@@ -795,17 +803,17 @@ it isn't renewing.
 | Event | Reducer outcome | Effects |
 | --- | --- | --- |
 | `launched(settings, cached snapshots, history)` | `settings.enabled` keeps only ids in the registry (an unknown id is ignored, and dropped on the next `.enabled` save, section 12); ready states from cache, else loading; a `JobState` per task of each enabled provider. | `startSystemEvents`; `startUpdater`; `startWatcher` per enabled provider; start a run of every job with `.manual` (B-37) |
-| `popoverOpened(request)` | Ignored if < 1 s since the last one (B-39); else opens `request`. | start a run of every job where `canRun(.popoverOpened)` |
-| `refreshRequested(force, request)` | Opens `request`. | start a run of every job where `canRun(force ? .manual : .popoverOpened)` |
-| `taskFinished(key, run, outcome, jitter)` | Removes `run` from every request. Then dropped if `key` is gone or `run` isn't its `running` (the provider was turned off, or off and on, B-51). Else `running = nil`; `lastRun = now`; backoff recorded on 429, reset otherwise (B-33); update `Latest`; compose: a `.success(snapshot)` is merged over the shown snapshot and shown, a `.failure(issue)` goes through `failing(issue, previous:)` (B-18); on activity success, record history (B-42). | after a compose `.success` only, `saveSnapshot(shown)` (B-19); a total failure saves nothing, so the cache keeps the last good snapshot; on activity success, `saveHistory`; arm the timer (B-35) |
+| `popoverOpened(request)` | Ignored if < 1 s since `lastPopoverOpen` (B-39); else `lastPopoverOpen = now` and opens `request`. | start a run of every job where `canRun(.popoverOpened)` |
+| `refreshRequested(request)` | Opens `request`. | start a run of every job where `canRun(.manual)` |
+| `taskFinished(key, run, outcome, jitter)` | Removes `run` from every request. Then dropped if `key` is gone or `run` isn't its `running` (the provider was turned off, or off and on, B-51). Else `running = nil`; `lastRun = now`; backoff recorded on 429, reset otherwise (B-33); update `Latest`; compose, with the shown snapshot's unit as `cachedUnit` (B-8): a `.success(snapshot)` is merged over the shown snapshot and shown, a `.failure(issue)` goes through `failing(issue, previous:)` (B-18); on activity success, record history (B-42). | after a compose `.success` only, `saveSnapshot(shown)` (B-19); a total failure saves nothing, so the cache keeps the last good snapshot; on activity success, `saveHistory`; arm the timer (B-35) |
 | `timerFired(key, timer)` | Dropped unless `timer` is the job's `timer`; else `timer = nil`. | start a run if `canRun(.timer)`; otherwise nothing, and no new timer until another trigger runs the job (B-35) |
 | `trigger(RefreshTrigger)` | — | start a run of every job where `canRun` (the wake below) |
 | `woke` | — | `wait(3 s, then: .trigger(.wake))` (B-38) |
-| `networkChanged(isOnline)` | `isOnline = isOnline`. | on offline → online, start a run of every job where `canRun(.networkRestored)` (B-38) |
+| `networkChanged(isOnline)` | `isOnline = isOnline`. | on offline → online, start a run of every job where `canRun(.networkRestored)` (B-38), and arm the timer of every other job that has neither a run nor a timer (B-35) |
 | `activityChanged(id)` | — | start a run of `id`'s activity job if `canRun(.activityChanged)` |
-| `providerToggled(id, isOn)` | Update settings; add or remove `id`'s jobs (B-51). | `saveSetting(.enabled(settings.enabled))`; `startWatcher`/`stopWatcher`; on add start a run of the new jobs with `.manual`, on remove `cancelTimer` for the old ones (B-37) |
+| `providerToggled(id, isOn)` | Ignored if `id` isn't in the registry or is already in that state. Else update settings; add or remove `id`'s jobs (B-51). | `saveSetting(.enabled(settings.enabled))`; `startWatcher`/`stopWatcher`; on add start a run of the new jobs with `.manual`, on remove `cancelTimer` for the old ones (B-37) |
 | `favoriteTapped(id)` | `Favorite.toggling`. | `saveSetting(.favorite(settings.favorite))` |
-| `settingChanged(change)` | Ring, week chart or a feature toggle, as `change: SettingChange`. | `saveSetting(change)` |
+| `ringShownSet(Bool)` / `weekChartShownSet(Bool)` / `featureShownSet(toggle, Bool)` | Update that setting. One event per switch, so a provider or favorite change can't arrive this way. | `saveSetting(.ringShown(…))` / `.weekChartShown(…)` / `.featureShown(…)` |
 | `renewRequested(id, request)` | Opens `request` as renewing if `id` is enabled and can renew; else opens nothing. | `renewSignIn(id, request)`; else `finishRequest(request, false)` |
 | `renewFinished(id, ok, request)` | `isRenewing = false`; `result = ok`. | on success, start a run of `id`'s limits job if `canRun(.manual)` (B-23) |
 | `launchAtLoginSet(Bool)` / `launchAtLoginReadRequested` | — | `setLaunchAtLogin(Bool)` / `readLaunchAtLogin` |
@@ -818,8 +826,9 @@ The effects, complete: `runTask(key, run)`, `scheduleTimer(key, timer, after:)`,
 `saveSetting(SettingChange)`, `renewSignIn(id, request)`, `finishRequest(request, result)`, `setLaunchAtLogin(Bool)`,
 `readLaunchAtLogin`, `openLoginItemsSettings`, `installUpdate`, `openURL(URL)`, `quit`.
 
-The interpreter loads settings (with the registry's ids as `defaultEnabled`), cached snapshots and history through
-their ports and sends `launched`. It performs `scheduleTimer(key, timer, after:)` with a `Sleeper` wait that ends in
+`AppModel.live` loads settings (with the registry's ids as `defaultEnabled`), cached snapshots and history through
+their synchronous ports and reduces `launched` before it returns (7.4). The interpreter performs
+`scheduleTimer(key, timer, after:)` with a `Sleeper` wait that ends in
 `timerFired(key, timer)`, and `cancelTimer(key)` by cancelling that wait; a `timerFired` already queued when its
 timer was cancelled or replaced no longer matches the job's `timer` and is dropped. It performs
 `runTask(key, run)` by awaiting the task's `run` and sending `taskFinished(key, run, outcome, jitter: random in -1…1)`;
@@ -833,13 +842,19 @@ when `finishRequest` resumes it; `RenewSignIn` returns the request's `result`. `
 the spinner shows (B-59), but nothing awaits it. Chained activation (B-37) is free: events are processed in order on
 the main actor.
 
+Invariant, checked after every event in the reducer tests: every job has a run in flight or an armed timer, except a
+job whose policy needs the network while offline, which waits for `networkChanged` (B-35).
+
 ### 7.4 App model
 
 `@MainActor @Observable final class AppModel { private(set) var state: AppState; let useCases: UseCases; let clock: Clock }`.
 `clock` is for the views' `TimelineView` and for deterministic previews (A-6); previews get a fixed clock.
-It holds `RuntimeState` privately, runs the reducer on each event, publishes `AppState.derive(…)`, and hands
-effects to the interpreter. Previews build it with `AppModel.preview(_ state: AppState)`, which has no-op use cases
-and no runtime.
+`AppModel.live(_ environment: AppEnvironment)` is the composition root's only way in: it loads the persisted state,
+reduces `launched` and publishes the first `AppState` before returning, so the first frame already shows the cache
+(never the empty "all off" state), then hands the launch effects to the interpreter. It holds `RuntimeState`
+privately, runs the reducer on each event, derives `AppState`, and assigns `state` only when the derived value
+differs (`@Observable` doesn't compare, so an equal value would still redraw). Previews build it with
+`AppModel.preview(_ state: AppState)`, which has no-op use cases and no runtime.
 
 ### 7.5 Scheduling
 
@@ -860,8 +875,9 @@ Dumb adapters. Each implements one port and nothing else.
 - **X-1** One adapter per port per file; the adapter's name says the technology (`URLSessionHTTPClient`).
 - **X-2** No business rules: no `ProviderID`, no `Meter`, no decisions about what to show. If an adapter needs a
   provider detail, it's a parameter.
-- **X-3** Never logs or stores secrets. Logs use `os.Logger` with the app's subsystem and a category; numbers are
-  public, every other interpolation is `.private`. Never tokens, cookies, user ids or response bodies.
+- **X-3** Never logs or stores secrets. An adapter built by a provider's factory logs only through the `DiagnosticsLog`
+  it's given. Any other adapter uses `os.Logger` with the app's subsystem and a category; numbers are public, every
+  other interpolation is `.private` (error descriptions included). Never tokens, cookies, user ids, paths or response bodies.
 - **X-4** Read-only over other apps' files and the Keychain. Writes only to `~/Library/Application Support/Burnie/`
   (0700 folder, 0600 files, atomic), to `UserDefaults`, and what Sparkle needs for an update the user asked for.
 - **X-5** `FoundationProcessRunner` only runs executables in the allowlist it was built with (absolute paths the
@@ -889,7 +905,7 @@ Dumb adapters. Each implements one port and nothing else.
 | `JSONFileStore` | `SnapshotCache`, `ProviderStorage` | `BurnieSystem` |
 | `FoundationProcessRunner` | `ProcessRunner` | generic half of `ClaudeCodeSignInRenewer` |
 | `DirectoryWatcher` | `ActivityWatcher` | `ClaudeLogDirectoryWatcher`, made generic |
-| `OSDiagnosticsLog` | `DiagnosticsLog` | the `Logger` calls in provider assembly |
+| `OSDiagnosticsLog` | `DiagnosticsLog` | the `Logger` calls in provider assembly, `URLSessionHTTPClient` and `ClaudeCodeSignInRenewer` |
 | `UserDefaultsSettingsStore` | `SettingsStore` | `App/Store/Setting+UserDefaults.swift` |
 | `MacSystemEvents` | `SystemEvents` | `App/Store/SystemEventMonitor.swift` |
 | `SMAppLoginItem` | `LoginItem` | `App/Store/LaunchAtLogin.swift` |
@@ -912,14 +928,17 @@ component can't reach the app model, a provider or an adapter.
 - **C-4** Colors, fonts and measurements come from `DesignTokens`; provider colors come from
   `ProviderDescriptor.color`. No literal colors or magic numbers.
 - **C-5** No literal user-visible text: strings come in as parameters or from `Copy`.
-- **C-6** Every component has a `#Preview` and a render smoke test (`T-9`).
+- **C-6** Every component has a `#Preview` and a render smoke test (`T-9`). Previews take their values from
+  `PreviewValues` (`#if DEBUG`, in Components): invented descriptors, snapshots and copy, never a real provider's. It is
+  the one Components file C-4 and C-5 don't apply to.
 - **C-7** Accessibility labels for every icon-only control.
 
 ### 9.2 Components
 
 `BurnieDivider`, `BurnieSwitchStyle`, `ChipButton`, `HoverHighlightStyle`, `IconButton`, `IssueRow`, `MeterView`,
 `PlanChip`, `Spin`, `SwitchRow`, `UpdateBadge`, `FooterItem`, `MenuBarIcon`, `WeekChartView`, `ProviderRow`,
-`SignInRenewalRow`, `PreviewFrame`, and `DesignTokens` (today's `Tokens.swift`, minus provider colors).
+`SignInRenewalRow`, `PreviewFrame` and `PreviewValues` (both `#if DEBUG`), and `DesignTokens` (today's `Tokens.swift`,
+minus provider colors).
 
 ---
 
@@ -932,7 +951,7 @@ component can't reach the app model, a provider or an adapter.
   `if let` is fine; branching on a provider is not (`G-5`).
 - **V-3** The composition root (`App/Composition/`) is the only code that imports `BurnieProviders` and
   `BurnieInfra`. It builds adapters, provider bundles and the app model, in that order. Previews (`App/Previews/`,
-  `#if DEBUG`) may import `BurnieProviders` only to use the real descriptors.
+  `#if DEBUG`) may import `BurnieProviders` only to read each provider's `descriptor` (P-3), never `bundle`.
 - **V-4** Previews build an `AppState` value and `AppModel.preview(_:)`. Every scenario of section 16.7 has a
   preview, except VoiceOver, which is only checked live.
 - **V-5** AppKit only for what SwiftUI can't do (window placement, the template menu bar image).
@@ -962,7 +981,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-5 | The part of the fill past the pace draws in the over-pace color; all of it is on pace without a tick. | Components |
 | B-6 | A snapshot older than 30 minutes dims its values and today's usage. | Domain + Components |
 | B-7 | Today's usage reads money when the latest successful limits measure money and the activity added up today's spend; tokens otherwise. | Domain |
-| B-8 | A failed limits refresh doesn't flip today's usage from money back to tokens (the unit is the last successful one). | Domain |
+| B-8 | A failed limits refresh doesn't flip today's usage from money back to tokens (the unit is the last successful one), not even after a relaunch, where the cached snapshot's unit stands in until limits succeed again. | Domain |
 | B-9 | Plan chips: Claude `pro`/`max`/`team`/`enterprise` (with or without `claude_`) → `PRO`/`MAX`/`TEAM`/`ENTERPRISE`, else none; Cursor `free`, `pro`, `pro_plus`→`PRO+`, `ultra`, `business`/`team`→`TEAMS`, `enterprise`, else uppercased. | Providers |
 
 ### 11.2 Composing and merging
@@ -976,7 +995,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-14 | Nothing to show: total failure with the limits issue, else the activity issue, else `notFound`. | Domain |
 | B-15 | Activity before any limits: `.activityOnly`, `fetchedAt` = activity's time. | Domain |
 | B-16 | `fetchedAt` is the limits' time when the content is `.limits`. | Domain |
-| B-17 | An `.activityOnly` snapshot over a cached `.limits` one keeps the cached limits view (plan, meters and on-demand) and its stamp (stale data beats a gap). | Domain |
+| B-17 | An `.activityOnly` snapshot over a cached `.limits` one keeps the cached limits part (plan, meters, unit and on-demand) and its stamp (stale data beats a gap). | Domain |
 | B-18 | A total failure over a cached snapshot shows the cache with the issue on top; without a cache, the failure alone. | Domain |
 | B-19 | The cache is saved after every successful compose, as shown (after merge, partial issue included); a total failure saves nothing. | Application |
 
@@ -986,13 +1005,14 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | --- | --- | --- |
 | B-20 | `rateLimited` and `offline` show no issue row: the header's age already says the data is old. | Interface |
 | B-21 | Issue copy per provider: not found, sign-in expired, missing scope (Claude), unexpected ("Couldn't read usage. Burnie may need an update."). | Interface + Providers |
-| B-22 | An expired sign-in shows "Refresh sign-in" only when the provider can renew; on failure the row shows the renewal-failed copy. | Components + Application |
+| B-22 | An expired sign-in shows "Refresh sign-in" only when the provider can renew; on failure the row shows the renewal's `failedCopy`. | Components + Application |
 | B-23 | A successful renewal triggers a manual refresh of that provider's limits. | Application |
 | B-24 | HTTP: no network or timeout → offline; 429 → rate limited with `Retry-After` (seconds or HTTP date); 5xx → offline; other non-2xx → unexpected. | Providers |
 | B-25 | Claude: 401 → sign-in expired; 403 mentioning `user:profile` → missing scope; other 403 → sign-in expired; an expired token is detected before any request. | Providers |
 | B-26 | Cursor: 3xx, 401, 403 or HTML instead of data → sign-in expired; no database or row → not found; malformed or expired JWT → sign-in expired without network. | Providers |
 | B-27 | Claude credentials: Keychain first, then the credentials file. | Providers |
 | B-28 | Claude's plan comes from the profile at most once an hour, keeps the last good one, and falls back to the credentials' plan. | Providers |
+| B-29 | Providers screen status line: "Off" while disabled; "{displayName} not found"; "Sign-in expired · open {displayName}"; any other state, a specific issue included, shows the provider's healthy line. | Interface + Providers |
 
 ### 11.4 Refresh
 
@@ -1003,7 +1023,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-32 | Single flight per task. | Application |
 | B-33 | After a 429, nothing is requested from that task before `retryAt`, not even with Refresh; without `Retry-After`: 1, 2, 4… minutes up to 60; any other outcome resets. | Domain + Application |
 | B-34 | Offline skips tasks that need the network. Burnie starts online until the system reports otherwise. | Application |
-| B-35 | The next timer fires at `retryAt` during backoff, else after interval ± jitter. A timer that fires when its task can't run (offline) isn't re-armed: the job waits for network restored or another trigger. | Application |
+| B-35 | The next timer fires at `retryAt` during backoff, else after interval ± jitter. A timer that fires when its task can't run (offline) isn't re-armed: the job waits for network restored, which runs it if it's older than its interval and otherwise arms its timer, so no job is left without one (decision 47; today it could stall until another trigger). | Application |
 | B-36 | The timer releases itself before running, so cancelling it never cancels a request in flight. | Application |
 | B-37 | Activating providers starts their tasks without waiting; deactivating cancels their timers; updates are chained in order. | Application |
 | B-38 | Wake triggers a refresh 3 s later; network restored triggers one when going offline → online. | Application |
@@ -1020,7 +1040,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-44 | Claude log scan is incremental: only new bytes per file; a last line without newline waits for the next scan; truncated files are reread without double counting; duplicates by message key are counted once across files; unreadable lines count as diagnostics and never break the scan; files untouched since before the window are dropped. | Providers |
 | B-45 | Claude scans the XDG log root first, then `~/.claude`; no root at all is `notFound`. | Providers |
 | B-46 | An unreadable or old log index is discarded and rebuilt; a failed save only means a rescan next launch. | Providers |
-| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events until a short page; a count mismatch or an event without a valid charge makes the sum unknown (no partial sums). | Providers |
+| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events until a short page; a count mismatch, an event without a valid charge, or a failed spend request (a 429 included, which starts no backoff) makes the sum unknown (no partial sums) without failing the activity part, so today's usage reads in tokens. | Providers |
 | B-48 | Cursor meters: individual plans show Cursor Models and Other Models as percents (unit tokens); team/enterprise show one Included usage meter in money (unit money); on-demand appears only when enabled, after the other meters, with "Kicks in after included usage runs out" while unused; a summary without usage buckets or billing cycle end is unexpected. | Providers |
 | B-49 | Claude meters: prefer `limits[]` (`session`, `weekly_all`), fall back to flat windows; a window without reset shows "No active session"; no windows at all is unexpected. | Providers |
 
@@ -1047,7 +1067,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-61 | Burnie never refreshes or rotates Claude's token; renewal runs Claude Code itself. | Providers |
 | B-62 | Burnie never writes to `~/.claude`, `~/.config/claude`, the Keychain or `state.vscdb`. | Infra |
 | B-63 | The renewal process gets a clean environment, a folder without `.claude/`, no tools, no user settings, no session persistence, and its output is discarded. | Providers + Infra |
-| B-64 | Logs carry counts, timings and status codes only. | Infra |
+| B-64 | Logs carry counts, timings and status codes only; any other interpolation is `.private`. (Today's public method, path and error descriptions go, decision 42.) | Infra |
 
 ### 11.8 Limits and fallbacks
 
@@ -1055,7 +1075,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | --- | --- | --- |
 | B-70 | An HTTP request times out after 10 s, which reads as offline (B-24). | Infra |
 | B-71 | A sign-in renewal is stopped after 60 s and counts as failed. | Infra + Providers |
-| B-72 | The activity watcher coalesces changes over 2 s and watches the log roots that exist when it starts; a root created later is picked up on the next launch. | Infra + Providers |
+| B-72 | The activity watcher coalesces changes over 2 s and watches the directories it was built for that exist when it starts; a directory created later is picked up the next time it starts (the next launch, or turning the provider on again). | Infra + Providers |
 | B-73 | Without a usable `Application Support/Burnie/`, the cache and history go to a temporary directory and the app still runs. | Infra + App |
 | B-74 | The "Ring in menu bar" switch is disabled without an effective favorite and keeps its stored value; its subtitle says how to mark one, or whose ring it shows. | Interface + App |
 | B-75 | The footer has one dashboard link per enabled provider, in registry order, then Quit (⌘Q). | App |
@@ -1073,20 +1093,23 @@ and invented values (`T-7`).
 | Favorite | `UserDefaults` `favoriteProvider` | provider id string | **Must** keep. Unknown id = none, key untouched. |
 | Ring shown | `UserDefaults` `showRing` | bool, default true | **Must** keep. |
 | Week chart shown | `UserDefaults` `showWeekChart` | bool, default true | **Must** keep. |
-| On-demand shown | `UserDefaults` `showOnDemand` | bool, default true | **Must** keep (maps to `FeatureToggle.onDemand`). |
+| On-demand shown | `UserDefaults` `showOnDemand` | bool, default true | **Must** keep. `UserDefaultsSettingsStore` maps `FeatureToggle.onDemand` to this key explicitly; a new toggle adds its own key here. |
 | History | `Application Support/Burnie/history.json` | `{ "<provider id>": { "yyyy-MM-dd": tokens } }` | **Must** keep: it can't be rebuilt (sources forget old days). |
-| Snapshots | `Application Support/Burnie/snapshot-<provider id>.json` | `UsageSnapshot` (new shape: `content` as a `SnapshotContent` enum, and the partial issue) | **Replaced.** The flat shape (`fetchedAt`, `plan`, `today`, `meters`) is not read back: an old file that doesn't decode reads as no cache (loading), never a crash. Costs one refresh on first launch. |
+| Snapshots | `Application Support/Burnie/snapshot-<provider id>.json` | `UsageSnapshot` (new shape: `content` as a `SnapshotContent` enum with the stamped `LimitsPart`, unit included, and the partial issue) | **Replaced.** The flat shape (`fetchedAt`, `plan`, `today`, `meters`) is not read back: an old file that doesn't decode reads as no cache (loading), never a crash. Costs one refresh on first launch. |
 | Claude log index | `Application Support/Burnie/claude-log-index.json` (Claude's `ProviderStorage` name `log-index`) | `ClaudeLogIndex` | **May** be invalidated (costs one full window rescan); never crash. |
 
-Provider id strings (`claude`, `cursor`) and meter id strings (`session`, `weekly`, `cursorModels`, `otherModels`,
-`included`, `onDemand`) are frozen: the newtypes encode exactly these raw values. Every newtype encodes as its bare
+Provider id strings (`claude`, `cursor`), meter id strings (`session`, `weekly`, `cursorModels`, `otherModels`,
+`included`, `onDemand`) and specific issue codes (`missingScope`) are frozen: the newtypes encode exactly these raw
+values, and `SpecificIssue` encodes as its bare code. Every newtype encodes as its bare
 raw value through a single-value container (`ProviderID` as `"claude"`, `Tokens` as `1250000`, never
 `{"count": 1250000}`), and `ProviderID` and `LocalDay` are `CodingKeyRepresentable`, so `history.json` stays a JSON
 object of objects. Dates encode as seconds since 1970, as `JSONFileStore` does today.
 
 The new snapshot shape is written by hand, not left to synthesized `Codable`: every enum (`SnapshotContent`,
-`MeterValue`, `MeterCaption`, `ProviderIssue`, `TodayUsage`) encodes as an object keyed by its case name, with named
-fields for its payload (never `_0`), and every struct with its property names. For example, `.limits` encodes as
+`MeterValue`, `MeterCaption`, `ProviderIssue`, `TodayUsage`, `UsageUnit`) encodes as an object keyed by its case name.
+A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payload is the value itself
+(`{"percent": 64}`, `{"tokens": 1250000}`); labeled payloads are an object of their labels (`{"money": {"used": 1200,
+"limit": 2000}}`), never `_0`. Every struct encodes with its property names. For example, `.limits` encodes as
 `{"limits": {"view": {"value": …, "at": 1760000000}, "today": {"tokens": 1250000}}}`. The refactor PR pins it in its own fixture
 (`T-7`), and from then on it is frozen like the rest of this section.
 
@@ -1136,6 +1159,14 @@ fields for its payload (never `_0`), and every struct with its property names. F
 | 38 | 2026-10-16 | A GitHub Actions workflow runs `make verify` on every PR, from the guardrails PR on. | Proposed |
 | 39 | 2026-10-16 | "Feature" only means a snapshot feature; what the user can do is a use case. | Proposed |
 | 40 | 2026-10-16 | Module `AGENTS.md` files point to this spec's sections and list their rule IDs; the rules' text lives only here. | Proposed |
+| 41 | 2026-10-16 | Each provider exposes its `descriptor` besides `bundle`, so previews read it without ports; component previews take invented values from a DEBUG `PreviewValues` file, the only one exempt from C-4 and C-5. | Proposed |
+| 42 | 2026-10-16 | Adapters built for a provider log only through its `DiagnosticsLog`; the rest use `os.Logger` with every non-number `.private`. The HTTP log keeps status and time and drops today's public method and path. | Proposed |
+| 43 | 2026-10-16 | `AppModel.live` loads the persisted state through synchronous ports and reduces `launched` before returning, so the first frame shows the cache; `state` is assigned only when it changes. | Proposed |
+| 44 | 2026-10-16 | One event per display switch instead of a generic setting event; `providerToggled` ignores no-op toggles; `RefreshUsage` takes no `force`, since only the button calls it. | Proposed |
+| 45 | 2026-10-16 | The renewal-failed copy lives in `SignInRenewal`, so a provider that can't renew has no dead copy; `Link` becomes `DashboardLink` so it doesn't clash with SwiftUI's. | Proposed |
+| 46 | 2026-10-16 | `LimitsView` folds into `LimitsPart`, so the cached snapshot keeps its unit and `compose` uses it until limits succeed again (B-8 across launches). | Proposed |
+| 47 | 2026-10-16 | After network restored, a job that doesn't run arms its timer: every job has a run or a timer unless it waits for the network. | Proposed |
+| 48 | 2026-10-16 | The checks skip comments, see unstaged new files and leave `scripts/` out; `make check` scans the whole tree for sensitive data; G-9 gets a check; C-4 covers every literal measurement and stays dormant until the refactor PR. | Proposed |
 
 ---
 
@@ -1150,26 +1181,31 @@ because they are the net that proves the big one changed structure and not behav
 - `scripts/check-architecture.sh` with the rules of section 16.2, printing `SPEC <rule>: <file>:<line>: <message>`.
   Rules for modules that don't exist yet stay dormant until their folder appears.
 - `scripts/check-sensitive.sh` (section 16.6).
-- `make check` (both scripts) and `make verify` (`check` + `test` + `build`).
+- `make check` (both scripts, the sensitive one with `--all`) and `make verify` (`check` + `test` + `build`).
 - `.github/workflows/verify.yml`: `make verify` on every PR, on a macOS runner with the Xcode that builds the app
-  today; no secrets and no signing (decision 38).
+  today, after installing XcodeGen (Homebrew), which `make build` runs; no secrets and no signing: Debug already signs
+  ad hoc (decision 38).
+- Root `AGENTS.md`: the commands table gains `make check` and `make verify`, and the workflow asks for `make verify`
+  green instead of `make test` and `make build`.
 - `BurnieTestSupport` test-support target: `FixedClock`, `ManualSleeper`, port fakes, `Gen` (seeded property-test
   generators), fixture loading.
 - Nested `CLAUDE.md` files (`@AGENTS.md`) in each module folder, excluded from targets in `Package.swift` and `project.yml`
   (section 17).
-- Today's files with more than one top-level type are split, so G-4 holds before the refactor starts
-  (`HoverHighlightStyle.swift`, `UsageStore.swift`, `URLSessionHTTPClient.swift`, `UsageStore+Preview.swift`), and
-  the test fakes' `@unchecked Sendable` get the comment G-11 asks for.
+- Today's files with more than one top-level type, or one not named like the file, are split or renamed, so G-4 holds
+  before the refactor starts: `HoverHighlightStyle.swift`, `UsageStore.swift`, `URLSessionHTTPClient.swift`,
+  `UsageStore+Preview.swift`, and in the tests `ClaudeLimitsFetcherTests.swift`, `ClaudeLogActivityTests.swift`,
+  `DisplayTextTests.swift`, `MoneyFormatterTests.swift`, `FakeSources.swift` (`FakeLimitsSource`,
+  `FakeActivitySource`) and `TestValues.swift` (`FixedClock`). `@unchecked Sendable` gets the comment G-11 asks for
+  where it lacks one (`Reports` in `ClaudeLogActivityTests.swift`), and so do today's forced literal URLs (G-9).
 - Rules on today's layout, where `BurnieCore` stands for Domain and `BurnieSystem` for Infra:
 
   | Rule | In the guardrails PR |
   | --- | --- |
-  | G-4, G-7, G-8, G-11 | active everywhere |
+  | G-4, G-7, G-8, G-9, G-11 | active everywhere |
   | G-6 | active; `BurnieSystem` counts as Infra |
   | G-3 | active as `BurnieCore` imports only `Foundation` |
   | D-3 | active on `BurnieCore` |
-  | C-4 | active on `App/Views` |
-  | G-5, D-2, D-6, I-2, P-1, A-1, A-5, C-5, V-3 | dormant: today's code breaks them on purpose (`Tokens.accent` switches on the provider, `BurnieCore` has actors and `async`, the views hold literal copy, the scheduler calls `Task.sleep`), and the refactor PR wakes them |
+  | G-5, D-2, D-6, I-2, P-1, A-1, A-5, C-4, C-5, V-3 | dormant: today's code breaks them on purpose (`Tokens.accent` switches on the provider, `BurnieCore` has actors and `async`, the views hold literal copy and about 50 literal measurements, the scheduler calls `Task.sleep`), and the refactor PR wakes them |
 
 - **Done when:** `make verify` green on today's code with the active rules above, locally and in CI.
 
@@ -1178,8 +1214,8 @@ because they are the net that proves the big one changed structure and not behav
 - Persistence fixtures and decoding tests for every row of section 12 (`T-7`).
 - Tests for behaviors in section 11 that have none today, written against today's code (notably the store and
   scheduler: B-11, B-19, B-32…B-40, B-50, B-51, B-59). Where today's code can't be tested without a seam, add the smallest seam.
-- B-43's rollover and B-51's dropped refresh change on purpose (decisions 29, 30): their tests pin today's part here,
-  and the refactor PR adds the new part.
+- B-8 across launches, B-35's timer after network restored, B-43's rollover and B-51's dropped refresh change on
+  purpose (decisions 29, 30, 46, 47): their tests pin today's part here, and the refactor PR adds the new part.
 - **Done when:** every B-ID has a test, or is listed in the PR as covered manually with a reason.
 
 ### 14.3 The refactor PR
@@ -1195,19 +1231,21 @@ What it must contain, by module. Nothing here is sequenced: the order inside the
 - **Providers** (`BurnieProviders`): `Claude/`, `Cursor/`, `Shared/`; each provider builds its `ProviderBundle` with
   descriptor, capabilities and tasks with policies (B-30). Claude's renewal becomes a `SignInRenewal` over `ProcessRunner`;
   the log index goes through `ProviderStorage`; scan reports go to `DiagnosticsLog`. `CompositeUsageProvider`, `UsageSource`
-  and `RefreshJob` disappear. No provider type is public except its entry point.
+  and `RefreshJob` disappear. No provider type is public except its entry point, with only `descriptor` and `bundle` (P-3).
 - **Infra** (`BurnieInfra`): the adapters of section 8.2, including those moved from `App/Store`; the FSEvents watcher
   and the process runner made generic; no adapter mentions a provider.
 - **Application** (`BurnieApplication`): `RuntimeState` with the registry, jobs, runs and requests, `Event`, `Effect`,
   the reducer, the interpreter with its timers and continuations, `Scheduling`, `AppState.derive`, `AppModel`, use
   cases. Every *Application* behavior in section 11 has a test that names its ID, with `FixedClock`, `ManualSleeper`
   and a fixed jitter sample, no real waiting.
-- **Components** (`BurnieComponents`): the components of section 9.2, `DesignTokens`, provider colors from descriptors;
-  every component has a preview and a render smoke test.
+- **Components** (`BurnieComponents`): the components of section 9.2, `DesignTokens` with every measurement the views
+  and components use today (C-4), provider colors from descriptors; every component has a preview from
+  `PreviewValues` and a render smoke test.
 - **App**: views on `AppModel`; `App/Composition/` builds everything; previews from `AppState` values; `UsageStore`,
   `RefreshScheduler`, `PreviewScenario`'s store and `Setting` are deleted.
-- **Cleanup**: `BurnieCore` and `BurnieSystem` deleted; module `AGENTS.md` files point to this spec (decision 40); README's build
-  section updated; final /tidy; the spec's status becomes "implemented".
+- **Cleanup**: `BurnieCore` and `BurnieSystem` deleted; module `AGENTS.md` files point to this spec (decision 40); the root
+  `AGENTS.md` layers table, its `BurnieCore/Ports` reference and its module list rewritten to point to section 3;
+  README's build section updated; final /tidy; the spec's status becomes "implemented".
 - **Done when:** `make verify` green locally and in CI with no dormant rule left; every characterization test passes, moved to its module
   and never weakened (16.5); `make perf` within budget; the manual QA matrix (16.7) passes on a real run; the open
   questions of section 18 are answered in this file.
@@ -1230,7 +1268,7 @@ Where every current file goes. "→ …" is the destination; notes say what chan
 | `Domain/ProviderID.swift` | → Domain | newtype; `claude`/`cursor` constants move to Providers |
 | `Domain/ProviderIssue.swift` | → Domain | `missingScope` → Claude `.specific` |
 | `Domain/ProviderState.swift`, `TodayUsage.swift`, `UsageUnit.swift`, `UsageHistory.swift` | → Domain | |
-| `Domain/UsageSnapshot*.swift` | → Domain | `content: SnapshotContent` replaces `fetchedAt`/`plan`/`today`/`meters` (kept as computed); `merge`, `failing`, `hiding`; `OnDemand` → `SnapshotFeatures` inside `LimitsView` |
+| `Domain/UsageSnapshot*.swift` | → Domain | `content: SnapshotContent` replaces `fetchedAt`/`plan`/`today`/`meters` (kept as computed); `merge`, `failing`, `hiding`; `OnDemand` → `SnapshotFeatures` inside the stamped `LimitsPart` |
 | `Domain/UsageSource.swift` | deleted | replaced by `PartKind` |
 | `Ports/*` | → Interface `Ports/` | `SnapshotStore` splits into `SnapshotCache` and `ProviderStorage`; `SignInRenewer` → `SignInRenewal` capability over `ProcessRunner`; `UsageProvider` deleted (replaced by `ProviderBundle`) |
 | `Providers/CompositeUsageProvider.swift` | deleted | logic → Domain `compose` + Application |
@@ -1265,7 +1303,7 @@ Where every current file goes. "→ …" is the destination; notes say what chan
 | `Store/Setting.swift`, `Setting+UserDefaults.swift` | → Infra `UserDefaultsSettingsStore` | keys frozen (section 12) |
 | `Store/SystemEventMonitor.swift` | → Infra `MacSystemEvents` | |
 | `Store/LaunchAtLogin.swift` | → Infra `SMAppLoginItem` | |
-| `Store/AppUpdater.swift` | → Infra `SparkleUpdater` | see open question 2 |
+| `Store/AppUpdater.swift` | → Infra `SparkleUpdater` | see open question 1 |
 | `Views/` components (section 9.2) | → Components | |
 | `Views/` views (section 10.2) | stay | read `AppModel` |
 | `Views/Tokens.swift` | → Components `DesignTokens.swift` | provider colors → descriptors |
@@ -1307,27 +1345,31 @@ author runs the rest and says so in the PR body.
 
 ### 16.2 Architecture check
 
-`scripts/check-architecture.sh` greps the tracked Swift files (`git ls-files`, so `.build/` and generated code never
-count) and fails with the rule ID, file and line. Rules:
+`scripts/check-architecture.sh` greps the Swift files under `App/` and `BurnieKit/` that git tracks or would track
+(`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/` and generated
+code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the layers and isn't
+checked. Every pattern skips comment lines (`//`, `///`), so a doc comment that names a forbidden call doesn't fail.
+Rules:
 
 | Rule | Check |
 | --- | --- |
 | G-3 | Every `import` in a module is in its allowed list (section 3.2). |
 | G-4 | A file declares one top-level type, named like the file (a regex over `^(@\w+ )*((public\|internal\|private\|fileprivate) )?(final )?(struct\|enum\|class\|actor\|protocol) `, so private helpers and `final class`es count). |
 | G-5 | No `case .claude`, `case .cursor`, `== .claude`, `== .cursor` (as whole words: `.claudeNotFound` doesn't match), and no `"claude"` or `"cursor"` string literal outside `BurnieProviders` (persistence fixtures and tests of section 12 allowlisted by path). |
-| G-6 | No `Date()`, `Date.now`, `Date(timeIntervalSinceNow`, `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`, `Calendar.current` outside Infra and `App/Composition`, except `TimelineView(.periodic(from: .now`, `Spin(startingAt: .now)` and the animation wait in `IconButton.swift`. |
+| G-6 | No `Date()`, `Date.now`, `.now` after `(`, `:` or `,` (an implicit member), `Date(timeIntervalSinceNow`, `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`, `Calendar.current` outside Infra and `App/Composition`, except `TimelineView(.periodic(from: .now` and, in `IconButton.swift` only, `Spin(startingAt: .now)`, `stop(at: .now)` and `.timeIntervalSinceNow`. |
 | G-7 | No `print(`, `NSLog(`, `debugPrint(` outside the performance test. |
 | G-8 | No `TODO`, `FIXME`, `XXX`. |
+| G-9 | No `try!`, and no `!` right after `)` (`URL(string: "…")!`), outside test targets unless the line above is a comment. Other force unwraps are left to review. |
 | G-11 | No `@unchecked Sendable` outside Infra and test targets; where allowed, the line above has a comment. |
 | D-2 | No `class `, `actor `, `async`, `Task`, `static var` in `BurnieDomain`. |
 | D-3 | No `FileManager`, `URLSession`, `Process`, `UserDefaults`, `Bundle`, `ProcessInfo`, `NotificationCenter` in Domain, Interface, Providers, Application. |
 | D-6 | No string literal with letters in Domain except `rawValue`s, coding keys and `Codable` error descriptions (allowlist by pattern). |
 | I-2 | No `class `, `actor `, `static var`, and no `var` at file scope in `BurnieInterface`. |
 | P-1 | No `os.Logger`, `Logger(` in Providers. |
-| A-1 | Only `AppModel` and `AppEnvironment` are `public` in Application. |
+| A-1 | No `public` type in Application other than `AppModel` and `AppEnvironment`, and no `public` member outside them. |
 | A-5 | No `Task.sleep`, `asyncAfter`, `Timer.` in Domain, Interface, Providers or Application; waits go through `Sleeper`. |
-| C-4 | No `Color(red:`, `Color(hex`, `#colorLiteral`, numeric `.frame(width: <number>` in Components and views. |
-| C-5 | No string literal with a letter as user-visible text in Components or views: `Text("`, `Label("`, `Button("`, `Toggle("`, `.accessibilityLabel("`, and the `title:`, `subtitle:`, `label:`, `accessibilityLabel:` arguments. SF Symbol names (`systemName:`) and shortcut keys are allowed. Copy comes from `Copy` or parameters. |
+| C-4 | No `Color(red:`, `Color(hex`, `#colorLiteral`, and no numeric literal other than `0` as the argument of `.frame(`, `.padding(`, `spacing:`, `cornerRadius:`, `lineWidth:`, `.opacity(`, `.font(.system(size:` in Components and views, outside `DesignTokens.swift` and `PreviewValues.swift`. |
+| C-5 | No string literal with a letter as user-visible text in Components or views, outside `PreviewValues.swift`: `Text("`, `Label("`, `Button("`, `Toggle("`, `.accessibilityLabel("`, and the `title:`, `subtitle:`, `label:`, `accessibilityLabel:` arguments. SF Symbol names (`systemName:`) and shortcut keys are allowed. Copy comes from `Copy` or parameters. |
 | V-3 | `import BurnieInfra` only under `App/Composition/`; `import BurnieProviders` only there and under `App/Previews/`. |
 
 The script is plain bash and `grep`, has no dependencies, and its own test (`scripts/check-architecture-test.sh`)
@@ -1379,7 +1421,8 @@ through the PR) and the summary of its test output, which the squash commit mess
 
 ### 16.6 Sensitive data check
 
-`scripts/check-sensitive.sh` scans the staged diff (and, with `--all`, the tree) and fails on:
+`scripts/check-sensitive.sh` scans the staged diff, or with `--all` every tracked and untracked file that isn't ignored
+(what `make check` runs, so CI, where nothing is staged, checks the whole tree), and fails on:
 
 - absolute home paths (`/Users/<name>/`, `/home/<name>/`);
 - email addresses other than GitHub noreply addresses;
