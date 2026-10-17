@@ -9,6 +9,7 @@ public struct LocalDay: Hashable, Sendable {
 
     public init(_ date: Date, in calendar: Calendar) {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        // A Gregorian calendar always reports the year, month and day it was asked for.
         self.init(year: parts.year!, month: parts.month!, day: parts.day!)
     }
 
@@ -31,6 +32,7 @@ public struct LocalDay: Hashable, Sendable {
 
     /// Midnight of this day in `calendar`'s time zone.
     public func start(in calendar: Calendar) -> Date {
+        // `iso` always holds a valid yyyy-MM-dd, which every Gregorian calendar can resolve.
         calendar.date(from: components)!
     }
 
@@ -40,23 +42,28 @@ public struct LocalDay: Hashable, Sendable {
     }
 
     private var components: DateComponents {
+        // `iso` always holds a valid yyyy-MM-dd, so each part is a number.
         let parts = iso.split(separator: "-").map { Int($0)! }
         return DateComponents(year: parts[0], month: parts[1], day: parts[2])
     }
 
     private var utcDate: Date {
+        // `iso` always holds a valid yyyy-MM-dd, which the UTC calendar can resolve.
         Self.utc.date(from: components)!
     }
 
+    // A fixed identifier that always exists.
     private static let utc = Calendar.gregorian(in: TimeZone(identifier: "UTC")!)
 }
 
 extension LocalDay: Strideable {
     public func advanced(by days: Int) -> LocalDay {
+        // Adding whole days to a valid date in UTC always gives a date.
         LocalDay(Self.utc.date(byAdding: .day, value: days, to: utcDate)!, in: Self.utc)
     }
 
     public func distance(to other: LocalDay) -> Int {
+        // The calendar always reports the day component it was asked for.
         Self.utc.dateComponents([.day], from: utcDate, to: other.utcDate).day!
     }
 

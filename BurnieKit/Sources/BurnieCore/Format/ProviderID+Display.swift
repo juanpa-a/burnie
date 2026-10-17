@@ -27,7 +27,9 @@ extension ProviderID {
 
     public var dashboardURL: URL {
         switch self {
+        // A literal URL, so it always parses.
         case .claude: URL(string: "https://claude.ai/settings/usage")!
+        // A literal URL, so it always parses.
         case .cursor: URL(string: "https://cursor.com/dashboard/spending")!
         }
     }

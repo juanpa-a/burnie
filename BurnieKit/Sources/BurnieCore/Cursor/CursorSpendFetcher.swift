@@ -6,6 +6,7 @@ import Foundation
 /// don't match the count Cursor reports (a page repeated or skipped while new events land), it throws
 /// instead of returning a sum that might be off.
 struct CursorSpendFetcher {
+    // A literal URL, so it always parses.
     static let url = URL(string: "https://cursor.com/api/dashboard/get-filtered-usage-events")!
     private static let pageSize = 1_000
     /// Far more than a day of events; past it the sum isn't trusted.

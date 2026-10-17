@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct ClaudeLogActivityTests {
@@ -22,15 +23,16 @@ struct ClaudeLogActivityTests {
         #expect(afterRestart == [.day("2026-10-10"): 76_917, .day("2026-10-09"): 1_500])
         #expect(reports.all.map(\.filesRead) == [1])
     }
-}
 
-private final class Reports: @unchecked Sendable {
-    private let lock = NSLock()
-    private var reports: [ClaudeLogScanReport] = []
+    // `lock` serializes `reports`, which the scanner's callback appends to from any task.
+    private final class Reports: @unchecked Sendable {
+        private let lock = NSLock()
+        private var reports: [ClaudeLogScanReport] = []
 
-    var all: [ClaudeLogScanReport] { lock.withLock { reports } }
+        var all: [ClaudeLogScanReport] { lock.withLock { reports } }
 
-    func append(_ report: ClaudeLogScanReport) {
-        lock.withLock { reports.append(report) }
+        func append(_ report: ClaudeLogScanReport) {
+            lock.withLock { reports.append(report) }
+        }
     }
 }

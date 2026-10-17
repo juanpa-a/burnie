@@ -27,77 +27,11 @@ extension UsageStore {
             clock: PreviewData.clock
         )
     }
-}
 
-/// Takes a second, like `claude` answering, and always renews.
-private struct PreviewSignInRenewer: SignInRenewer {
-    func renewSignIn() async throws {
-        try await Task.sleep(for: .seconds(1))
-    }
-}
-
-/// Fixed sample data: Saturday, October 10, 2026, 2:00 PM in Mexico City.
-enum PreviewData {
-    struct FixedClock: Clock {
-        let now: Date
-        let timeZone: TimeZone
-    }
-
-    static let now = Date(timeIntervalSince1970: 1_791_662_400)
-    static let clock = FixedClock(now: now, timeZone: TimeZone(identifier: "America/Mexico_City")!)
-
-    /// 2 h 46 m into the 5-hour session, 53 hours into the week, 9 days into a 31-day billing cycle.
-    static let session = DateInterval(start: now.addingTimeInterval(-(2 * 3_600 + 46 * 60)), duration: 5 * 3_600)
-    static let week = DateInterval(start: now.addingTimeInterval(-53 * 3_600), duration: 7 * 86_400)
-    static let cursorCycle = DateInterval(start: now.addingTimeInterval(-9 * 86_400), duration: 31 * 86_400)
-
-    /// The session runs ahead of an even pace and the week behind it.
-    static let claudeMeters = [
-        Meter(id: .session, fraction: 0.64, value: .percent(64), caption: .resetsIn(session.end), period: session),
-        Meter(id: .weekly, fraction: 0.24, value: .percent(24), caption: .resetsAt(week.end), period: week),
-    ]
-
-    static let claude = UsageSnapshot(provider: .claude, fetchedAt: now.addingTimeInterval(-120), plan: "MAX", today: .tokens(1_250_000), meters: claudeMeters)
-
-    static let cursor = UsageSnapshot(
-        provider: .cursor,
-        fetchedAt: now.addingTimeInterval(-120),
-        plan: "PRO",
-        today: .tokens(2_400_000),
-        meters: [
-            Meter(id: .cursorModels, fraction: 0.2, value: .percent(20), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
-            Meter(id: .otherModels, fraction: 0.8, value: .percent(80), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
-            Meter(id: .onDemand, fraction: 0.67, value: .money(usedCents: 1_340, limitCents: 2_000), caption: .cycleEnds(cursorCycle.end)),
-        ]
-    )
-
-    /// A dollar budget instead of pools, so today reads in money.
-    static let cursorEnterprise = UsageSnapshot(
-        provider: .cursor,
-        fetchedAt: now.addingTimeInterval(-120),
-        plan: "ENTERPRISE",
-        today: .money(cents: 1_240),
-        meters: [
-            Meter(id: .included, fraction: 0.37, value: .money(usedCents: 18_420, limitCents: 50_000), caption: .cycleEnds(cursorCycle.end), period: cursorCycle),
-            Meter(id: .onDemand, fraction: 0, value: .money(usedCents: 0, limitCents: 100_000), caption: .onDemandIdle),
-        ]
-    )
-
-    static let history: [ProviderID: [DailyPoint]] = [
-        .claude: points([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000]),
-        .cursor: points([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000]),
-    ]
-
-    /// First launch: no day has data yet.
-    static let emptyHistory: [ProviderID: [DailyPoint]] = [
-        .claude: points(Array(repeating: 0, count: 7)),
-        .cursor: points(Array(repeating: 0, count: 7)),
-    ]
-
-    private static func points(_ values: [Int]) -> [DailyPoint] {
-        let today = LocalDay(now, in: clock.timeZone)
-        return values.enumerated().map { index, value in
-            DailyPoint(day: today.advanced(by: index - values.count + 1), value: value)
+    /// Takes a second, like `claude` answering, and always renews.
+    private struct PreviewSignInRenewer: SignInRenewer {
+        func renewSignIn() async throws {
+            try await Task.sleep(for: .seconds(1))
         }
     }
 }

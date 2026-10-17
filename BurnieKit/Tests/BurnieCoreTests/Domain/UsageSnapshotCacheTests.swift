@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct UsageSnapshotCacheTests {
@@ -27,5 +28,59 @@ struct UsageSnapshotCacheTests {
     @Test func totalFailureMarksTheCachedSnapshot() {
         #expect(Self.cached.with(issue: .offline).issue == .offline)
         #expect(Self.cached.with(issue: .offline).meters == Self.cached.meters)
+    }
+
+    // SPEC 4.4's merge laws on today's merge: `merge(previous, next)` is `next.keepingMeters(of: previous)`,
+    // and a snapshot with meters stands for `.limits` content.
+
+    @Test(arguments: Gen.seeds(200))
+    func keepingMetersIsAssociative(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let first = gen.snapshot()
+        let second = gen.snapshot()
+        let third = gen.snapshot()
+        let groupedLeft = third.keepingMeters(of: second.keepingMeters(of: first))
+        let groupedRight = third.keepingMeters(of: second).keepingMeters(of: first)
+        #expect(groupedLeft == groupedRight, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func keepingMetersIsIdempotent(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let snapshot = gen.snapshot()
+        #expect(snapshot.keepingMeters(of: snapshot) == snapshot, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func keepingMetersIsRightBiased(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let cached = gen.snapshot()
+        var fresh = gen.snapshot()
+        fresh.meters.append(gen.meter())
+        #expect(fresh.keepingMeters(of: cached) == fresh, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func keepingMetersTakesTodayAndIssueFromTheNewSnapshot(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let cached = gen.snapshot()
+        let fresh = gen.snapshot()
+        let shown = fresh.keepingMeters(of: cached)
+        #expect(shown.today == fresh.today, "seed \(seed)")
+        #expect(shown.issue == fresh.issue, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func keepingMetersNeverSplitsTheLimitsPart(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let cached = gen.snapshot()
+        let fresh = gen.snapshot()
+        let shown = limitsPart(of: fresh.keepingMeters(of: cached))
+        #expect(shown == limitsPart(of: fresh) || shown == limitsPart(of: cached), "seed \(seed)")
+    }
+
+    /// What merging moves as one piece: the meters, their plan and their age.
+    func limitsPart(of snapshot: UsageSnapshot) -> ([Meter], String?, Date) {
+        (snapshot.meters, snapshot.plan, snapshot.fetchedAt)
     }
 }
