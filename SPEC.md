@@ -288,7 +288,7 @@ Notes:
   the script catches raw strings (`"claude"`, `ProviderID(rawValue: "cursor")`).
 - **G-6** No `Date()`, `Date.now`, `.now` as an implicit member (`fetchedAt: .now`), `Date(timeIntervalSinceNow:)`,
   `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`,
-  `Calendar.current` outside `BurnieInfra` and the composition root. Time comes from `Clock`; the time zone comes in
+  `Calendar.current` outside `BurnieInfra` (and its tests, which exercise the real APIs) and the composition root. Time comes from `Clock`; the time zone comes in
   the events (`today`) or as a parameter; views take the locale from SwiftUI's `@Environment(\.locale)` and pass it
   to formatters. The exceptions only pace drawing, inside Components and views: the start of a SwiftUI `TimelineView` schedule
   (`.periodic(from: .now, …)`) and a component's own animation in `IconButton` (`Spin(startingAt: .now)`,
@@ -1179,16 +1179,23 @@ because they are the net that proves the big one changed structure and not behav
 ### 14.1 Before · Guardrails PR
 
 - `scripts/check-architecture.sh` with the rules of section 16.2, printing `SPEC <rule>: <file>:<line>: <message>`.
-  Rules for modules that don't exist yet stay dormant until their folder appears.
+  Rules for modules that don't exist yet stay dormant until their folder appears (holds a Swift file). Its own test
+  (`scripts/check-architecture-test.sh`) runs over two sample trees, today's layout and the target one.
 - `scripts/check-sensitive.sh` (section 16.6).
-- `make check` (both scripts, the sensitive one with `--all`) and `make verify` (`check` + `test` + `build`).
+- `make check` (the architecture check's test, then both scripts, the sensitive one with `--all`) and `make verify`
+  (`check` + `test` + `build`).
 - `.github/workflows/verify.yml`: `make verify` on every PR, on a macOS runner with the Xcode that builds the app
-  today, after installing XcodeGen (Homebrew), which `make build` runs; no secrets and no signing: Debug already signs
-  ad hoc (decision 38).
+  today (the `xcode-27` image, Xcode 27.1 picked with `DEVELOPER_DIR`), after installing XcodeGen (Homebrew), which
+  `make build` runs; no secrets and no signing: Debug already signs ad hoc (decision 38). The checkout action is pinned
+  to a commit.
 - Root `AGENTS.md`: the commands table gains `make check` and `make verify`, and the workflow asks for `make verify`
   green instead of `make test` and `make build`.
-- `BurnieTestSupport` test-support target: `FixedClock`, `ManualSleeper`, port fakes, `Gen` (seeded property-test
-  generators), fixture loading.
+- `BurnieTestSupport` test-support target at `BurnieKit/Tests/BurnieTestSupport`, so everything under `BurnieKit/Tests/`
+  is test code: `FixedClock`, port fakes, `Gen` (seeded property-test generators), fixture loading. `Gen` gets its first
+  uses in property tests (T-8) for the 4.4 laws that already hold on today's types (`LocalDay`, the meter's fraction
+  clamp, `UsageHistory.record`, `RateLimitBackoff`, merge as `keepingMeters(of:)`); the refactor PR retargets them
+  (16.5). `ManualSleeper` comes with the `Sleeper` port, the seam the characterization PR adds: before it there is
+  nothing for it to fake.
 - Nested `CLAUDE.md` files (`@AGENTS.md`) in each module folder, excluded from targets in `Package.swift` and `project.yml`
   (section 17).
 - Today's files with more than one top-level type, or one not named like the file, are split or renamed, so G-4 holds
@@ -1354,22 +1361,23 @@ author runs the rest and says so in the PR body.
 `scripts/check-architecture.sh` greps the Swift files under `App/` and `BurnieKit/` that git tracks or would track
 (`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/` and generated
 code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the layers and isn't
-checked. Every pattern skips comment lines (`//`, `///`), so a doc comment that names a forbidden call doesn't fail.
+checked. Every pattern except G-8's skips comment lines (`//`, `///`), so a doc comment that names a forbidden call
+doesn't fail; G-8 reads them, because that's where its markers live.
 Rules:
 
 | Rule | Check |
 | --- | --- |
 | G-3 | Every `import` in a module is in its allowed list (section 3.2). |
 | G-4 | A file declares one top-level type, named like the file (a regex over `^(@\w+ )*((public\|internal\|private\|fileprivate) )?(final )?(struct\|enum\|class\|actor\|protocol) `, so private helpers and `final class`es count). |
-| G-5 | No `case .claude`, `case .cursor`, `== .claude`, `== .cursor` (as whole words: `.claudeNotFound` doesn't match), and no `"claude"` or `"cursor"` string literal outside `BurnieProviders` (persistence fixtures and tests of section 12 allowlisted by path). |
-| G-6 | No `Date()`, `Date.now`, `.now` after `(`, `:` or `,` (an implicit member), `Date(timeIntervalSinceNow`, `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`, `Calendar.current` outside Infra and `App/Composition`, except `TimelineView(.periodic(from: .now` and, in `IconButton.swift` only, `Spin(startingAt: .now)`, `stop(at: .now)` and `.timeIntervalSinceNow`. |
+| G-5 | No `case .claude`, `case .cursor`, `== .claude`, `== .cursor`, `!= .claude`, `!= .cursor` (as whole words: `.claudeNotFound` doesn't match), and no `"claude"` or `"cursor"` string literal outside `BurnieProviders` (persistence fixtures and tests of section 12 allowlisted by path). |
+| G-6 | No `Date()`, `Date.now`, `.now` after `(`, `:` or `,` (an implicit member), `Date(timeIntervalSinceNow`, `.timeIntervalSinceNow`, `ContinuousClock.now`, `SuspendingClock.now`, `TimeZone.current`, `Locale.current`, `Calendar.current` outside Infra (its test targets included) and `App/Composition`, except `TimelineView(.periodic(from: .now` and, in `IconButton.swift` only, `Spin(startingAt: .now)`, `stop(at: .now)` and `.timeIntervalSinceNow`. |
 | G-7 | No `print(`, `NSLog(`, `debugPrint(` outside the performance test. |
-| G-8 | No `TODO`, `FIXME`, `XXX`. |
+| G-8 | No `TODO`, `FIXME`, `XXX` as whole words, comments included (`ssXXXXX` in a date format isn't one). |
 | G-9 | No `try!`, and no `!` right after `)` (`URL(string: "…")!`), outside test targets unless the line above is a comment. Other force unwraps are left to review. |
 | G-11 | No `@unchecked Sendable` outside Infra and test targets; where allowed, the line above has a comment. |
 | D-2 | No `class `, `actor `, `async`, `Task`, `static var` in `BurnieDomain`. |
 | D-3 | No `FileManager`, `URLSession`, `Process`, `UserDefaults`, `Bundle`, `ProcessInfo`, `NotificationCenter` in Domain, Interface, Providers, Application. |
-| D-6 | No string literal with letters in Domain except `rawValue`s, coding keys and `Codable` error descriptions (allowlist by pattern). |
+| D-6 | No string literal with letters in Domain except `rawValue`s, coding keys, `Codable` error descriptions, format strings made only of specifiers (`"%04d-%02d-%02d"`) and fixed identifiers (`TimeZone(identifier: "UTC")`), allowlisted by pattern; only the allowed literal is exempt, never the rest of its line. |
 | I-2 | No `class `, `actor `, `static var`, and no `var` at file scope in `BurnieInterface`. |
 | P-1 | No `os.Logger`, `Logger(` in Providers. |
 | A-1 | No `public` type in Application other than `AppModel` and `AppEnvironment`, and no `public` member outside them. |
@@ -1430,14 +1438,19 @@ through the PR) and the summary of its test output, which the squash commit mess
 `scripts/check-sensitive.sh` scans the staged diff, or with `--all` every tracked and untracked file that isn't ignored
 (what `make check` runs, so CI, where nothing is staged, checks the whole tree), and fails on:
 
-- absolute home paths (`/Users/<name>/`, `/home/<name>/`);
-- email addresses other than GitHub noreply addresses;
-- token-like strings: `sk-ant-`, `Bearer ` followed by a long token, JWT-shaped strings (`eyJ…\.…\.…`) outside the
-  fixture allowlist (fixtures with invented JWTs are listed by path in the script);
+- absolute home paths (`/Users/<name>/`, `/home/<name>/`), also JSON-escaped (`\/Users\/<name>`) and as Claude Code
+  names project folders (`-Users-<name>-…`); the placeholder names of invented test data (`dev`, `tester`, `user`…)
+  are listed in the script;
+- email addresses other than GitHub noreply addresses (and reserved example domains, `example.com`, `.test`…, which
+  can't be real mailboxes);
+- token-like strings: `sk-ant-` followed by a real token's length (a fixture's short placeholder passes), `Bearer `
+  followed by a long token, JWT-shaped strings (`eyJ…\.…\.…`) outside the fixture allowlist (fixtures with invented
+  JWTs are listed by path in the script);
 - private key headers (`-----BEGIN … PRIVATE KEY-----`), `.p8`, `.p12` files;
 - certificate hashes (40-hex strings next to `codesign` or `identity`).
 
-It never prints a matched value, only the file, line and rule. Reading `git diff --cached` by eye before every commit
+A symlink is scanned as the path it points to, which is what git commits. It never prints a matched value, only the
+file, line and rule. Reading `git diff --cached` by eye before every commit
 stays mandatory (root `AGENTS.md`).
 
 ### 16.7 Manual QA matrix
