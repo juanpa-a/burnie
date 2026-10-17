@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct ClaudeUsageMapperTests {

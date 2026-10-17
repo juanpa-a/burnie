@@ -9,7 +9,7 @@ RELEASES_URL := https://github.com/juanpa-a/burnie/releases
 # Sparkle's command line tools, which SwiftPM downloads with the package.
 SPARKLE_BIN := $(DERIVED_DATA)/SourcePackages/artifacts/sparkle/Sparkle/bin
 
-.PHONY: gen build test run perf release-adhoc install dmg release
+.PHONY: gen build test check verify run perf release-adhoc install dmg release
 
 gen:
 	xcodegen generate --quiet
@@ -20,6 +20,15 @@ build: gen
 
 test:
 	swift test --package-path BurnieKit
+
+# The architecture rules of SPEC.md section 16.2 (and the check's own test), and sensitive data in every file.
+check:
+	scripts/check-architecture-test.sh
+	scripts/check-architecture.sh
+	scripts/check-sensitive.sh --all
+
+# Every gate CI runs on a pull request.
+verify: check test build
 
 run: build
 	open $(DEBUG_APP)

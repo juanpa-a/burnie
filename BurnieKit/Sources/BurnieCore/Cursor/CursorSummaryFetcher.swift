@@ -2,6 +2,7 @@ import Foundation
 
 /// Cursor's limits source: plan and meters from `usage-summary`.
 public struct CursorSummaryFetcher: LimitsSource {
+    // A literal URL, so it always parses.
     static let url = URL(string: "https://cursor.com/api/usage-summary")!
 
     private let dashboard: CursorDashboardClient

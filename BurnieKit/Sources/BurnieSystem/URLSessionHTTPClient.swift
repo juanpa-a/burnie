@@ -50,6 +50,14 @@ public final class URLSessionHTTPClient: HTTPClient {
         }
         return urlRequest
     }
+
+    /// A redirect (for example, to Cursor's login) arrives as a 3xx response instead of being followed
+    /// with the credentials to another host.
+    private final class RedirectRefusal: NSObject, URLSessionTaskDelegate, Sendable {
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? {
+            nil
+        }
+    }
 }
 
 private extension HTTPRequest.Method {
@@ -58,13 +66,5 @@ private extension HTTPRequest.Method {
         case .get: "GET"
         case .post: "POST"
         }
-    }
-}
-
-/// A redirect (for example, to Cursor's login) arrives as a 3xx response instead of being followed
-/// with the credentials to another host.
-private final class RedirectRefusal: NSObject, URLSessionTaskDelegate, Sendable {
-    func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? {
-        nil
     }
 }

@@ -20,12 +20,14 @@ struct CursorEventsFetcher {
     }
 
     static func url(from start: Date, to end: Date) -> URL {
+        // A literal URL, so it always parses.
         var components = URLComponents(string: "https://cursor.com/api/dashboard/export-usage-events-csv")!
         components.queryItems = [
             URLQueryItem(name: "strategy", value: "tokens"),
             URLQueryItem(name: "startDate", value: start.unixMillisecondsString),
             URLQueryItem(name: "endDate", value: end.unixMillisecondsString),
         ]
+        // A literal https URL with plain query items always forms a URL.
         return components.url!
     }
 }
