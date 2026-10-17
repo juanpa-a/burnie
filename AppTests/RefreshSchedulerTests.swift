@@ -1,5 +1,5 @@
 import BurnieCore
-import BurnieTestSupport
+import LegacyTestSupport
 import Foundation
 import Testing
 

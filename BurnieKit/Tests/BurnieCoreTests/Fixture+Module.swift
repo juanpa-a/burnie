@@ -1,4 +1,4 @@
-import BurnieTestSupport
+import LegacyTestSupport
 import Foundation
 
 /// This target's fixtures, from its `Fixtures` folder.

@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import BurnieTestSupport
+import LegacyTestSupport
 @testable import BurnieCore
 
 /// The HTTP rules every provider shares, with no rules of its own on top.

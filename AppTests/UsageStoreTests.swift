@@ -1,6 +1,6 @@
 import BurnieCore
 import BurnieSystem
-import BurnieTestSupport
+import LegacyTestSupport
 import Foundation
 import Testing
 

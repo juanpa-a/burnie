@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import BurnieTestSupport
+import LegacyTestSupport
 @testable import BurnieCore
 
 /// 200 MB of synthetic JSONL: < 3 s cold and < 50 ms incremental.

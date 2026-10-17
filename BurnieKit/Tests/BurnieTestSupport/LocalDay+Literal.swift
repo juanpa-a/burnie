@@ -1,4 +1,4 @@
-import BurnieCore
+import BurnieDomain
 
 extension LocalDay {
     /// A test's literal day, like `.day("2026-10-10")`; a typo stops the run instead of returning nil.

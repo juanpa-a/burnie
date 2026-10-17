@@ -1,5 +1,5 @@
 import Testing
-import BurnieTestSupport
+import LegacyTestSupport
 @testable import BurnieCore
 
 struct MeterValueFormatterTests {

@@ -1,0 +1,5 @@
+{
+  "content": {"activityOnly": {"at": 1791662100, "value": {"tokens": 1250000}}},
+  "issue": {"specific": "missingScope"},
+  "provider": "beta"
+}
