@@ -68,6 +68,7 @@ let package = Package(
         .testTarget(name: "BurnieApplicationTests", dependencies: ["BurnieApplication", "BurnieTestSupport"]),
         .testTarget(name: "BurnieComponentsTests", dependencies: ["BurnieComponents", "BurnieTestSupport"]),
         .testTarget(name: "BurnieInfraTests", dependencies: ["BurnieInfra", "BurnieTestSupport"]),
+        .testTarget(name: "EquivalenceTests", dependencies: ["BurnieCore", "LegacyTestSupport", "BurnieDomain"]),
         .testTarget(name: "BurnieCoreTests", dependencies: ["BurnieCore", "LegacyTestSupport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "BurnieSystemTests", dependencies: ["BurnieSystem"]),
     ]
