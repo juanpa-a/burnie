@@ -12,6 +12,7 @@ let package = Package(
         .library(name: "BurnieInterface", targets: ["BurnieInterface"]),
         .library(name: "BurnieProviders", targets: ["BurnieProviders"]),
         .library(name: "BurnieInfra", targets: ["BurnieInfra"]),
+        .library(name: "BurnieApplication", targets: ["BurnieApplication"]),
         .library(name: "BurnieCore", targets: ["BurnieCore"]),
         .library(name: "BurnieSystem", targets: ["BurnieSystem"]),
         // For the app's Xcode test target (BurnieAppTests), which links packages only through products.
@@ -25,6 +26,7 @@ let package = Package(
         .target(name: "BurnieDomain", exclude: instructions),
         .target(name: "BurnieInterface", dependencies: ["BurnieDomain"], exclude: instructions),
         .target(name: "BurnieProviders", dependencies: ["BurnieDomain", "BurnieInterface"], exclude: instructions),
+        .target(name: "BurnieApplication", dependencies: ["BurnieDomain", "BurnieInterface"], exclude: instructions),
         .target(
             name: "BurnieInfra",
             dependencies: ["BurnieDomain", "BurnieInterface", .product(name: "Sparkle", package: "Sparkle")],
@@ -56,6 +58,7 @@ let package = Package(
             dependencies: ["BurnieProviders", "BurnieTestSupport"],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "BurnieApplicationTests", dependencies: ["BurnieApplication", "BurnieTestSupport"]),
         .testTarget(name: "BurnieInfraTests", dependencies: ["BurnieInfra", "BurnieTestSupport"]),
         .testTarget(name: "BurnieCoreTests", dependencies: ["BurnieCore", "LegacyTestSupport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "BurnieSystemTests", dependencies: ["BurnieSystem"]),
