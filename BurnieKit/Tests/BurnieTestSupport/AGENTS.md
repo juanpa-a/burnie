@@ -1,9 +1,11 @@
 # BurnieTestSupport
 
-What the test targets share: `FixedClock`, the port fakes, fixture loading and `Gen`, the seeded generator for
-property tests. A regular target that only test targets link, never a product. It imports only `Foundation` and
-`BurnieCore`, never `Testing` or `@testable`, so everything another target uses is `public`. Fixtures stay in each
-test target's resources; `Fixture` takes that target's bundle.
+What the test targets share: `FixedClock` and `ManualClock`, `ManualSleeper`, `Gate` (holds a fake's calls until
+the test lets them through), the port fakes, fixture loading and `Gen`, the seeded generator for property tests.
+Only test targets link it. Its library product exists only for the Xcode `BurnieAppTests` target, and the refactor
+deletes both ([SPEC 15.4](../../../SPEC.md#154-tests)). It imports only `Foundation` and `BurnieCore`, never
+`Testing` or `@testable`, so everything another target uses is `public`. Fixtures stay in each test target's
+resources; `Fixture` takes that target's bundle.
 
 The rules' text lives only in [`SPEC.md`](../../../SPEC.md): `G-*` in
 [3.3](../../../SPEC.md#33-rules-for-every-module-g-), `T-*` in [16.3](../../../SPEC.md#163-test-strategy-per-module),

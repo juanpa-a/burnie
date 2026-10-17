@@ -30,7 +30,7 @@ struct CursorSpendMapperTests {
         #expect(try spent(#"[{"timestamp":"1791608400000","chargedCents":99}]"#) == [Self.today: 0])
     }
 
-    @Test(arguments: [
+    @Test("B-47 one event without a valid charge makes the sum unknown", arguments: [
         #"[{"timestamp":"1791648000000"}]"#,
         #"[{"timestamp":"1791648000000","chargedCents":null}]"#,
         #"[{"timestamp":"1791648000000","chargedCents":"NaN"}]"#,

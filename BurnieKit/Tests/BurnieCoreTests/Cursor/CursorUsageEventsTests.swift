@@ -7,7 +7,8 @@ struct CursorUsageEventsTests {
     let window = ActivityWindow.days(endingAt: .day("2026-10-10"))
     let calendar = Calendar.gregorian(in: .mexicoCity)
 
-    @Test func sumsTotalTokensPerLocalDayInsideTheWindow() throws {
+    @Test("B-47 tokens are the CSV's Total Tokens per local day inside the window")
+    func sumsTotalTokensPerLocalDayInsideTheWindow() throws {
         let totals = try CursorUsageEvents.dailyTokens(csv: Fixture.text("cursor-events.csv"), in: window, calendar: calendar)
         #expect(totals == [
             .day("2026-10-10"): 2_662_000, // includes two events at 01:xx UTC on the 11th

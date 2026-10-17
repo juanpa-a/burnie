@@ -11,16 +11,19 @@ struct UsageSnapshotOnDemandTests {
         UsageSnapshot(provider: .cursor, fetchedAt: .iso("2026-10-10T20:00:00Z"), plan: "ENTERPRISE", today: .money(cents: 10), meters: meters)
     }
 
-    @Test func snapshotWithOnDemandMeterHasOnDemand() {
+    @Test("B-40 a snapshot has on-demand only with an on-demand meter")
+    func snapshotWithOnDemandMeterHasOnDemand() {
         #expect(Self.snapshot([Self.included, Self.onDemand]).hasOnDemand)
         #expect(!Self.snapshot([Self.included]).hasOnDemand)
     }
 
-    @Test func hidingOnDemandKeepsEverythingElse() {
+    @Test("B-40 hiding on-demand removes only its meter")
+    func hidingOnDemandKeepsEverythingElse() {
         #expect(Self.snapshot([Self.included, Self.onDemand]).hidingOnDemand() == Self.snapshot([Self.included]))
     }
 
-    @Test func hidingOnDemandWithoutItChangesNothing() {
+    @Test("B-40 hiding on-demand without it changes nothing")
+    func hidingOnDemandWithoutItChangesNothing() {
         #expect(Self.snapshot([Self.included]).hidingOnDemand() == Self.snapshot([Self.included]))
     }
 }

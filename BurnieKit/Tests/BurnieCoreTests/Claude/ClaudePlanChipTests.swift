@@ -2,7 +2,7 @@ import Testing
 @testable import BurnieCore
 
 struct ClaudePlanChipTests {
-    @Test(arguments: [
+    @Test("B-9 Claude plan chips, with or without the claude_ prefix", arguments: [
         ("claude_max", "MAX"), ("max", "MAX"),
         ("claude_pro", "PRO"), ("pro", "PRO"),
         ("team", "TEAM"), ("claude_enterprise", "ENTERPRISE"),
@@ -11,7 +11,8 @@ struct ClaudePlanChipTests {
         #expect(ClaudePlanChip.label(plan: plan) == chip)
     }
 
-    @Test func hidesTheChipForUnknownPlans() {
+    @Test("B-9 an unknown Claude plan shows no chip")
+    func hidesTheChipForUnknownPlans() {
         #expect(ClaudePlanChip.label(plan: "free") == nil)
         #expect(ClaudePlanChip.label(plan: nil) == nil)
     }

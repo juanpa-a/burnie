@@ -21,7 +21,9 @@ struct CursorAccessTokenTests {
         #expect(try CursorAccessToken(jwt: unsignedJWT(payload: #"{"sub":"user_01PLAIN","exp":1795000000}"#)).userID == "user_01PLAIN")
     }
 
-    @Test(arguments: ["", "not-a-jwt", "a.b", "a.!!!.c", "a.e30.c", unsignedJWT(payload: #"{"sub":"x"}"#)])
+    @Test("B-26 a malformed token is sign-in expired", arguments: [
+        "", "not-a-jwt", "a.b", "a.!!!.c", "a.e30.c", unsignedJWT(payload: #"{"sub":"x"}"#),
+    ])
     func malformedTokensCountAsExpiredSessions(jwt: String) {
         #expect(throws: ProviderIssue.signInExpired) { try CursorAccessToken(jwt: jwt) }
     }

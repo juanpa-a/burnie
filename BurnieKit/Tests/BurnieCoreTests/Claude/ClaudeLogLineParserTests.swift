@@ -24,7 +24,8 @@ struct ClaudeLogLineParserTests {
         ])
     }
 
-    @Test func flagsCorruptLinesWithoutStopping() {
+    @Test("B-44 an unreadable line is flagged and never stops the scan")
+    func flagsCorruptLinesWithoutStopping() {
         #expect(outcomes("claude-log-partial.jsonl") == [
             .usage(ClaudeUsageEntry(messageKey: "msg_P1:req_P1", day: .day("2026-10-10"), tokens: 500)),
             .unreadable,
@@ -32,7 +33,8 @@ struct ClaudeLogLineParserTests {
         ])
     }
 
-    @Test func consumesOnlyUpToTheLastNewline() {
+    @Test("B-44 a last line without a newline is left for the next scan")
+    func consumesOnlyUpToTheLastNewline() {
         let data = Fixture.data("claude-log-partial.jsonl")
         let consumed = ClaudeLogScanner.forEachCompleteLine(in: data) { _ in }
         #expect(consumed == data.lastIndex(of: UInt8(ascii: "\n"))! + 1)

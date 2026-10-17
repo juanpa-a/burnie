@@ -28,7 +28,8 @@ struct ClaudeLimitsFetcherTests {
         "User-Agent": "Burnie/0.1.0",
     ]
 
-    @Test func readsMetersWithTheOAuthTokenAndThePlanFromTheProfile() async throws {
+    @Test("B-28 Claude's plan comes from the profile, asked with the OAuth token")
+    func readsMetersWithTheOAuthTokenAndThePlanFromTheProfile() async throws {
         http.respond(to: ClaudeProfilePlan.url, body: Fixture.data("claude-profile.json"))
         let reading = try await limits()
         #expect(reading == LimitsReading(plan: "MAX", meters: ClaudeUsageMapperTests.fixtureMeters))
@@ -38,40 +39,71 @@ struct ClaudeLimitsFetcherTests {
         ])
     }
 
-    @Test func fallsBackToTheCredentialsPlanWhenTheProfileFails() async throws {
+    @Test("B-28 without the profile, Claude's plan comes from the credentials")
+    func fallsBackToTheCredentialsPlanWhenTheProfileFails() async throws {
         http.respond(to: ClaudeProfilePlan.url, status: 503)
         #expect(try await limits().plan == "PRO")
     }
 
-    @Test mutating func fallsBackToTheCredentialsFile() async throws {
+    @Test("B-27 without a Keychain item, Claude reads the credentials file")
+    mutating func fallsBackToTheCredentialsFile() async throws {
         secrets.items = [:]
         files.write(Fixture.data("claude-credentials.json"), to: Self.paths.credentialsFile, modified: now)
         #expect(try await limits().plan == "PRO")
     }
 
-    @Test mutating func withoutCredentialsIsNotFound() async {
+    @Test("B-27 the Keychain item comes before the credentials file")
+    func readsTheKeychainBeforeTheCredentialsFile() async throws {
+        let fileCredentials = #"{"claudeAiOauth":{"accessToken":"from-the-file","subscriptionType":"team"}}"#
+        files.write(Data(fileCredentials.utf8), to: Self.paths.credentialsFile, modified: now)
+        #expect(try await limits().plan == "PRO")
+        #expect(http.requests.first?.headers["Authorization"] == Self.headers["Authorization"])
+    }
+
+    @Test("B-27 without the Keychain item or the credentials file, Claude is not found")
+    mutating func withoutCredentialsIsNotFound() async {
         secrets.items = [:]
         await #expect(throws: ProviderIssue.notFound) { try await limits() }
         #expect(http.requests.isEmpty)
     }
 
-    @Test mutating func expiredTokenNeverReachesTheNetwork() async {
+    @Test("B-25 an expired token is sign-in expired before any request")
+    mutating func expiredTokenNeverReachesTheNetwork() async {
         now = .iso("2026-10-11T06:00:00Z")
         await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
         #expect(http.requests.isEmpty)
     }
 
-    @Test func unauthorizedIsSignInExpired() async {
+    @Test("B-25 a 401 is sign-in expired")
+    func unauthorizedIsSignInExpired() async {
         http.respond(status: 401)
         await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
     }
 
-    @Test func forbiddenForScopeIsMissingScope() async {
+    @Test("B-25 a 403 mentioning user:profile is missing scope")
+    func forbiddenForScopeIsMissingScope() async {
         http.respond(status: 403, body: Fixture.data("claude-403-scope.json"))
         await #expect(throws: ProviderIssue.missingScope) { try await limits() }
     }
 
-    @Test func rateLimitedHonorsRetryAfter() async {
+    @Test("B-25 a 403 that doesn't mention user:profile is sign-in expired", arguments: [
+        #"{"type":"error","error":{"type":"permission_error","message":"OAuth token has been revoked"}}"#,
+        "",
+    ])
+    func otherForbiddenIsSignInExpired(body: String) async {
+        http.respond(status: 403, body: Data(body.utf8))
+        await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
+    }
+
+    @Test("B-61 an expired sign-in never makes Burnie refresh the token: the usage request is the only one")
+    func expiredSignInNeverRefreshesTheToken() async {
+        http.respond(status: 401)
+        await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
+        #expect(http.requests.map(\.url) == [ClaudeLimitsFetcher.usageURL])
+    }
+
+    @Test("B-24 a 429 is rate limited with Retry-After in seconds or as an HTTP date")
+    func rateLimitedHonorsRetryAfter() async {
         http.respond(status: 429, headers: ["Retry-After": "120"])
         await #expect(throws: ProviderIssue.rateLimited(retryAt: Self.beforeExpiry.addingTimeInterval(120))) { try await limits() }
         http.respond(status: 429, headers: ["Retry-After": "Sun, 11 Oct 2026 03:00:00 GMT"])
@@ -80,7 +112,8 @@ struct ClaudeLimitsFetcherTests {
         await #expect(throws: ProviderIssue.rateLimited(retryAt: nil)) { try await limits() }
     }
 
-    @Test func serverErrorsAndMissingNetworkAreOffline() async {
+    @Test("B-24 server errors and a missing network are offline")
+    func serverErrorsAndMissingNetworkAreOffline() async {
         http.respond(status: 503)
         await #expect(throws: ProviderIssue.offline) { try await limits() }
 
@@ -93,7 +126,8 @@ struct ClaudeLimitsFetcherTests {
         await #expect(throws: ProviderIssue.offline) { try await offline.limits() }
     }
 
-    @Test func okWithoutWindowsIsUnexpected() async {
+    @Test("B-49 usage without windows, or not JSON, is unexpected")
+    func okWithoutWindowsIsUnexpected() async {
         http.respond(status: 200, body: Data(#"{"extra_usage":{"is_enabled":false}}"#.utf8))
         await #expect(throws: ProviderIssue.unexpectedResponse("Claude usage without windows")) { try await limits() }
         http.respond(status: 200, body: Data("<html>".utf8))
