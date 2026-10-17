@@ -10,15 +10,26 @@ let package = Package(
     products: [
         .library(name: "BurnieDomain", targets: ["BurnieDomain"]),
         .library(name: "BurnieInterface", targets: ["BurnieInterface"]),
+        .library(name: "BurnieProviders", targets: ["BurnieProviders"]),
+        .library(name: "BurnieInfra", targets: ["BurnieInfra"]),
         .library(name: "BurnieCore", targets: ["BurnieCore"]),
         .library(name: "BurnieSystem", targets: ["BurnieSystem"]),
         // For the app's Xcode test target (BurnieAppTests), which links packages only through products.
         .library(name: "LegacyTestSupport", targets: ["LegacyTestSupport"]),
     ],
+    dependencies: [
+        // Pinned: Sparkle replaces the installed app, so a new version comes in through a reviewed PR.
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.0"),
+    ],
     targets: [
         .target(name: "BurnieDomain", exclude: instructions),
         .target(name: "BurnieInterface", dependencies: ["BurnieDomain"], exclude: instructions),
         .target(name: "BurnieProviders", dependencies: ["BurnieDomain", "BurnieInterface"], exclude: instructions),
+        .target(
+            name: "BurnieInfra",
+            dependencies: ["BurnieDomain", "BurnieInterface", .product(name: "Sparkle", package: "Sparkle")],
+            exclude: instructions
+        ),
         .target(name: "BurnieCore", exclude: instructions),
         .target(name: "BurnieSystem", dependencies: ["BurnieCore"], exclude: instructions),
         // Test code: only test targets link it.
@@ -45,6 +56,7 @@ let package = Package(
             dependencies: ["BurnieProviders", "BurnieTestSupport"],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "BurnieInfraTests", dependencies: ["BurnieInfra", "BurnieTestSupport"]),
         .testTarget(name: "BurnieCoreTests", dependencies: ["BurnieCore", "LegacyTestSupport"], resources: [.copy("Fixtures")]),
         .testTarget(name: "BurnieSystemTests", dependencies: ["BurnieSystem"]),
     ]
