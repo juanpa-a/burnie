@@ -1196,7 +1196,13 @@ because they are the net that proves the big one changed structure and not behav
   `UsageStore+Preview.swift`, and in the tests `ClaudeLimitsFetcherTests.swift`, `ClaudeLogActivityTests.swift`,
   `DisplayTextTests.swift`, `MoneyFormatterTests.swift`, `FakeSources.swift` (`FakeLimitsSource`,
   `FakeActivitySource`) and `TestValues.swift` (`FixedClock`). `@unchecked Sendable` gets the comment G-11 asks for
-  where it lacks one (`Reports` in `ClaudeLogActivityTests.swift`), and so do today's forced literal URLs (G-9).
+  where it lacks one (`Reports` in `ClaudeLogActivityTests.swift`).
+- Every force unwrap the G-9 check flags today gets the comment G-9 asks for, saying why it can't fail: the literal
+  URLs in `ClaudeLimitsFetcher`, `ClaudeProfilePlan`, `CursorSummaryFetcher`, `CursorSpendFetcher`,
+  `CursorEventsFetcher` and `ProviderID+Display`; the fixed time zones in `LocalDay` (`UTC`) and
+  `UsageStore+Preview`; and `LocalDay`'s calendar unwraps (`start(in:)`, `components`, `utcDate`, `advanced(by:)`),
+  which can't fail because every `LocalDay` holds a validated `yyyy-MM-dd`. The `try!` in `CursorSpendFetcher`
+  already has its comment.
 - Rules on today's layout, where `BurnieCore` stands for Domain and `BurnieSystem` for Infra:
 
   | Rule | In the guardrails PR |
