@@ -12,7 +12,7 @@ targets:
     platform: macOS
     sources:
       - path: App
-        excludes: [AGENTS.md]
+        excludes: [AGENTS.md, CLAUDE.md]
     dependencies:
       - package: BurnieKit
         product: BurnieCore

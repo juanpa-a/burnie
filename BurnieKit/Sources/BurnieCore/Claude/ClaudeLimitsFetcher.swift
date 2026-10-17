@@ -4,6 +4,7 @@ import Foundation
 ///
 /// Burnie never refreshes the token: rotating the refresh token alongside Claude Code can invalidate its session.
 public struct ClaudeLimitsFetcher: LimitsSource {
+    // A literal URL, so it always parses.
     static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
     private let credentials: ClaudeCredentialsReader

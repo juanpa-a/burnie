@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct MeterTests {
@@ -13,6 +14,21 @@ struct MeterTests {
     func clampsFractionToZeroThroughOne(raw: Double, expected: Double) {
         let meter = Meter(id: .session, fraction: raw, value: .percent(0), caption: .noActiveSession)
         #expect(meter.fraction == expected)
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func fractionIsWithinZeroThroughOneForEveryDouble(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let meter = Meter(id: .session, fraction: gen.double(), value: .percent(0), caption: .noActiveSession)
+        #expect((0...1).contains(meter.fraction), "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func fractionClampIsIdempotent(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let meter = gen.meter()
+        let clampedAgain = Meter(id: meter.id, fraction: meter.fraction, value: meter.value, caption: meter.caption, period: meter.period)
+        #expect(clampedAgain == meter, "seed \(seed)")
     }
 
     @Test(arguments: [("2026-10-10T10:00:00Z", 0.0), ("2026-10-10T12:30:00Z", 0.5), ("2026-10-10T15:00:00Z", 1.0)])

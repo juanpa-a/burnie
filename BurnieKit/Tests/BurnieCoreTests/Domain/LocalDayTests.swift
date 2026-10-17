@@ -1,8 +1,13 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct LocalDayTests {
+    static let anchor = LocalDay.day("2026-10-10")
+    /// About five and a half years either way, so steps cross month ends, year ends and leap days.
+    static let steps = -2_000...2_000
+
     @Test func earlyUTCMorningFallsOnThePreviousDayInMexicoCity() {
         #expect(LocalDay(.iso("2026-10-10T05:30:00Z"), in: .mexicoCity).iso == "2026-10-09")
         #expect(LocalDay(.iso("2026-10-10T06:00:00Z"), in: .mexicoCity).iso == "2026-10-10")
@@ -24,6 +29,39 @@ struct LocalDayTests {
         #expect(day.advanced(by: 3).iso == "2026-11-02")
         #expect(day.advanced(by: -30).iso == "2026-09-30")
         #expect(day.distance(to: .day("2026-11-01")) == 2)
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func steppingBackUndoesAdvancing(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let day = gen.localDay(around: Self.anchor)
+        let step = gen.int(in: Self.steps)
+        #expect(day.advanced(by: step).advanced(by: -step) == day, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func distanceToAnAdvancedDayIsTheStep(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let day = gen.localDay(around: Self.anchor)
+        let step = gen.int(in: Self.steps)
+        #expect(day.distance(to: day.advanced(by: step)) == step, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func isoRoundTrips(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let day = Self.anchor.advanced(by: gen.int(in: Self.steps))
+        #expect(LocalDay(iso: day.iso) == day, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func orderingAgreesWithDistance(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let day = Self.anchor.advanced(by: gen.int(in: Self.steps))
+        // Close days, so about a seventh are the same day and some cross a month or year end.
+        let other = day.advanced(by: gen.int(in: -3...3))
+        #expect((day < other) == (day.distance(to: other) > 0), "seed \(seed)")
+        #expect((day == other) == (day.distance(to: other) == 0), "seed \(seed)")
     }
 
     @Test func rejectsMalformedDays() {

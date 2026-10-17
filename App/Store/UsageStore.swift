@@ -287,21 +287,21 @@ final class UsageStore {
             await scheduler.setActive(active)
         }
     }
-}
 
-#if DEBUG
-/// The previews' cache: it never has anything and never saves anything.
-private struct NoCache: SnapshotStore {
-    func load<T: Codable>(_ name: String) throws -> T? { nil }
-    func save<T: Codable>(_ value: T, as name: String) throws {}
-}
-#endif
+    #if DEBUG
+    /// The previews' cache: it never has anything and never saves anything.
+    private struct NoCache: SnapshotStore {
+        func load<T: Codable>(_ name: String) throws -> T? { nil }
+        func save<T: Codable>(_ value: T, as name: String) throws {}
+    }
+    #endif
 
-/// Names of the cache files in `Application Support/Burnie/`.
-private enum CacheFile {
-    static let history = "history"
+    /// Names of the cache files in `Application Support/Burnie/`.
+    private enum CacheFile {
+        static let history = "history"
 
-    static func snapshot(_ id: ProviderID) -> String {
-        "snapshot-\(id.rawValue)"
+        static func snapshot(_ id: ProviderID) -> String {
+            "snapshot-\(id.rawValue)"
+        }
     }
 }

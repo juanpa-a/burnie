@@ -1,10 +1,34 @@
 import Foundation
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct UsageHistoryTests {
+    static let anchor = LocalDay.day("2026-10-10")
+
     func window(endingAt today: String, value: Int) -> [DailyPoint] {
         ActivityWindow.days(endingAt: .day(today)).map { DailyPoint(day: $0, value: value) }
+    }
+
+    /// Up to four earlier recordings, of any provider, on days around the anchor.
+    func randomHistory(_ gen: inout Gen) -> UsageHistory {
+        var history = UsageHistory()
+        for _ in 0..<gen.int(in: 0...4) {
+            let today = gen.localDay(around: Self.anchor)
+            let provider = gen.providerID(from: ProviderID.allCases)
+            history.record(randomPoints(&gen, around: today), for: provider, today: today)
+        }
+        return history
+    }
+
+    /// Up to ten days around `today`, some past the retention and some after `today`, with any token count.
+    func randomPoints(_ gen: inout Gen, around today: LocalDay) -> [DailyPoint] {
+        (0..<gen.int(in: 0...10)).map { _ in DailyPoint(day: gen.localDay(around: today), value: gen.int(in: 0...100_000_000)) }
+    }
+
+    /// Every stored day, read through the persisted format: provider, then day.
+    func storedDays(of history: UsageHistory) throws -> [ProviderID: [LocalDay: Int]] {
+        try JSONDecoder().decode([ProviderID: [LocalDay: Int]].self, from: JSONEncoder().encode(history))
     }
 
     @Test func overwritesTheWindowAndFreezesOlderDays() {
@@ -38,5 +62,46 @@ struct UsageHistoryTests {
         history.record([DailyPoint(day: .day("2026-10-10"), value: 1_250_000)], for: .claude, today: .day("2026-10-10"))
         #expect(String(decoding: try JSONEncoder().encode(history), as: UTF8.self) == #"{"claude":{"2026-10-10":1250000}}"#)
         #expect(try JSONDecoder().decode(UsageHistory.self, from: JSONEncoder().encode(history)) == history)
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func recordingTwiceIsRecordingOnce(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        var once = randomHistory(&gen)
+        let today = gen.localDay(around: Self.anchor)
+        let provider = gen.providerID(from: ProviderID.allCases)
+        let points = randomPoints(&gen, around: today)
+        once.record(points, for: provider, today: today)
+        var twice = once
+        twice.record(points, for: provider, today: today)
+        #expect(twice == once, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func recordingKeepsNoDayPastTheRetention(seed: UInt64) throws {
+        var gen = Gen(seed: seed)
+        var history = randomHistory(&gen)
+        let today = gen.localDay(around: Self.anchor)
+        let provider = gen.providerID(from: ProviderID.allCases)
+        history.record(randomPoints(&gen, around: today), for: provider, today: today)
+
+        let oldestKept = today.advanced(by: 1 - UsageHistory.retentionDays)
+        let days = try storedDays(of: history)[provider, default: [:]].keys
+        #expect(days.allSatisfy { $0 >= oldestKept }, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func recordingLeavesOtherProvidersUntouched(seed: UInt64) throws {
+        var gen = Gen(seed: seed)
+        var history = randomHistory(&gen)
+        let before = try storedDays(of: history)
+        let today = gen.localDay(around: Self.anchor)
+        let provider = gen.providerID(from: ProviderID.allCases)
+        history.record(randomPoints(&gen, around: today), for: provider, today: today)
+
+        let after = try storedDays(of: history)
+        for other in ProviderID.allCases where other != provider {
+            #expect(after[other] == before[other], "seed \(seed)")
+        }
     }
 }

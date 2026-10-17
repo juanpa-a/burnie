@@ -53,9 +53,11 @@ Each module has its own `AGENTS.md`. Read it before touching that module.
 | Command | What it does |
 | --- | --- |
 | `make gen` | Generates `Burnie.xcodeproj` with XcodeGen. The project is generated: never edit it, change `project.yml`. |
+| `make check` | The architecture check (`SPEC.md` section 16.2) and the sensitive-data check over every file. |
 | `make test` | `swift test` for the `BurnieKit` package. |
 | `make perf` | Release-mode performance test of the log scan (200 MB). |
 | `make build` | Builds the app in Debug. |
+| `make verify` | `check`, `test` and `build`: what CI runs on every pull request. |
 | `make run` | Builds and opens the app. |
 | `make install` | Builds a Release copy signed ad hoc, installs it in `/Applications` (or `APPS_DIR`), and opens it. |
 | `make dmg` | Builds the same ad hoc copy, packs it into `build/Burnie.dmg` with the install window, and opens it. |
@@ -63,6 +65,6 @@ Each module has its own `AGENTS.md`. Read it before touching that module.
 
 ## Workflow
 
-- One ticket = one branch and one PR. It isn't closed without `make test` and `make build` green and a /tidy pass.
+- One ticket = one branch and one PR. It isn't closed without `make verify` green and a /tidy pass.
 - Tests use Swift Testing (`import Testing`). Fixtures live in `BurnieKit/Tests/BurnieCoreTests/Fixtures` and keep the real shape with invented values: no real tokens, emails, ids, paths, account dates, or usage data.
 - Burnie is read-only over `~/.claude`, `~/.config/claude`, the Keychain, and `state.vscdb`. It only writes to `~/Library/Application Support/Burnie/`, plus what Sparkle needs to install an update the user asked for.

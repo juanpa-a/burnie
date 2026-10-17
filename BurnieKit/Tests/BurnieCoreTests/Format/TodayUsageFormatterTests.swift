@@ -1,4 +1,5 @@
 import Testing
+import BurnieTestSupport
 @testable import BurnieCore
 
 struct TodayUsageFormatterTests {

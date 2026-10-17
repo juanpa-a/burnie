@@ -5,6 +5,7 @@ import Foundation
 /// Claude Code's credentials keep the plan from sign-in time and don't change when the
 /// subscription changes; the profile does. Since the plan rarely changes, it's requested at most once an hour.
 actor ClaudeProfilePlan {
+    // A literal URL, so it always parses.
     static let url = URL(string: "https://api.anthropic.com/api/oauth/profile")!
     static let maxAge: TimeInterval = 60 * 60
 

@@ -66,6 +66,7 @@ public struct ClaudeLogIndex: Codable, Sendable, Equatable {
             forget(path)
         }
         for path in files.keys {
+            // `path` comes from `files.keys`, so the entry exists.
             countedMessages.subtract(files[path]!.dropDays(before: firstDay))
         }
     }
