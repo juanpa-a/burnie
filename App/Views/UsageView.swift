@@ -1,15 +1,18 @@
-import BurnieCore
+import BurnieApplication
+import BurnieComponents
+import BurnieInterface
 import SwiftUI
 
-/// The popover's main screen: header, one section per enabled provider, the week chart unless its switch is off, and footer.
+/// The popover's main screen: header, one section per enabled provider, the week chart unless its switch is off, and
+/// the footer.
 struct UsageView: View {
-    @Environment(UsageStore.self) private var store
+    @Environment(AppModel.self) private var model
     let onOpenProviders: () -> Void
 
     var body: some View {
-        // Recomputes "Updated…" and the countdowns even when no refresh arrives.
-        TimelineView(.periodic(from: .now, by: 30)) { _ in
-            content(now: store.clock.now)
+        // Draws the ages and the countdowns again even when no refresh arrives.
+        TimelineView(.periodic(from: .now, by: DesignTokens.Motion.clockTick)) { _ in
+            content(now: model.clock.now)
         }
     }
 
@@ -17,22 +20,16 @@ struct UsageView: View {
         VStack(spacing: 0) {
             UsageHeader(now: now, onOpenProviders: onOpenProviders)
             BurnieDivider()
-            if enabledProviders.isEmpty {
+            if model.state.enabledProviders.isEmpty {
                 EmptyProvidersView(onChooseProviders: onOpenProviders)
                 BurnieDivider()
             } else {
-                ForEach(enabledProviders, id: \.self) { provider in
-                    ProviderSection(
-                        provider: provider,
-                        state: store.shownState(for: provider),
-                        now: now,
-                        timeZone: store.clock.timeZone,
-                        renewSignIn: renewSignIn(for: provider)
-                    )
+                ForEach(model.state.enabledProviders, id: \.id) { panel in
+                    ProviderSection(panel: panel, now: now, timeZone: model.clock.timeZone, renewSignIn: renewal(for: panel))
                     BurnieDivider()
                 }
-                if store.showWeekChart {
-                    WeekChart(providers: enabledProviders, history: store.history)
+                if let chart = model.state.weekChart {
+                    WeekChartView(chart: chart, descriptors: model.state.providers.map(\.descriptor))
                     BurnieDivider()
                 }
             }
@@ -40,13 +37,9 @@ struct UsageView: View {
         }
     }
 
-    private func renewSignIn(for provider: ProviderID) -> (() async -> Bool)? {
-        guard store.canRenewSignIn(provider) else { return nil }
-        return { await store.renewSignIn(provider) }
-    }
-
-    private var enabledProviders: [ProviderID] {
-        ProviderID.allCases.filter(store.enabled.contains)
+    /// Only a provider that can renew its sign-in offers the button (B-22).
+    private func renewal(for panel: ProviderPanel) -> (() async -> Bool)? {
+        guard panel.renewalFailedCopy != nil else { return nil }
+        return { await model.useCases.renewSignIn(panel.id) }
     }
 }
-

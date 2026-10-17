@@ -1,46 +1,49 @@
-import BurnieCore
+import BurnieApplication
+import BurnieComponents
+import BurnieInterface
 import SwiftUI
 
-/// "Usage", the age of the data, and the Refresh and Providers buttons. The Providers gear carries a dot while an update is available.
+/// "Usage", the age of the data, and the Refresh and Providers buttons. The gear carries a dot while an update is
+/// available (B-57).
 struct UsageHeader: View {
-    @Environment(UsageStore.self) private var store
-    @Environment(AppUpdater.self) private var updater
+    @Environment(AppModel.self) private var model
     let now: Date
     let onOpenProviders: () -> Void
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Usage")
-                    .font(Tokens.Typography.title)
-                    .tracking(-0.1)
-                    .foregroundStyle(Tokens.Palette.fg)
-                // With every provider off, nothing is updating.
-                if !store.enabled.isEmpty {
-                    Text(LastUpdatedFormatter().string(lastUpdated: store.lastUpdated, now: now))
-                        .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.Palette.fg2)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.textLines) {
+                Text(Copy.usage)
+                    .font(DesignTokens.Typography.title)
+                    .tracking(DesignTokens.Typography.screenTitleTracking)
+                    .foregroundStyle(DesignTokens.Palette.fg)
+                // With every provider off, nothing is updating (B-55).
+                if !model.state.enabledProviders.isEmpty {
+                    Text(LastUpdatedFormatter().string(lastUpdated: model.state.lastUpdated, now: now))
+                        .font(DesignTokens.Typography.caption)
+                        .foregroundStyle(DesignTokens.Palette.fg2)
                         .monospacedDigit()
                 }
             }
             Spacer()
-            HStack(spacing: 2) {
-                IconButton(systemName: "arrow.clockwise", accessibilityLabel: "Refresh", isSpinning: store.isRefreshing) {
-                    Task { await store.refreshAll(force: true) }
+            HStack(spacing: DesignTokens.Spacing.headerButtons) {
+                // Spins, and can't be pressed, while any refresh is open (B-59).
+                IconButton(systemName: "arrow.clockwise", accessibilityLabel: Copy.refresh, isSpinning: model.state.isRefreshing) {
+                    Task { await model.useCases.refreshUsage() }
                 }
-                .disabled(store.isRefreshing)
+                .disabled(model.state.isRefreshing)
                 IconButton(systemName: "gearshape", accessibilityLabel: providersLabel, action: onOpenProviders)
                     .overlay(alignment: .topTrailing) {
-                        if updater.availableVersion != nil {
+                        if model.state.availableUpdate != nil {
                             UpdateBadge()
                         }
                     }
             }
         }
-        .padding(EdgeInsets(top: 14, leading: 16, bottom: 10, trailing: 12))
+        .padding(DesignTokens.Insets.usageHeader)
     }
 
     private var providersLabel: String {
-        updater.availableVersion == nil ? "Providers" : "Providers, update available"
+        model.state.availableUpdate == nil ? Copy.providers : Copy.providersWithUpdate
     }
 }

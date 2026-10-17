@@ -1,4 +1,6 @@
 import AppKit
+import BurnieApplication
+import BurnieComponents
 import SwiftUI
 
 /// Switches between the usage and providers screens inside the same window.
@@ -7,7 +9,7 @@ struct RootView: View {
         case usage, providers
     }
 
-    @Environment(UsageStore.self) private var store
+    @Environment(AppModel.self) private var model
     @State private var route = Route.usage
     @State private var placement = PopoverPlacement()
 
@@ -22,11 +24,11 @@ struct RootView: View {
                     .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .frame(width: Tokens.Metrics.popoverWidth)
+        .frame(width: DesignTokens.Metrics.popoverWidth)
         .fixedSize(horizontal: false, vertical: true)
-        .background(Tokens.Palette.pop)
+        .background(DesignTokens.Palette.pop)
         .background(WindowReader { placement.keepCentered($0) })
-        // Opening the popover = whichever comes first: onAppear or the window becoming key.
+        // Opening the popover = whichever comes first: onAppear or the window becoming key (B-39).
         .onAppear(perform: popoverOpened)
         .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
             popoverOpened()
@@ -34,12 +36,12 @@ struct RootView: View {
     }
 
     private func show(_ destination: Route) {
-        withAnimation(.easeInOut(duration: 0.18)) { route = destination }
+        withAnimation(DesignTokens.Motion.screenChange) { route = destination }
     }
 
-    /// Every opening starts on the usage screen.
+    /// Every opening starts on the usage screen (B-39).
     private func popoverOpened() {
         route = .usage
-        store.popoverOpened()
+        model.useCases.openPopover()
     }
 }

@@ -1,24 +1,24 @@
-import AppKit
-import BurnieCore
+import BurnieApplication
+import BurnieComponents
+import BurnieInterface
 import SwiftUI
 
-/// Actions at the bottom of the popover: each enabled provider's usage page and Quit.
+/// Actions at the bottom of the popover: each enabled provider's usage page, in registry order, then Quit (B-75).
 struct FooterMenu: View {
-    @Environment(UsageStore.self) private var store
-    @Environment(\.openURL) private var openURL
+    @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(ProviderID.allCases.filter(store.enabled.contains), id: \.self) { provider in
-                FooterItem(title: provider.dashboardTitle, accessory: .external) {
-                    openURL(provider.dashboardURL)
+            ForEach(model.state.enabledProviders, id: \.id) { panel in
+                FooterItem(title: panel.descriptor.dashboard.title, accessory: .external) {
+                    model.useCases.openDashboard(panel.id)
                 }
             }
-            FooterItem(title: "Quit", accessory: .shortcut("⌘Q")) {
-                NSApp.terminate(nil)
+            FooterItem(title: Copy.quit, accessory: .shortcut(Copy.quitShortcut)) {
+                model.useCases.quit()
             }
             .keyboardShortcut("q")
         }
-        .padding(6)
+        .padding(DesignTokens.Insets.list)
     }
 }

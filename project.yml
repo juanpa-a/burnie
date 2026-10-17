@@ -3,9 +3,8 @@ options:
   bundleIdPrefix: dev.juanpa
   deploymentTarget: { macOS: "14.0" }
 packages:
+  # Sparkle comes through BurnieInfra, pinned in BurnieKit/Package.swift.
   BurnieKit: { path: BurnieKit }
-  # Pinned: Sparkle replaces the installed app, so a new version comes in through a reviewed PR.
-  Sparkle: { url: https://github.com/sparkle-project/Sparkle, exactVersion: 2.10.0 }
 targets:
   BurnieApp:
     type: application
@@ -15,10 +14,17 @@ targets:
         excludes: [AGENTS.md, CLAUDE.md]
     dependencies:
       - package: BurnieKit
-        product: BurnieCore
+        product: BurnieDomain
       - package: BurnieKit
-        product: BurnieSystem
-      - package: Sparkle
+        product: BurnieInterface
+      - package: BurnieKit
+        product: BurnieComponents
+      - package: BurnieKit
+        product: BurnieApplication
+      - package: BurnieKit
+        product: BurnieProviders
+      - package: BurnieKit
+        product: BurnieInfra
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie
@@ -43,36 +49,3 @@ targets:
           DEVELOPMENT_TEAM: $(BURNIE_TEAM_ID)
           OTHER_CODE_SIGN_FLAGS: --timestamp
     scheme: {}
-  # Characterizes UsageStore, RefreshScheduler and the settings before the refactor replaces them (SPEC 14.2).
-  # Not hosted by the app, which would start the real providers: it compiles the store's sources itself, without
-  # the previews and the ones that pull Sparkle, SMAppService or the live adapters.
-  BurnieAppTests:
-    type: bundle.unit-test
-    platform: macOS
-    sources:
-      - path: App/Store
-        excludes:
-          - UsageStore+Live.swift
-          - UsageStore+Preview.swift
-          - PreviewData.swift
-          - PreviewScenario.swift
-          - AppUpdater.swift
-          - LaunchAtLogin.swift
-          - SystemEventMonitor.swift
-      - path: AppTests
-    dependencies:
-      - package: BurnieKit
-        product: BurnieCore
-      - package: BurnieKit
-        product: BurnieSystem
-      - package: BurnieKit
-        product: LegacyTestSupport
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie.app-tests
-        GENERATE_INFOPLIST_FILE: YES
-        SWIFT_VERSION: "6.0"
-        SWIFT_STRICT_CONCURRENCY: complete
-        CODE_SIGN_IDENTITY: "-"
-    scheme:
-      testTargets: [BurnieAppTests]

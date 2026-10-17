@@ -1,12 +1,13 @@
 #if DEBUG
+import BurnieComponents
 import SwiftUI
 
-// One preview per `PreviewScenario`, each in light and dark.
+// One preview per scenario of SPEC 16.7, each in light and dark.
 
 @MainActor
-private func usage(_ scenario: PreviewScenario, availableUpdate: String? = nil) -> some View {
-    PreviewFrame(availableUpdate: availableUpdate) { UsageView(onOpenProviders: {}) }
-        .environment(scenario.store)
+private func usage(_ scenario: PreviewScenario) -> some View {
+    PreviewFrame { UsageView(onOpenProviders: {}) }
+        .environment(scenario.model)
 }
 
 #Preview("Ready") { usage(.ready) }
@@ -24,5 +25,5 @@ private func usage(_ scenario: PreviewScenario, availableUpdate: String? = nil) 
 #Preview("All providers off") { usage(.allOff) }
 #Preview("Last 7 days hidden") { usage(.weekChartHidden) }
 #Preview("On-demand hidden") { usage(.onDemandHidden) }
-#Preview("Update available") { usage(.ready, availableUpdate: "0.3.0") }
+#Preview("Update available") { usage(.updateAvailable) }
 #endif
