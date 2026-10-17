@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// The "Launch at login" switch; when macOS wants the user's approval, System Settings opens (B-58).

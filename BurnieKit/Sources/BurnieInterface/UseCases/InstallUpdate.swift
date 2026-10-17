@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// The Update row: opens the updater's window.

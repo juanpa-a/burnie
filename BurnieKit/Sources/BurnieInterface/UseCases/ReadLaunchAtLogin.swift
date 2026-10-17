@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// Reads launch at login again when the providers screen appears, since System Settings can change it (B-58).

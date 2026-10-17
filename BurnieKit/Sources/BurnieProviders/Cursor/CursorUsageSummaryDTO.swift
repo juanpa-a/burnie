@@ -7,7 +7,6 @@ struct CursorUsageSummaryDTO: Decodable {
         let used: Int?
         /// nil = no limit.
         let limit: Int?
-        let remaining: Int?
         /// Cursor Models pool (Auto, Composer), 0–100.
         let autoPercentUsed: Double?
         /// Other Models pool, 0–100.
@@ -31,7 +30,6 @@ struct CursorUsageSummaryDTO: Decodable {
     let billingCycleEnd: String?
     /// "free", "pro", "pro_plus", "ultra", "business", "team", "enterprise"…
     let membershipType: String?
-    let isUnlimited: Bool?
     let individualUsage: Individual?
     let teamUsage: Team?
 }

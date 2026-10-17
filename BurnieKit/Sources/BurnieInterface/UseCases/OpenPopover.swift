@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// Opening the popover refreshes what is stale. Both open signals arrive together, debounced to one within 1 s;

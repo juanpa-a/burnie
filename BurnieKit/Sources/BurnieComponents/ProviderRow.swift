@@ -89,7 +89,7 @@ public struct ProviderRow: View {
             isFavorite: true, onToggleFavorite: {}, isOn: .constant(true)
         )
         ProviderRow(
-            displayName: PreviewValues.tailspin.displayName, status: Copy.quit, accent: PreviewValues.blue,
+            displayName: PreviewValues.tailspin.displayName, status: PreviewValues.offStatus, accent: PreviewValues.blue,
             isFavorite: false, onToggleFavorite: {}, isOn: .constant(false)
         )
     }

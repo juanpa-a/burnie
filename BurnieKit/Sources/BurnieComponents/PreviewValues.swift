@@ -23,6 +23,7 @@ enum PreviewValues {
     static let money = (amount: "$13.40", limit: String?(" / $20"))
     static let caption = "Resets in 2h 14m"
     static let status = "Reading local logs · ~/.northwind"
+    static let offStatus = "Off"
     static let issue = "Limits paused. Open Northwind to refresh sign-in."
     static let failedRenewal = "Couldn't refresh sign-in. Run `northwind` in Terminal and log in again."
     static let switchTitle = "Ring in menu bar"

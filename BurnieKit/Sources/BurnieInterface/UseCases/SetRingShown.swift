@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// The "Ring in menu bar" switch.

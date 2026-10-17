@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// The "Last 7 days" switch.

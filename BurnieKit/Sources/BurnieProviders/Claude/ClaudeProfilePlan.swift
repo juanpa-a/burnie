@@ -11,6 +11,12 @@ actor ClaudeProfilePlan {
     static let url = URL(string: "https://api.anthropic.com/api/oauth/profile")!
     static let maxAge: TimeInterval = 60 * 60
 
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
+
     private let http: any HTTPClient
     private var cached: (chip: PlanName?, fetchedAt: Date)?
 
@@ -33,8 +39,6 @@ actor ClaudeProfilePlan {
     private func organization(headers: [String: String], now: Date) async -> ClaudeProfileDTO.Organization? {
         let request = HTTPRequest(.get, url: Self.url, headers: headers)
         guard let body = try? await http.fetch(request, now: now, classify: { _ in nil }) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return (try? decoder.decode(ClaudeProfileDTO.self, from: body))?.organization
+        return (try? Self.decoder.decode(ClaudeProfileDTO.self, from: body))?.organization
     }
 }

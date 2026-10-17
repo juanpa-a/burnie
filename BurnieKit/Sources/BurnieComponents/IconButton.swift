@@ -12,8 +12,9 @@ public struct IconButton: View {
     let isSpinning: Bool
     let action: () -> Void
 
-    /// Center of `arrow.clockwise`'s circle inside the symbol's 14×16 pt bounds at 13 pt medium, measured from the rendered glyph.
-    /// The arrowhead makes the bounds taller than the circle, so turning around their middle makes it wobble.
+    /// Center of `arrow.clockwise`'s circle inside the symbol's 14×16 pt bounds at 13 pt medium, measured from the
+    /// rendered glyph. The arrowhead makes the bounds taller than the circle, so turning around their middle makes it
+    /// wobble.
     private static let spinAnchor = UnitPoint(x: 0.5, y: 0.57)
 
     @State private var spin: Spin?

@@ -4,7 +4,7 @@ import Foundation
 
 /// Reads only what's new in each `*.jsonl` under Claude's log roots and adds it to the index.
 struct ClaudeLogScanner: Sendable {
-    let files: FileReading
+    let files: any FileReading
     let roots: [URL]
 
     /// What stays fixed during a scan.

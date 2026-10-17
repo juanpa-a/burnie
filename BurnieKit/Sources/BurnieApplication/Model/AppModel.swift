@@ -42,9 +42,10 @@ public final class AppModel {
         )
         interpreter.deliver = { [weak model] event in model?.send(event) }
         let cache = environment.snapshotCache
+        let cached = registry.compactMap { provider in cache.snapshot(for: provider.id).map { (provider.id, $0) } }
         model.send(.launched(
             settings: environment.settingsStore.load(defaultEnabled: Set(registry.map(\.id))),
-            cached: Dictionary(uniqueKeysWithValues: registry.compactMap { provider in cache.snapshot(for: provider.id).map { (provider.id, $0) } }),
+            cached: Dictionary(uniqueKeysWithValues: cached),
             history: cache.history() ?? UsageHistory()
         ))
         return model

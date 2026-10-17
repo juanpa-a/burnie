@@ -1,4 +1,3 @@
-
 import Foundation
 
 /// The Refresh button: every enabled task regardless of age, except during a backoff (B-33). Returns once every run it
