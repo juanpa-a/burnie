@@ -4,9 +4,7 @@ import SwiftUI
 @MainActor
 enum RenderedSize {
     static func of(_ view: some View, width: CGFloat = 340) -> CGSize? {
-        let renderer = ImageRenderer(content: view.frame(width: width).fixedSize(horizontal: false, vertical: true))
-        guard let image = renderer.cgImage else { return nil }
-        return CGSize(width: image.width, height: image.height)
+        RenderedImage(view, width: width)?.size
     }
 
     /// Whether `view` rendered at a non-zero size, in light and in dark appearance.

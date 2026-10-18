@@ -1408,7 +1408,7 @@ runs it over a folder of deliberately bad sample files that must each fail with 
 | Providers | unit with fixtures and port fakes | every DTO fixture; every Providers B-ID; HTTP status classification table |
 | Application | unit over the reducer + scheduler with `FixedClock`, `ManualSleeper`, fake bundles | every Application B-ID; event → effects tables |
 | Infra | integration on the real macOS APIs, in temporary directories | permissions, atomic writes, host allowlist, process environment |
-| Components | render smoke | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage) |
+| Components | render smoke + pixels | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage); a look that is a behavior is read off the rendered pixels (B-6: a stale bar fades as one) |
 | App | build + previews + manual QA | previews compile in `make build`; manual matrix (16.7) |
 
 Test rules (`T-*`):
