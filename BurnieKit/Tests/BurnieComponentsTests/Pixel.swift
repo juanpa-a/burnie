@@ -1,7 +1,7 @@
 /// One pixel's color: channels from 0 to 1, not premultiplied by its alpha.
 struct Pixel {
     /// How far apart two channels can be and still count as the same, after 8-bit rounding.
-    static let tolerance = 0.02
+    static let tolerance = 0.01
 
     let red: Double
     let green: Double

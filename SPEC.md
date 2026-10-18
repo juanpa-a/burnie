@@ -981,7 +981,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-3 | The pace is `(now − start) / duration`; nil without a period, with zero duration, or when `now` is outside it. | Domain |
 | B-4 | On-demand has no period: it shows no pace tick. | Providers |
 | B-5 | The part of the fill past the pace draws in the over-pace color; all of it is on pace without a tick. | Components |
-| B-6 | A snapshot older than 30 minutes dims its values and today's usage. | Domain + Components |
+| B-6 | A snapshot older than 30 minutes dims its values and today's usage; a dimmed bar fades as one picture. | Domain + Components |
 | B-7 | Today's usage reads money when the latest successful limits measure money and the activity added up today's spend; tokens otherwise. | Domain |
 | B-8 | A failed limits refresh doesn't flip today's usage from money back to tokens (the unit is the last successful one), not even after a relaunch, where the cached snapshot's unit stands in until limits succeed again. | Domain |
 | B-9 | Plan chips: Claude `pro`/`max`/`team`/`enterprise` (with or without `claude_`) → `PRO`/`MAX`/`TEAM`/`ENTERPRISE`, else none; Cursor `free`, `pro`, `pro_plus`→`PRO+`, `ultra`, `business`/`team`→`TEAMS`, `enterprise`, else uppercased. | Providers |
@@ -1408,7 +1408,7 @@ runs it over a folder of deliberately bad sample files that must each fail with 
 | Providers | unit with fixtures and port fakes | every DTO fixture; every Providers B-ID; HTTP status classification table |
 | Application | unit over the reducer + scheduler with `FixedClock`, `ManualSleeper`, fake bundles | every Application B-ID; event → effects tables |
 | Infra | integration on the real macOS APIs, in temporary directories | permissions, atomic writes, host allowlist, process environment |
-| Components | render smoke + pixels | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage); a look that is a behavior is read off the rendered pixels (B-6: a stale bar fades as one) |
+| Components | render smoke + pixels | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage); a look that is a behavior is read off the rendered pixels (B-6) |
 | App | build + previews + manual QA | previews compile in `make build`; manual matrix (16.7) |
 
 Test rules (`T-*`):
