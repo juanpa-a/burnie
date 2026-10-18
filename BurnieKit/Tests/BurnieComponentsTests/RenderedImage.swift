@@ -8,6 +8,7 @@ struct RenderedImage {
     /// `view` at `width` and its own height; nil when nothing rendered.
     init?(_ view: some View, width: CGFloat) {
         let renderer = ImageRenderer(content: view.frame(width: width).fixedSize(horizontal: false, vertical: true))
+        renderer.scale = 1
         guard let image = renderer.cgImage else { return nil }
         self.image = image
     }

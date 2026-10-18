@@ -24,7 +24,10 @@ struct MeterViewTests {
         // Without a caption, the bar is the meter's bottom edge.
         let barMiddle = Int(fresh.size.height) - 1 - Int(DesignTokens.Metrics.meterBarHeight) / 2
         for x in [Self.onPaceX, Self.overPaceX] {
-            let expected = fresh.color(atX: x, y: barMiddle).faded(by: DesignTokens.Opacity.stale)
+            let freshColor = fresh.color(atX: x, y: barMiddle)
+            // Off the bar both pixels are clear and match anyway, so the fresh one must be the bar's opaque color.
+            try #require(freshColor.alpha == 1, "\(scheme) at x \(x), y \(barMiddle) is off the bar")
+            let expected = freshColor.faded(by: DesignTokens.Opacity.stale)
             let drawn = stale.color(atX: x, y: barMiddle)
             #expect(drawn.isClose(to: expected), "\(scheme) at x \(x): drew \(drawn), expected \(expected)")
         }
