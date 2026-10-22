@@ -78,7 +78,9 @@ public enum Copy {
         "Shows \(displayName) usage"
     }
 
-    public static let weekChartSubtitle = "Shows daily tokens per provider"
+    /// The switch of the week chart, which shows the cycle totals too, so it isn't named after its 7 days.
+    public static let activityChart = "Activity chart"
+    public static let activityChartSubtitle = "Shows daily tokens and cycle totals per provider"
 
     public static func title(of toggle: FeatureToggle) -> String {
         switch toggle {

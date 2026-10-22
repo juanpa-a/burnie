@@ -1,6 +1,6 @@
 import Foundation
 
-/// The "Last 7 days" switch.
+/// The "Activity chart" switch, which shows the week chart.
 public struct SetWeekChartShown: Sendable {
     private let action: @MainActor @Sendable (Bool) -> Void
 

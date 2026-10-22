@@ -8,7 +8,7 @@ public struct AppSettings: Hashable, Sendable {
     public var favorite: ProviderID?
     /// The "Ring in menu bar" switch, kept even while it's disabled (B-74).
     public var showRing: Bool
-    /// The "Last 7 days" switch.
+    /// The "Activity chart" switch, which shows the week chart.
     public var showWeekChart: Bool
     /// The feature switches turned off.
     public var hiddenFeatures: Set<FeatureToggle>
