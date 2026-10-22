@@ -1075,7 +1075,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-48 | Cursor meters: individual plans show Cursor Models and Other Models as percents (unit tokens); team/enterprise show one Included usage meter in money (unit money); on-demand appears only when enabled, after the other meters, with "Kicks in after included usage runs out" while unused; a summary without usage buckets or billing cycle end is unexpected. | Providers |
 | B-49 | Claude meters: prefer `limits[]` (`session`, `weekly_all`), fall back to flat windows; a window without reset shows "No active session"; no windows at all is unexpected. | Providers |
 | B-76 | The week chart's legend shows each provider's week total next to its name. | Domain + Components |
-| B-77 | Hovering a day of the week chart dims the other days and shows a tooltip over it: the day ("Mon 19") and each provider's tokens that day. VoiceOver reads the totals and every day instead. | Interface + Components |
+| B-77 | Hovering a day of the week chart dims the other days and shows a tooltip over it: the day ("Mon 19") and each provider's tokens that day, drawn on top of the legend it rises over. VoiceOver reads the totals and every day instead. | Interface + Components |
 | B-78 | A day in the tooltip adds its spend ("· $6.55") when the provider's plan measures money (the shown snapshot's unit, B-7, B-8) and its latest activity added that day's spend up; tokens alone otherwise. The spend isn't persisted: after a launch it shows once the first activity arrives. | Domain + Application + Components |
 | B-79 | A provider's cycle total adds up its history from the local day its cycle starts on (the longest period of its shown snapshot's meters, in the latest event's time zone), or from the day the history is recorded since when that's later, through today. A provider without a cycle, or whose history has no day of it, has none. Tokens only; nothing new is persisted. | Domain + Application |
 | B-80 | Hovering the week chart's legend shows a tooltip under it, "This cycle", with each provider's cycle total and the day it counts from ("since Oct 3"); providers without one are left out, and without any there's no tooltip. VoiceOver reads the cycle totals after the week totals. | Interface + Components |
@@ -1445,7 +1445,7 @@ runs it over a folder of deliberately bad sample files that must each fail with 
 | Providers | unit with fixtures and port fakes | every DTO fixture; every Providers B-ID; HTTP status classification table |
 | Application | unit over the reducer + scheduler with `FixedClock`, `ManualSleeper`, fake bundles | every Application B-ID; event → effects tables |
 | Infra | integration on the real macOS APIs, in temporary directories | permissions, atomic writes, host allowlist, process environment |
-| Components | render smoke + pixels | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage); a look that is a behavior is read off the rendered pixels (B-6) |
+| Components | render smoke + pixels | each component renders without crashing (`ImageRenderer`), at a non-zero size, with values from `Gen` and the edge states (loading, failed, stale, no meters, no today's usage); a look that is a behavior is read off the rendered pixels (B-6, B-77) |
 | App | build + previews + manual QA | previews compile in `make build`; manual matrix (16.7) |
 
 Test rules (`T-*`):
@@ -1518,7 +1518,7 @@ state can't be reproduced live. Each row is checked in light and dark mode.
 | unexpected response | generic copy |
 | all off | empty state with a button to the providers screen; header has no "Updated" |
 | week chart hidden / on-demand hidden | chart gone / on-demand meter gone, switch still present |
-| week chart hover | legend with each week total; hovering a day dims the others and shows its tooltip, inside the popover at the first and last days |
+| week chart hover | legend with each week total; hovering a day dims the others and shows its tooltip over the legend, inside the popover at the first and last days |
 | week chart with a money plan | the tooltip adds the day's spend for that provider only |
 | week chart legend hover | "This cycle" tooltip under the legend with each provider's cycle total and its "since" day, inside the chart; gone when the pointer leaves |
 | favorite marked / only one on / ring off | ring follows the right provider / implicit favorite / flame alone |

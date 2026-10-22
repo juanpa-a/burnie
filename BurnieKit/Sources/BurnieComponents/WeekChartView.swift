@@ -21,8 +21,16 @@ public struct WeekChartView: View {
     @State private var isLegendHovered = false
 
     public init(chart: WeekChart, descriptors: [ProviderDescriptor]) {
+        self.init(chart: chart, descriptors: descriptors, hoveredDay: nil)
+    }
+
+    /// Starting with `hoveredDay`'s tooltip, or the legend's, already shown: for the previews and the tests that look
+    /// at a tooltip.
+    init(chart: WeekChart, descriptors: [ProviderDescriptor], hoveredDay: LocalDay?, isLegendHovered: Bool = false) {
         self.chart = chart
         self.descriptors = descriptors
+        _hoveredDay = State(initialValue: hoveredDay)
+        _isLegendHovered = State(initialValue: isLegendHovered)
     }
 
     public var body: some View {
@@ -35,8 +43,9 @@ public struct WeekChartView: View {
                 Spacer()
                 legend
             }
-            // Over the columns, so the cycle totals' tooltip hanging under the legend draws on top of them.
-            .zIndex(1)
+            // Each tooltip crosses into the other row: the cycle totals hang over the columns, a day's rises over the legend.
+            // Whichever row shows its tooltip draws on top.
+            .zIndex(isLegendHovered ? 1 : 0)
             HStack(spacing: DesignTokens.Spacing.chartColumns) {
                 ForEach(chart.days, id: \.self) { day in
                     column(day)
@@ -148,6 +157,18 @@ public struct WeekChartView: View {
 #Preview {
     PreviewFrame {
         WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin])
+    }
+}
+
+#Preview("Day hovered") {
+    PreviewFrame {
+        WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin], hoveredDay: PreviewValues.today)
+    }
+}
+
+#Preview("Legend hovered") {
+    PreviewFrame {
+        WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin], hoveredDay: nil, isLegendHovered: true)
     }
 }
 #endif
