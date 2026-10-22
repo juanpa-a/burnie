@@ -22,9 +22,16 @@ public enum Copy {
     public static let lastSevenDays = "Last 7 days"
     public static let weekChartAccessibilityLabel = "Daily usage, last 7 days"
 
-    /// One provider's day for VoiceOver: "Claude 1.8M tokens".
-    public static func dayUsage(provider shortName: String, tokens: String) -> String {
-        "\(shortName) \(tokens) tokens"
+    /// One provider's week or day for VoiceOver: "Claude 1.8M tokens", or with the day's spend
+    /// "Cursor 2.6M tokens ($4.12)".
+    public static func providerUsage(provider shortName: String, tokens: String, spent: String? = nil) -> String {
+        guard let spent else { return "\(shortName) \(tokens) tokens" }
+        return "\(shortName) \(tokens) tokens (\(spent))"
+    }
+
+    /// A day's spend after its tokens in the week chart's tooltip: "· $6.55" (B-78).
+    public static func weekChartSpend(_ amount: String) -> String {
+        "· \(amount)"
     }
 
     // MARK: Providers screen

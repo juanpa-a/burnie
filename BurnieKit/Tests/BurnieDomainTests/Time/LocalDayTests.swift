@@ -31,6 +31,12 @@ struct LocalDayTests {
         #expect(day.distance(to: .day("2026-11-01")) == 2)
     }
 
+    @Test func readsItsDayOfTheMonth() {
+        #expect(LocalDay.day("2026-10-10").dayOfMonth == 10)
+        #expect(LocalDay.day("2026-11-01").dayOfMonth == 1)
+        #expect(LocalDay.day("2028-02-29").dayOfMonth == 29)
+    }
+
     @Test(arguments: Gen.seeds(200))
     func steppingBackUndoesAdvancing(seed: UInt64) {
         var gen = Gen(seed: seed)

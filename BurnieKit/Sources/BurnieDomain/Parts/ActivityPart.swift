@@ -20,4 +20,10 @@ public struct ActivityPart: Hashable, Sendable {
         }
         return .tokens(tokens[today, default: .zero])
     }
+
+    /// Every day's spend as the week chart shows it: the days added up when the plan measures money, nil when it
+    /// measures tokens (B-78).
+    public func spend(in unit: UsageUnit) -> [LocalDay: Cents]? {
+        unit == .money ? spent : nil
+    }
 }

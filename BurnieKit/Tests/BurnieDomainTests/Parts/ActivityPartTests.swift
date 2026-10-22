@@ -18,6 +18,13 @@ struct ActivityPartTests {
         #expect(Self.part.usage(on: Self.today, in: .tokens) == .tokens(Tokens(1_800_000)))
     }
 
+    @Test("B-78 the week chart's spend is every day added up when the plan measures money, none when it measures tokens")
+    func spendFollowsTheUnit() {
+        #expect(Self.part.spend(in: .money) == [Self.today: Cents(1_240)])
+        #expect(ActivityPart(tokens: [Self.today: Tokens(1_800_000)]).spend(in: .money) == [:])
+        #expect(Self.part.spend(in: .tokens) == nil)
+    }
+
     @Test("B-42 a day the activity doesn't mention reads zero tokens")
     func anUnmentionedDayIsZero() {
         #expect(Self.part.usage(on: Self.today.advanced(by: 1), in: .tokens) == .tokens(.zero))

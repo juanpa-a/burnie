@@ -2,7 +2,7 @@ import BurnieDomain
 import BurnieInterface
 import Foundation
 
-/// Cursor: meters from usage-summary, tokens from the events CSV and today's spend from the usage events, all with the
+/// Cursor: meters from usage-summary, tokens from the events CSV and each day's spend from the usage events, all with the
 /// desktop app's session (SPEC 6.3).
 public enum CursorProvider {
     public static let descriptor = ProviderDescriptor(

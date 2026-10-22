@@ -32,7 +32,9 @@ struct CopyTests {
         #expect(Copy.markFavorite("Beta") == "Mark Beta as favorite")
         #expect(Copy.removeFavorite("Beta") == "Remove Beta as favorite")
         #expect(Copy.weekChartAccessibilityLabel == "Daily usage, last 7 days")
-        #expect(Copy.dayUsage(provider: "Alpha", tokens: "1.8M") == "Alpha 1.8M tokens")
+        #expect(Copy.providerUsage(provider: "Alpha", tokens: "1.8M") == "Alpha 1.8M tokens")
+        #expect(Copy.providerUsage(provider: "Beta", tokens: "2.6M", spent: "$4.12") == "Beta 2.6M tokens ($4.12)")
+        #expect(Copy.weekChartSpend("$6.55") == "· $6.55")
     }
 
     @Test func screensAndSwitches() {

@@ -23,7 +23,12 @@ extension AppState {
             },
             ring: Favorite.ring(stored: settings.favorite, enabled: settings.enabled, showRing: settings.showRing, states: state.shown),
             weekChart: settings.showWeekChart && !enabled.isEmpty
-                ? WeekChart.make(history: state.history, providers: enabled.map(\.id), today: state.today)
+                ? WeekChart.make(
+                    history: state.history,
+                    providers: enabled.map(\.id),
+                    today: state.today,
+                    spent: weekSpend(of: enabled.map(\.id), in: state)
+                )
                 : nil,
             lastUpdated: snapshots.map(\.fetchedAt).max(),
             isRefreshing: !state.requests.isEmpty,
@@ -33,5 +38,17 @@ extension AppState {
             launchAtLogin: state.launchAtLogin,
             availableUpdate: state.availableUpdate
         )
+    }
+
+    /// Each provider's spend as the week chart shows it: from its latest activity, in the unit of its shown snapshot
+    /// (B-7, B-8). Not persisted, so none until the first activity after a launch (B-78).
+    private static func weekSpend(of providers: [ProviderID], in state: RuntimeState) -> [ProviderID: [LocalDay: Cents]] {
+        let spendByProvider = providers.compactMap { id -> (ProviderID, [LocalDay: Cents])? in
+            guard let activity = state.parts[id]?.activity?.lastSuccess?.value,
+                  let unit = state.shown[id]?.snapshot?.unit,
+                  let daily = activity.spend(in: unit) else { return nil }
+            return (id, daily)
+        }
+        return Dictionary(spendByProvider, uniquingKeysWith: { first, _ in first })
     }
 }

@@ -73,7 +73,14 @@ struct ComponentsRenderTests {
             history.record(gen.activityPart(around: today).tokens, for: .beta, today: today)
         }
         let providers: [ProviderID] = gen.coinFlip() ? [.alpha] : [.alpha, .beta]
-        let chart = WeekChart.make(history: history, providers: providers, today: today)
+        let spent = gen.coinFlip() ? [ProviderID.beta: gen.activityPart(around: today).spent] : [:]
+        let chart = WeekChart.make(history: history, providers: providers, today: today, spent: spent)
         #expect(RenderedSize.isDrawn(WeekChartView(chart: chart, descriptors: [.alpha, .beta])), "seed \(seed)")
+        #expect(RenderedSize.isDrawn(WeekChartTooltip(chart: chart, day: today, providers: [.alpha, .beta]), width: 160), "seed \(seed)")
+    }
+
+    @Test("B-76 the legend's dot renders in each provider's color")
+    func legendDotRenders() {
+        #expect(RenderedSize.isDrawn(LegendDot(color: Self.accent), width: 6))
     }
 }

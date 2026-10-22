@@ -3,13 +3,20 @@ import BurnieInterface
 import SwiftUI
 
 /// Tokens over the last 7 days: one bar per provider for each day, every series on one shared scale, so the same
-/// tokens draw the same height for every provider (B-43).
+/// tokens draw the same height for every provider (B-43). The legend shows each provider's week total (B-76), and
+/// hovering a day dims the others and shows that day's tooltip (B-77).
 public struct WeekChartView: View {
+    /// How many days at each end line their tooltip up with their outer edge instead of centering it, so it stays
+    /// inside the chart.
+    private static let edgeDays = 2
+
     let chart: WeekChart
     /// The descriptors of the chart's providers, for their short names and colors.
     let descriptors: [ProviderDescriptor]
     @Environment(\.locale) private var locale
     @Environment(\.colorScheme) private var colorScheme
+    /// The day under the pointer, which shows its tooltip.
+    @State private var hoveredDay: LocalDay?
 
     public init(chart: WeekChart, descriptors: [ProviderDescriptor]) {
         self.chart = chart
@@ -27,15 +34,21 @@ public struct WeekChartView: View {
                 legend
             }
             HStack(spacing: DesignTokens.Spacing.chartColumns) {
-                ForEach(chart.days.indices, id: \.self) { index in
-                    column(index)
+                ForEach(chart.days, id: \.self) { day in
+                    column(day)
                 }
             }
+            // The gaps between days belong to the chart, so crossing one keeps the tooltip of the day just left.
+            .contentShape(Rectangle())
+            .onHover { isInside in
+                if !isInside { hoveredDay = nil }
+            }
+            .animation(DesignTokens.Motion.chartHover, value: hoveredDay)
         }
         .padding(DesignTokens.Insets.weekChart)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Copy.weekChartAccessibilityLabel)
-        .accessibilityValue(accessibilitySummary)
+        .accessibilityValue(WeekChartAccessibilityValue.text(for: chart, providers: shown, locale: locale))
     }
 
     /// The chart's providers, in its order, with what the legend shows of each.
@@ -47,36 +60,62 @@ public struct WeekChartView: View {
         HStack(spacing: DesignTokens.Spacing.legendItems) {
             ForEach(shown, id: \.id) { descriptor in
                 HStack(spacing: DesignTokens.Spacing.legendDot) {
-                    Circle()
-                        .fill(DesignTokens.Palette.accent(descriptor.color, in: colorScheme))
-                        .frame(width: DesignTokens.Metrics.legendDot, height: DesignTokens.Metrics.legendDot)
+                    LegendDot(color: descriptor.color)
                     Text(descriptor.shortName)
-                        .font(DesignTokens.Typography.caption)
                         .foregroundStyle(DesignTokens.Palette.fg2)
+                    Text(TokenCountFormatter(locale: locale).string(from: chart.total(for: descriptor.id)))
+                        .foregroundStyle(DesignTokens.Palette.fg)
                 }
+                .font(DesignTokens.Typography.caption)
             }
         }
     }
 
-    private func column(_ index: Int) -> some View {
-        let isToday = index == chart.days.count - 1
+    private func column(_ day: LocalDay) -> some View {
+        let isToday = day == chart.days.last
+        let isDimmed = hoveredDay != nil && hoveredDay != day
         return VStack(spacing: DesignTokens.Spacing.chartLabel) {
             HStack(alignment: .bottom, spacing: DesignTokens.Spacing.chartBars) {
                 ForEach(shown, id: \.id) { descriptor in
-                    bar(descriptor, day: index)
+                    bar(descriptor, on: day)
                 }
             }
             .frame(height: DesignTokens.Metrics.chartHeight, alignment: .bottom)
-            Text(DayLabelFormatter(locale: locale).letter(for: chart.days[index]))
+            Text(DayLabelFormatter(locale: locale).letter(for: day))
                 .font(isToday ? DesignTokens.Typography.today : DesignTokens.Typography.day)
                 .foregroundStyle(isToday ? DesignTokens.Palette.fg : DesignTokens.Palette.fg2)
         }
         .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+        .opacity(isDimmed ? DesignTokens.Opacity.chartDimmed : DesignTokens.Opacity.opaque)
+        .onHover { isInside in
+            if isInside { hoveredDay = day }
+        }
+        .overlay(alignment: .top) {
+            if hoveredDay == day {
+                // A line along the day's top, with the tooltip standing on it: it rises over the title row.
+                Color.clear
+                    .frame(height: 0)
+                    .overlay(alignment: tooltipAlignment(for: day)) {
+                        WeekChartTooltip(chart: chart, day: day, providers: shown)
+                            .padding(.bottom, DesignTokens.Spacing.tooltipGap)
+                    }
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    /// Centered over its day, except at the ends, where it lines up with the day's outer edge.
+    private func tooltipAlignment(for day: LocalDay) -> Alignment {
+        guard let index = chart.days.firstIndex(of: day) else { return .bottom }
+        if index < Self.edgeDays { return .bottomLeading }
+        if index >= chart.days.count - Self.edgeDays { return .bottomTrailing }
+        return .bottom
     }
 
     /// A day without usage gets a `track` mark of the minimum height; a day with usage is never shorter than it.
-    private func bar(_ descriptor: ProviderDescriptor, day: Int) -> some View {
-        let tokens = tokens(of: descriptor.id, on: day)
+    private func bar(_ descriptor: ProviderDescriptor, on day: LocalDay) -> some View {
+        let tokens = chart.tokens(of: descriptor.id, on: day)
         let minimum = DesignTokens.Metrics.chartBarMinimum
         let height = tokens > .zero
             ? max(CGFloat(tokens.count) / CGFloat(chart.peak.count) * DesignTokens.Metrics.chartHeight, minimum)
@@ -84,21 +123,6 @@ public struct WeekChartView: View {
         return RoundedRectangle(cornerRadius: DesignTokens.Metrics.chartBarRadius)
             .fill(tokens > .zero ? DesignTokens.Palette.accent(descriptor.color, in: colorScheme) : DesignTokens.Palette.track)
             .frame(width: DesignTokens.Metrics.chartBarWidth, height: height)
-    }
-
-    private func tokens(of provider: ProviderID, on day: Int) -> Tokens {
-        chart.series[provider]?[day] ?? .zero
-    }
-
-    /// "Sat: Claude 1.8M tokens, Cursor 2.6M tokens; Sun: …"
-    private var accessibilitySummary: String {
-        let formatter = TokenCountFormatter(locale: locale)
-        let dayNames = DayLabelFormatter(locale: locale)
-        return chart.days.indices.map { index in
-            let usage = shown.map { Copy.dayUsage(provider: $0.shortName, tokens: formatter.string(from: tokens(of: $0.id, on: index))) }
-            return "\(dayNames.shortName(for: chart.days[index])): \(usage.joined(separator: ", "))"
-        }
-        .joined(separator: "; ")
     }
 }
 

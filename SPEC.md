@@ -146,7 +146,8 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **History** | Tokens per day and provider, kept for 35 days. Days inside the window are rewritten; older ones are frozen. | `UsageHistory` | Domain |
 | **Retention** | How long history keeps a day: 35 days. | `UsageHistory.retentionDays` | Domain |
 | **Daily point** | One day and its tokens. | `DailyPoint` | Domain |
-| **Week chart** | The last 7 days of history for the enabled providers, on one shared scale. | `WeekChart` | Domain |
+| **Week chart** | The last 7 days of history for the enabled providers, on one shared scale, with each day's spend for the providers whose plan measures money. | `WeekChart` | Domain |
+| **Week total** | One provider's tokens over the week chart's 7 days. | `WeekChart.total(for:)` | Domain |
 | **Clock** | The only source of `now` and the time zone. | `Clock` port | Interface |
 | **Today** | The local day of the latest event, which the interpreter computes from `Clock` and puts in every event. What compose, history and the week chart count as today. | `RuntimeState.today: LocalDay` | Application |
 
@@ -367,7 +368,7 @@ enum ProviderState { case loading, ready(UsageSnapshot), failed(ProviderIssue) }
 
 // Parts
 struct LimitsPart { var plan: PlanName?; var meters: MeterSet; var unit: UsageUnit; var features: SnapshotFeatures }
-struct ActivityPart { var tokens: [LocalDay: Tokens]; var spent: [LocalDay: Cents] }
+struct ActivityPart { var tokens: [LocalDay: Tokens]; var spent: [LocalDay: Cents] }   // usage(on:in:), spend(in:)
 enum Part { case limits(LimitsPart), activity(ActivityPart) }
 enum PartKind { case limits, activity }
 enum Latest<Value> {
@@ -383,11 +384,12 @@ enum ProviderIssue: Error { case notFound, signInExpired, rateLimited(retryAt: D
 struct SpecificIssue: Hashable, Codable, Sendable { let code: String }   // copy comes from the descriptor
 
 // Time and history
-struct LocalDay              // as today; Strideable, Codable as "yyyy-MM-dd", CodingKeyRepresentable (a JSON key)
+struct LocalDay              // as today, plus dayOfMonth; Strideable, Codable as "yyyy-MM-dd", CodingKeyRepresentable (a JSON key)
 enum ActivityWindow          // dayCount = 8; days(endingAt:)
 struct DailyPoint { var day: LocalDay; var tokens: Tokens }
 struct UsageHistory          // record(_ tokens:for:today:), points(for:endingAt:count:); retentionDays = 35
-struct WeekChart { let days: [LocalDay]; let providers: [ProviderID]; let series: [ProviderID: [Tokens]]; let peak: Tokens }
+struct WeekChart { let days: [LocalDay]; let providers: [ProviderID]; let series: [ProviderID: [Tokens]];
+                   let spent: [ProviderID: [Cents?]]; let peak: Tokens }   // total(for:), tokens(of:on:), spent(of:on:)
 
 // Refresh
 struct RefreshPolicy { let interval: TimeInterval; let jitter: TimeInterval; let staleOnOpen: TimeInterval?; let needsNetwork: Bool }
@@ -412,7 +414,9 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 | `ProviderState.failing(_ issue:, previous:)` | A total failure over a cached snapshot becomes `.ready(previous with issue)`; without one, `.failed(issue)`. Rule B-18. | `with(issue:)` + store code |
 | `UsageSnapshot.hiding(_ toggles:)` | Removes hidden features from the limits part. Rule B-40. | `hidingOnDemand()` |
 | `UsageHistory.record(_ tokens:for:today:)` | Writes every day of the activity window ending `today`, 0 for the days `tokens` doesn't mention; prunes that provider's days past retention and leaves every other provider untouched, as today. `today` is the event's day: a part read just before midnight lands one day short, and the next refresh corrects it. Rule B-42. | `history(days:)` + `record` |
-| `WeekChart.make(history:providers:today:)` | 7 days ending today, zero-filled, shared peak. | logic in `WeekChart` view |
+| `WeekChart.make(history:providers:today:spent:)` | 7 days ending today, zero-filled, shared peak; each day's spend for the providers `spent` names, nil for a day it doesn't mention (B-78). | logic in `WeekChart` view |
+| `WeekChart.total(for:)` | The provider's tokens over the 7 days (B-76). | — |
+| `ActivityPart.spend(in:)` | Every day's spend when the plan measures money, nil when it measures tokens (B-78). | — |
 | `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent. | `meters.first` |
 | `RefreshPolicy.shouldRun(for:lastRun:now:)` | As today. | same |
 | `RateLimitBackoff.*` | As today. | same |
@@ -446,7 +450,8 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
   - only features change: the meter set, today's usage, the issue and the stamp are untouched.
 - **WeekChart**: `days` are 7 consecutive local days ending today; `series[p].count == 7` for every `p` in
   `providers`, which keep the order they were given; `peak` is the largest value of every series, `.zero` when all are
-  zero.
+  zero; `total(for: p)` is the sum of `series[p]`; `spent` names only providers in `providers` that `spent` was given
+  for, with 7 values each, `spent[p][i]` being what was given for `days[i]`.
 - **Favorite**: when `id ∈ e`, `toggling(id, s, e)` is nil if `s == id`, else `id`; so tapping twice gives back `s` when
   `s` is nil or `id`, and nil when `s` was another provider (the first tap replaced it). `effective` result is always
   in `enabled` or nil; toggling a disabled provider is the identity.
@@ -642,7 +647,8 @@ struct ProviderPanel: Equatable, Sendable {
 
 Everything that turns domain values into text, moved from `BurnieCore/Format/`:
 `TokenCountFormatter`, `MoneyFormatter`, `MeterValueFormatter`, `MeterCaptionFormatter`, `TodayUsageFormatter`,
-`LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `StatusLine`, `IssueMessage`, and `Copy`
+`LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `WeekChartAccessibilityValue` (the totals and
+every day, spend included, since hovering isn't reachable with VoiceOver; B-77), `StatusLine`, `IssueMessage`, and `Copy`
 (every fixed string the views show: "Usage", "Providers", "Last 7 days", "Refresh sign-in", "Quit"…).
 Provider-specific text comes from `ProviderDescriptor.copy`, never from a switch. `StatusLine` (B-29) builds the
 non-healthy lines as common templates over `displayName` ("Off", "{displayName} not found",
@@ -701,7 +707,7 @@ what it reads, how often, or in how many calls.
   ("On-demand", only as a feature); placeholders `[cursorModels, otherModels]`;
   status "Signed in · {Plan} plan" or "Signed in".
 - **Tasks:** `limits` (usage summary; 10 min ± 30 s, stale on open 60 s, needs network) and `activity`
-  (events CSV for tokens plus paged usage events for today's spend, combined; 30 min, no jitter, stale on open 10 min,
+  (events CSV for tokens plus paged usage events for the window's spend, combined; 30 min, no jitter, stale on open 10 min,
   needs network).
 - **Capabilities:** none today.
 - **Specific issues:** none today.
@@ -938,7 +944,7 @@ component can't reach the app model, a provider or an adapter.
 ### 9.2 Components
 
 `BurnieDivider`, `BurnieSwitchStyle`, `ChipButton`, `HoverHighlightStyle`, `IconButton`, `IssueRow`, `MeterView`,
-`PlanChip`, `Spin`, `SwitchRow`, `UpdateBadge`, `FooterItem`, `MenuBarIcon`, `WeekChartView`, `ProviderRow`,
+`PlanChip`, `Spin`, `SwitchRow`, `UpdateBadge`, `FooterItem`, `MenuBarIcon`, `WeekChartView`, `WeekChartTooltip`, `LegendDot`, `ProviderRow`,
 `SignInRenewalRow`, `PreviewFrame` and `PreviewValues` (both `#if DEBUG`), and `DesignTokens` (today's `Tokens.swift`,
 minus provider colors).
 
@@ -1042,9 +1048,12 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-44 | Claude log scan is incremental: only new bytes per file; a last line without newline waits for the next scan; truncated files are reread without double counting; duplicates by message key are counted once across files; unreadable lines count as diagnostics and never break the scan; files untouched since before the window are dropped. | Providers |
 | B-45 | Claude scans the XDG log root first, then `~/.claude`; no root at all is `notFound`. | Providers |
 | B-46 | An unreadable or old log index is discarded and rebuilt; a failed save only means a rescan next launch. | Providers |
-| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events until a short page; a count mismatch, an event without a valid charge, or a failed spend request (a 429 included, which starts no backoff) makes the sum unknown (no partial sums) without failing the activity part, so today's usage reads in tokens. | Providers |
+| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events for the window, every day of it present (0 without events), until a short page; a count mismatch, an event without a valid charge, or a failed spend request (a 429 included, which starts no backoff) makes the sum unknown (no partial sums) without failing the activity part, so today's usage reads in tokens. | Providers |
 | B-48 | Cursor meters: individual plans show Cursor Models and Other Models as percents (unit tokens); team/enterprise show one Included usage meter in money (unit money); on-demand appears only when enabled, after the other meters, with "Kicks in after included usage runs out" while unused; a summary without usage buckets or billing cycle end is unexpected. | Providers |
 | B-49 | Claude meters: prefer `limits[]` (`session`, `weekly_all`), fall back to flat windows; a window without reset shows "No active session"; no windows at all is unexpected. | Providers |
+| B-76 | The week chart's legend shows each provider's week total next to its name. | Domain + Components |
+| B-77 | Hovering a day of the week chart dims the other days and shows a tooltip over it: the day ("Mon 19") and each provider's tokens that day. VoiceOver reads the totals and every day instead. | Interface + Components |
+| B-78 | A day in the tooltip adds its spend ("· $6.55") when the provider's plan measures money (the shown snapshot's unit, B-7, B-8) and its latest activity added that day's spend up; tokens alone otherwise. The spend isn't persisted: after a launch it shows once the first activity arrives. | Domain + Application + Components |
 
 ### 11.6 Settings and app features
 
@@ -1172,6 +1181,7 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 49 | 2026-10-17 | Every event that may arm a timer carries its own jitter sample: `taskFinished` and `networkChanged`, which arms the timers decision 47 asks for. | Proposed |
 | 50 | 2026-10-17 | `AppModel.preview` takes the clock the previews draw with, so they stay deterministic. | Proposed |
 | 51 | 2026-10-17 | Once the refactor lands, the architecture check drops its support for the old layout and its legacy samples: every rule runs on the repo. | Proposed |
+| 52 | 2026-10-21 | The week chart's daily spend comes from each provider's latest activity in memory, not from `history.json`: the activity window (8 days) covers the chart's 7, so the persistence contract stays as it is. Money shows by the plan's unit, never by provider. | Agreed |
 
 ---
 
@@ -1481,6 +1491,8 @@ state can't be reproduced live. Each row is checked in light and dark mode.
 | unexpected response | generic copy |
 | all off | empty state with a button to the providers screen; header has no "Updated" |
 | week chart hidden / on-demand hidden | chart gone / on-demand meter gone, switch still present |
+| week chart hover | legend with each week total; hovering a day dims the others and shows its tooltip, inside the popover at the first and last days |
+| week chart with a money plan | the tooltip adds the day's spend for that provider only |
 | favorite marked / only one on / ring off | ring follows the right provider / implicit favorite / flame alone |
 | update available | dot on gear, Update row |
 | VoiceOver | menu bar label, meters combined, icon buttons labeled |

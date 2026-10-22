@@ -17,12 +17,40 @@ struct WeekChartTests {
         #expect(chart.providers == [.beta, .alpha])
         #expect(chart.series[.alpha]?.map(\.count) == [0, 0, 0, 0, 400, 0, 9])
         #expect(chart.peak == Tokens(1_000))
+        #expect(chart.tokens(of: .alpha, on: .day("2026-10-08")) == Tokens(400))
+        #expect(chart.tokens(of: .alpha, on: .day("2026-10-03")) == .zero)
     }
 
     @Test("B-43 the chart rolls over with the day it's made for")
     func rollsOverWithToday() {
         let chart = WeekChart.make(history: UsageHistory(), providers: [.alpha], today: Self.today.advanced(by: 1))
         #expect(chart.days.last == Self.today.advanced(by: 1))
+    }
+
+    @Test("B-76 a provider's week total adds up its 7 days, not the older day of the window")
+    func totalsTheSevenDays() {
+        var history = UsageHistory()
+        history.record([.day("2026-10-03"): Tokens(1_000), .day("2026-10-08"): Tokens(400), Self.today: Tokens(9)], for: .alpha, today: Self.today)
+
+        let chart = WeekChart.make(history: history, providers: [.alpha], today: Self.today)
+        #expect(chart.total(for: .alpha) == Tokens(409))
+        #expect(chart.total(for: .beta) == .zero)
+    }
+
+    @Test("B-78 the chart carries each day's spend of the providers it's given for, nil for a day without it")
+    func carriesTheSpendItIsGiven() {
+        let spent: [ProviderID: [LocalDay: Cents]] = [
+            .beta: [.day("2026-10-03"): Cents(99), .day("2026-10-08"): .zero, Self.today: Cents(655)],
+            ProviderID(rawValue: "gamma"): [Self.today: Cents(1)],
+        ]
+        let chart = WeekChart.make(history: UsageHistory(), providers: [.alpha, .beta], today: Self.today, spent: spent)
+
+        #expect(Set(chart.spent.keys) == [.beta])
+        #expect(chart.spent[.beta] == [nil, nil, nil, nil, .zero, nil, Cents(655)])
+        #expect(chart.spent(of: .beta, on: Self.today) == Cents(655))
+        #expect(chart.spent(of: .beta, on: .day("2026-10-09")) == nil)
+        #expect(chart.spent(of: .beta, on: .day("2026-10-03")) == nil)
+        #expect(chart.spent(of: .alpha, on: Self.today) == nil)
     }
 
     @Test(arguments: Gen.seeds(200))
@@ -34,12 +62,19 @@ struct WeekChartTests {
         }
         let providers = (0..<gen.int(in: 0...3)).map { _ in gen.providerID() }
         let today = gen.localDay()
-        let chart = WeekChart.make(history: history, providers: providers, today: today)
+        var spent: [ProviderID: [LocalDay: Cents]] = [:]
+        for _ in 0..<gen.int(in: 0...2) {
+            spent[gen.providerID()] = gen.activityPart(around: today).spent
+        }
+        let chart = WeekChart.make(history: history, providers: providers, today: today, spent: spent)
 
         #expect(chart.days.count == WeekChart.dayCount && chart.days.last == today, "seed \(seed)")
         #expect(zip(chart.days, chart.days.dropFirst()).allSatisfy { $0.advanced(by: 1) == $1 }, "seed \(seed)")
         #expect(chart.providers == providers, "seed \(seed)")
         #expect(providers.allSatisfy { chart.series[$0]?.count == WeekChart.dayCount }, "seed \(seed)")
         #expect(chart.peak == (chart.series.values.flatMap { $0 }.max() ?? .zero), "seed \(seed)")
+        #expect(providers.allSatisfy { chart.total(for: $0) == chart.series[$0, default: []].reduce(.zero, +) }, "seed \(seed)")
+        #expect(Set(chart.spent.keys) == Set(providers).intersection(spent.keys), "seed \(seed)")
+        #expect(chart.spent.allSatisfy { provider, daily in daily == chart.days.map { spent[provider]?[$0] } }, "seed \(seed)")
     }
 }

@@ -37,14 +37,15 @@ enum PreviewValues {
 
     static let chart: WeekChart = {
         var history = UsageHistory()
-        history.record(tokens([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000]), for: northwind.id, today: today)
-        history.record(tokens([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000]), for: tailspin.id, today: today)
-        return WeekChart.make(history: history, providers: [northwind.id, tailspin.id], today: today)
+        history.record(week([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000].map(Tokens.init)), for: northwind.id, today: today)
+        history.record(week([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000].map(Tokens.init)), for: tailspin.id, today: today)
+        let spent = [tailspin.id: week([412, 0, 1_310, 980, 412, 655, 1_240].map(Cents.init))]
+        return WeekChart.make(history: history, providers: [northwind.id, tailspin.id], today: today, spent: spent)
     }()
 
     /// One value per day of the week ending today.
-    private static func tokens(_ values: [Int]) -> [LocalDay: Tokens] {
-        Dictionary(uniqueKeysWithValues: values.enumerated().map { (today.advanced(by: $0.offset - values.count + 1), Tokens($0.element)) })
+    private static func week<Value>(_ values: [Value]) -> [LocalDay: Value] {
+        Dictionary(uniqueKeysWithValues: values.enumerated().map { (today.advanced(by: $0.offset - values.count + 1), $0.element) })
     }
 
     private static func descriptor(id: String, name: String, color: ColorPair) -> ProviderDescriptor {
