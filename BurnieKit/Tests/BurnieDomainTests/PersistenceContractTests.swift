@@ -37,6 +37,37 @@ struct PersistenceContractTests {
         issue: .rateLimited(retryAt: .iso("2026-10-10T20:05:00Z"))
     )
 
+    /// What `snapshot-team-meters.json` holds: a team's budget as the primary meter and the team's idle on-demand, both
+    /// with scope team, which only a team's meter writes.
+    static let teamMeters = UsageSnapshot(
+        provider: .alpha,
+        content: .limits(
+            view: Stamped(
+                LimitsPart(
+                    plan: PlanName(rawValue: "ENTERPRISE"),
+                    meters: MeterSet(primary: Meter(
+                        id: .budget,
+                        fill: Fraction(0.67),
+                        value: .money(used: Cents(1_340), limit: Cents(2_000)),
+                        caption: .cycleEnds(.iso("2026-11-01T00:00:00Z")),
+                        scope: .team,
+                        period: DateInterval(start: .iso("2026-10-01T00:00:00Z"), end: .iso("2026-11-01T00:00:00Z"))
+                    )),
+                    unit: .money,
+                    features: SnapshotFeatures(onDemand: Meter(
+                        id: .extra,
+                        fill: .zero,
+                        value: .money(used: .zero, limit: Cents(100_000)),
+                        caption: .onDemandIdle,
+                        scope: .team
+                    ))
+                ),
+                at: .iso("2026-10-10T19:50:00Z")
+            ),
+            today: .money(Cents(1_240))
+        )
+    )
+
     /// What `snapshot-activity-only.json` holds: today's tokens alone, with a specific issue.
     static let activityOnly = UsageSnapshot(
         provider: .beta,
@@ -53,8 +84,9 @@ struct PersistenceContractTests {
         #expect(try Fixture.persisted(history, matches: "history.json"))
     }
 
-    @Test("snapshots are saved in the new shape, every enum keyed by its case name", arguments: [
+    @Test("snapshots are saved in the new shape, every enum keyed by its case name; a meter of the user's own has no scope", arguments: [
         ("snapshot-limits.json", limits),
+        ("snapshot-team-meters.json", teamMeters),
         ("snapshot-activity-only.json", activityOnly),
     ])
     func snapshotKeepsItsShape(file: String, snapshot: UsageSnapshot) throws {

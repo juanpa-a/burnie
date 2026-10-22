@@ -117,6 +117,14 @@ struct FavoriteTests {
         #expect(ring == .hidden)
     }
 
+    @Test("B-53 no ring when the favorite's primary meter counts the team's usage")
+    func hiddenWhenThePrimaryMeterIsTheTeams() {
+        let teamBudget = Meter(id: .budget, fill: Fraction(0.64), value: .money(used: Cents(64), limit: Cents(100)), caption: .noActiveSession, scope: .team)
+        let limits = LimitsPart(plan: nil, meters: MeterSet(primary: teamBudget))
+        let state = ProviderState.ready(UsageSnapshot(provider: .alpha, content: .limits(view: Stamped(limits, at: .iso("2026-10-11T20:00:00Z")), today: nil)))
+        #expect(Favorite.ring(stored: .alpha, enabled: both, showRing: true, states: [.alpha: state]) == .hidden)
+    }
+
     @Test("B-53 no ring when the favorite's snapshot has no meters")
     func hiddenWhenTheFavoriteHasNoMeters() {
         let ring = Favorite.ring(stored: .alpha, enabled: both, showRing: true, states: [.alpha: ready(.alpha)])
@@ -130,13 +138,14 @@ struct FavoriteTests {
     }
 
     @Test(arguments: Gen.seeds(200))
-    func theRingIsThePrimaryFillAsAWholePercent(seed: UInt64) {
+    func theRingIsThePrimaryFillAsAWholePercentUnlessItsTheTeams(seed: UInt64) {
         var gen = Gen(seed: seed)
         let view = gen.stamped { $0.limitsPart() }
         let snapshot = UsageSnapshot(provider: .alpha, content: .limits(view: view, today: nil))
         let ring = Favorite.ring(stored: .alpha, enabled: both, showRing: true, states: [.alpha: .ready(snapshot)])
-        let percent = Int((view.value.meters.primary.fill.value * 100).rounded())
-        #expect(ring == .visible(.alpha, percent: percent), "seed \(seed)")
+        let primary = view.value.meters.primary
+        let percent = Int((primary.fill.value * 100).rounded())
+        #expect(ring == (primary.scope == .own ? .visible(.alpha, percent: percent) : .hidden), "seed \(seed)")
         #expect((0...100).contains(percent), "seed \(seed)")
     }
 }

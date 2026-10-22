@@ -114,6 +114,7 @@ public struct Gen: RandomNumberGenerator {
             fill: Fraction(double()),
             value: meterValue(),
             caption: caption(),
+            scope: coinFlip() ? .own : .team,
             period: maybe { $0.period() }
         )
     }

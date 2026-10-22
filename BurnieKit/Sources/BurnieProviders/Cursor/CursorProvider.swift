@@ -16,7 +16,9 @@ public enum CursorProvider {
             MeterDescriptor(id: .cursorModels, label: "Cursor Models"),
             MeterDescriptor(id: .otherModels, label: "Other Models"),
             MeterDescriptor(id: .included, label: "Included usage"),
+            MeterDescriptor(id: .teamPool, label: "Team pool"),
             MeterDescriptor(id: .onDemand, label: "On-demand"),
+            MeterDescriptor(id: .teamOnDemand, label: "Team on-demand"),
         ],
         placeholderMeters: [.cursorModels, .otherModels],
         copy: ProviderCopy(

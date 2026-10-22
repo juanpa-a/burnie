@@ -6,6 +6,8 @@ import Foundation
 /// Individual plans: the Cursor Models and Other Models pools as percentages, like the dashboard; today reads in tokens.
 /// Plans without pools (teams, enterprise): a single included usage meter in money; today reads in money.
 /// On-demand is a feature, only when enabled, without a period: it has no pace to keep (B-4).
+/// The member's own buckets come first; the team's stand in only without them, as team meters (scope team), so a
+/// team's spend never reads as the member's.
 enum CursorUsageMapper {
     static func limits(from summary: CursorUsageSummaryDTO) throws(ProviderIssue) -> LimitsPart {
         guard let cycleEnd = summary.billingCycleEnd.flatMap(ISO8601DateParser.date(from:)) else {
@@ -35,14 +37,17 @@ enum CursorUsageMapper {
             )
             return (pools, .tokens)
         }
-        guard let bucket = individual?.plan ?? individual?.overall ?? summary.teamUsage?.pooled, let used = bucket.used else {
+        guard let (bucket, scope) = ownOrTeam(own: individual?.plan ?? individual?.overall, team: summary.teamUsage?.pooled),
+              let used = bucket.used
+        else {
             throw .unexpectedResponse("Cursor summary without usage buckets")
         }
         let budget = Meter(
-            id: .included,
+            id: scope == .own ? .included : .teamPool,
             fill: bucket.totalPercentUsed.map { Fraction($0 / 100) } ?? share(used: used, of: bucket.limit),
             value: .money(used: Cents(used), limit: bucket.limit.map(Cents.init)),
             caption: .cycleEnds(cycleEnd),
+            scope: scope,
             period: period
         )
         return (MeterSet(primary: budget), .money)
@@ -50,14 +55,26 @@ enum CursorUsageMapper {
 
     /// "Kicks in after included usage runs out" while nothing was spent (B-48).
     private static func onDemandMeter(in summary: CursorUsageSummaryDTO, cycleEnd: Date) -> Meter? {
-        guard let bucket = summary.individualUsage?.onDemand ?? summary.teamUsage?.onDemand, bucket.enabled == true else { return nil }
+        guard let (bucket, scope) = ownOrTeam(own: summary.individualUsage?.onDemand, team: summary.teamUsage?.onDemand),
+              bucket.enabled == true
+        else { return nil }
         let used = bucket.used ?? 0
         return Meter(
-            id: .onDemand,
+            id: scope == .own ? .onDemand : .teamOnDemand,
             fill: share(used: used, of: bucket.limit),
             value: .money(used: Cents(used), limit: bucket.limit.map(Cents.init)),
-            caption: used == 0 ? .onDemandIdle : .cycleEnds(cycleEnd)
+            caption: used == 0 ? .onDemandIdle : .cycleEnds(cycleEnd),
+            scope: scope
         )
+    }
+
+    /// The member's own bucket when the summary has one, else the team's, with whose it is.
+    private static func ownOrTeam(
+        own: CursorUsageSummaryDTO.Bucket?,
+        team: CursorUsageSummaryDTO.Bucket?
+    ) -> (bucket: CursorUsageSummaryDTO.Bucket, scope: MeterScope)? {
+        if let own { return (own, .own) }
+        return team.map { ($0, .team) }
     }
 
     /// The whole billing cycle; nil if its start is missing or isn't before its end.

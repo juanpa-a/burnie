@@ -28,7 +28,9 @@ struct CursorProviderTests {
     @Test("the provider and meter ids are frozen (SPEC 12)")
     func idsAreFrozen() {
         #expect(ProviderID.cursor.rawValue == "cursor")
-        #expect([MeterID.cursorModels, .otherModels, .included, .onDemand].map(\.rawValue) == ["cursorModels", "otherModels", "included", "onDemand"])
+        #expect([MeterID.cursorModels, .otherModels, .included, .teamPool, .onDemand, .teamOnDemand].map(\.rawValue) == [
+            "cursorModels", "otherModels", "included", "teamPool", "onDemand", "teamOnDemand",
+        ])
     }
 
     @Test("B-21 Cursor's issue rows")
@@ -53,7 +55,7 @@ struct CursorProviderTests {
         #expect(descriptor.displayName == "Cursor")
         #expect(descriptor.shortName == "Cursor")
         #expect(descriptor.dashboard == DashboardLink(title: "Open Cursor dashboard", url: URL(string: "https://cursor.com/dashboard/spending")!))
-        #expect(descriptor.meters.map(\.label) == ["Cursor Models", "Other Models", "Included usage", "On-demand"])
+        #expect(descriptor.meters.map(\.label) == ["Cursor Models", "Other Models", "Included usage", "Team pool", "On-demand", "Team on-demand"])
         #expect(descriptor.placeholderMeters == [.cursorModels, .otherModels])
     }
 
