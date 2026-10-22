@@ -83,6 +83,28 @@ extension RuntimeStateTests {
         #expect(harness.state.jobs[TestProviders.betaLimitsJob]?.backoff == RateLimitBackoff())
     }
 
+    @Test("B-35 while a job waits for the user, each not found in a row doubles its timer, up to 45 minutes")
+    func waitingForTheUserSlowsTheTimer() {
+        var outcomes = ReducerHarness.healthyOutcomes
+        outcomes[TestProviders.alphaLimitsJob] = .failure(.notFound)
+        var harness = ReducerHarness.launched(finishing: outcomes)
+        var delays: [TimeInterval] = [Scheduling.delay(for: harness.state.jobs[TestProviders.alphaLimitsJob]!, now: harness.now, jitter: 0)]
+        for _ in 1...4 {
+            delays.append(fireAndFinish(&harness, TestProviders.alphaLimitsJob, with: .failure(.notFound)) ?? -1)
+        }
+        #expect(delays == [600, 1_200, 2_400, 2_700, 2_700])
+        #expect(fireAndFinish(&harness, TestProviders.alphaLimitsJob, with: ReducerHarness.healthyOutcomes[TestProviders.alphaLimitsJob]!) == 300)
+    }
+
+    @Test("B-35 a job waiting for the user still runs with Refresh", arguments: [ProviderIssue.notFound, .signInExpired])
+    func waitingJobStillRunsWithRefresh(issue: ProviderIssue) {
+        var outcomes = ReducerHarness.healthyOutcomes
+        outcomes[TestProviders.alphaLimitsJob] = .failure(issue)
+        var harness = ReducerHarness.launched(finishing: outcomes)
+        harness.advance(by: 1)
+        #expect(harness.send(.refreshRequested(harness.newRequest())).ranJobs.contains(TestProviders.alphaLimitsJob))
+    }
+
     @Test("B-36 a timer that fired lets go of itself before its run, and the run re-arms a new one")
     func firedTimerLetsGoBeforeItsRun() throws {
         var harness = ReducerHarness.launched()

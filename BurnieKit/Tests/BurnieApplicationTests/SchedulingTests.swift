@@ -8,13 +8,16 @@ struct SchedulingTests {
     static let triggers: [RefreshTrigger] = [.timer, .popoverOpened, .manual, .wake, .networkRestored, .activityChanged]
     static let policies = [TestProviders.alphaLimitsPolicy, TestProviders.alphaActivityPolicy, TestProviders.betaLimitsPolicy, TestProviders.betaActivityPolicy]
 
-    /// A job of any policy, maybe running, maybe in a backoff, last run around `now`.
+    /// A job of any policy, maybe running, maybe in a backoff, maybe waiting for the user, last run around `now`.
     func job(_ gen: inout Gen, now: Date) -> JobState {
         var job = JobState(part: gen.coinFlip() ? .limits : .activity, policy: gen.element(of: Self.policies))
         job.running = gen.maybe { RunID(value: $0.int(in: 0...9)) }
         job.lastRun = gen.maybe { $0.date(around: now) }
         if gen.coinFlip() {
             job.backoff.recordRateLimit(retryAt: gen.maybe { $0.date(around: now) }, now: gen.date(around: now))
+        }
+        for _ in 0..<gen.int(in: 0...3) {
+            job.idle.record(Result<Part, ProviderIssue>.failure(.notFound))
         }
         return job
     }
@@ -59,7 +62,7 @@ struct SchedulingTests {
         if let retryAt = job.backoff.retryAt {
             #expect(delay == max(retryAt.timeIntervalSince(now), 0), "seed \(seed)")
         } else {
-            let interval = job.policy.interval
+            let interval = job.idle.stretch(job.policy.interval)
             #expect((interval - job.policy.jitter...interval + job.policy.jitter).contains(delay), "seed \(seed)")
             #expect(Scheduling.delay(for: job, now: now, jitter: 0) == interval, "seed \(seed)")
         }
