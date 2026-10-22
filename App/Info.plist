@@ -22,12 +22,18 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://github.com/juanpa-a/burnie/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>66YsUTdePwRiFcY8RqQFo8xdlhmANz/TqStiWOy8oec=</string>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Juanpa</string>
 </dict>
