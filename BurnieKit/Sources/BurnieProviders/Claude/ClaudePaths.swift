@@ -10,9 +10,14 @@ struct ClaudePaths: Sendable {
         home.appending(path: ".claude/.credentials.json")
     }
 
+    /// Where Claude Code keeps its data, the XDG one first; without either, it isn't installed (B-27).
+    var claudeCodeFolders: [URL] {
+        [home.appending(path: ".config/claude"), home.appending(path: ".claude")]
+    }
+
     /// Both are scanned if they exist; the XDG one first (B-45).
     var logRoots: [URL] {
-        [home.appending(path: ".config/claude/projects"), defaultLogRoot]
+        claudeCodeFolders.map { $0.appending(path: "projects") }
     }
 
     /// The usual root, shown when neither exists yet.
