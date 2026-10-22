@@ -41,6 +41,18 @@ struct RateLimitBackoffTests {
         #expect(backoff.retryAt == now.addingTimeInterval(45 * 60))
     }
 
+    @Test("B-33 recording a 429 starts the wait, and recording any other outcome resets it")
+    func recordingAnOutcome() {
+        var backoff = RateLimitBackoff()
+        backoff.record(Result<Int, ProviderIssue>.failure(.rateLimited(retryAt: nil)), now: now)
+        #expect(backoff.retryAt == now.addingTimeInterval(60))
+        backoff.record(Result<Int, ProviderIssue>.failure(.offline), now: now)
+        #expect(backoff == RateLimitBackoff())
+        backoff.record(Result<Int, ProviderIssue>.failure(.rateLimited(retryAt: nil)), now: now)
+        backoff.record(Result<Int, ProviderIssue>.success(1), now: now)
+        #expect(backoff == RateLimitBackoff())
+    }
+
     @Test("B-33 any other outcome resets the wait")
     func resetClearsTheWait() {
         var backoff = RateLimitBackoff()

@@ -37,7 +37,7 @@ public enum CursorProvider {
         let limits = CursorSummaryFetcher(dashboard: dashboard)
         let activity = CursorActivity(
             tokens: CursorEventsFetcher(dashboard: dashboard, clock: ports.clock),
-            spend: CursorSpendFetcher(dashboard: dashboard, clock: ports.clock)
+            spend: CursorSpendFetcher(dashboard: dashboard, clock: ports.clock, backoff: CursorSpendBackoff())
         )
         return ProviderBundle(
             descriptor: descriptor,

@@ -30,4 +30,13 @@ public struct RateLimitBackoff: Hashable, Sendable {
     public func allowsRequest(at now: Date) -> Bool {
         retryAt.map { now >= $0 } ?? true
     }
+
+    /// A 429 starts or extends the wait; any other outcome resets it (B-33).
+    public mutating func record<Value>(_ outcome: Result<Value, ProviderIssue>, now: Date) {
+        if case .failure(.rateLimited(let serverRetryAt)) = outcome {
+            recordRateLimit(retryAt: serverRetryAt, now: now)
+        } else {
+            reset()
+        }
+    }
 }
