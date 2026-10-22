@@ -23,9 +23,18 @@ struct CursorSpendFetcher: Sendable {
 
     let dashboard: CursorDashboardClient
     let clock: any Clock
+    let backoff: CursorSpendBackoff
 
-    /// The cents of every day of the window, 0 for a day without events (B-47).
+    /// The cents of every day of the window, 0 for a day without events; nothing is asked for while a 429's wait lasts
+    /// (B-47).
     func dailySpentCents() async throws(ProviderIssue) -> [LocalDay: Cents] {
+        try await backoff.checkWaitIsOver(at: clock.now)
+        let spent = await Result.outcome { () async throws(ProviderIssue) in try await spendInWindow() }
+        await backoff.record(spent, at: clock.now)
+        return try spent.get()
+    }
+
+    private func spendInWindow() async throws(ProviderIssue) -> [LocalDay: Cents] {
         let calendar = Calendar.gregorian(in: clock.timeZone)
         let window = ActivityWindow.days(endingAt: LocalDay(clock.now, in: calendar))
         let events = try await events(from: window.lowerBound.start(in: calendar), to: clock.now)

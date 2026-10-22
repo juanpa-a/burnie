@@ -12,6 +12,9 @@ struct CursorFetchersTests {
     /// What the dashboard's clock reads, so a test can expire the session; the fetchers' own clocks stay at `Self.now`.
     var now = Self.now
     let http = FakeHTTPClient(status: 200, body: Fixture.data("cursor-summary-pro.json"), headers: ["Content-Type": "application/json; charset=utf-8"])
+    /// The spend's clock and backoff, kept between activity readings like the provider keeps them between refreshes.
+    let spendClock = ManualClock(now: Self.now)
+    let spendBackoff = CursorSpendBackoff()
 
     var dashboard: CursorDashboardClient {
         CursorDashboardClient(
@@ -25,7 +28,7 @@ struct CursorFetchersTests {
     var activity: CursorActivity {
         CursorActivity(
             tokens: CursorEventsFetcher(dashboard: dashboard, clock: FixedClock(now: Self.now)),
-            spend: CursorSpendFetcher(dashboard: dashboard, clock: FixedClock(now: Self.now))
+            spend: CursorSpendFetcher(dashboard: dashboard, clock: spendClock, backoff: spendBackoff)
         )
     }
 
@@ -100,7 +103,7 @@ struct CursorFetchersTests {
     }
 
     func spentInWindow() async throws(ProviderIssue) -> [LocalDay: Cents] {
-        try await CursorSpendFetcher(dashboard: dashboard, clock: FixedClock(now: Self.now)).dailySpentCents()
+        try await CursorSpendFetcher(dashboard: dashboard, clock: spendClock, backoff: spendBackoff).dailySpentCents()
     }
 
     /// Every day of the window ending on the 10th, 0 except for the days in `spent`.
@@ -165,6 +168,21 @@ struct CursorFetchersTests {
         #expect(reading.spent.isEmpty)
     }
 
+    @Test("B-47 after a 429 the spend isn't asked for again before its Retry-After, and the tokens still arrive")
+    func spendWaitsOutItsRateLimit() async throws {
+        http.respond(to: CursorSpendFetcher.url, status: 429, headers: ["Retry-After": "120"])
+        _ = try await activityReading()
+        let reading = try await activityReading()
+        #expect(reading.tokens[.day("2026-10-10")] == Tokens(2_662_000))
+        #expect(reading.spent.isEmpty)
+        #expect(spendRequests == 1)
+
+        spendClock.advance(by: 120)
+        http.respond(to: CursorSpendFetcher.url, body: Fixture.data("cursor-usage-events.json"))
+        #expect(try await activityReading().spent == Self.window([.day("2026-10-10"): Cents(117)]))
+        #expect(spendRequests == 2)
+    }
+
     @Test("B-47 spend that can't be added up exactly keeps the tokens and leaves spend unknown", arguments: [
         [page(events: 1_000, reported: 1_002), page(events: 1, reported: 1_002)],
         [Data(#"{"totalUsageEventsCount":1,"usageEventsDisplay":[{"timestamp":"1791648000000"}]}"#.utf8)],
@@ -174,6 +192,10 @@ struct CursorFetchersTests {
         let reading = try await activityReading()
         #expect(reading.tokens[.day("2026-10-10")] == Tokens(2_662_000))
         #expect(reading.spent.isEmpty)
+    }
+
+    var spendRequests: Int {
+        http.requests.filter { $0.url == CursorSpendFetcher.url }.count
     }
 
     /// Cursor's activity, with the events CSV answering every request the test didn't route elsewhere.

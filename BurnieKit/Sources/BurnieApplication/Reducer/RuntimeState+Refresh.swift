@@ -26,11 +26,7 @@ extension RuntimeState {
         guard var job = jobs[key], job.running == run else { return finishedRequests }
         job.running = nil
         job.lastRun = now
-        if case .failure(.rateLimited(let retryAt)) = outcome {
-            job.backoff.recordRateLimit(retryAt: retryAt, now: now)
-        } else {
-            job.backoff.reset()
-        }
+        job.backoff.record(outcome, now: now)
         jobs[key] = job
         return show(outcome, of: job.part, for: key.provider, now: now)
             + armTimer(of: key, jitter: jitter, now: now)

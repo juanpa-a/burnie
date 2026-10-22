@@ -5,7 +5,7 @@ import Foundation
 /// Cursor's activity: tokens per day from the events CSV, and each day's spend from the usage events, in one part.
 ///
 /// The spend is extra: when it can't be added up, a 429 included, the part arrives without it and the header reads
-/// tokens; it never fails the part nor starts a backoff (B-47).
+/// tokens; it never fails the part. A 429 on it waits in the spend's own backoff, never the activity's (B-47).
 struct CursorActivity: Sendable {
     let tokens: CursorEventsFetcher
     let spend: CursorSpendFetcher
