@@ -69,7 +69,8 @@ release: gen
 	codesign --sign "Developer ID Application" --timestamp $(RELEASE_DIR)/Burnie.dmg
 	xcrun notarytool submit $(RELEASE_DIR)/Burnie.dmg --keychain-profile burnie-notary --wait
 	xcrun stapler staple $(RELEASE_DIR)/Burnie.dmg
-	# Signs the DMG with the EdDSA key in the Keychain and points the appcast at this version's release.
+	# Signs the DMG and the appcast (Info.plist requires a signed feed) with the EdDSA key in the Keychain, and points
+	# the appcast at this version's release.
 	version=$$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" build/export/Burnie.app/Contents/Info.plist) && \
 		$(SPARKLE_BIN)/generate_appcast --download-url-prefix "$(RELEASES_URL)/download/v$$version/" $(RELEASE_DIR) && \
 		echo "Publish with: gh release create v$$version $(RELEASE_DIR)/Burnie.dmg $(RELEASE_DIR)/appcast.xml"
