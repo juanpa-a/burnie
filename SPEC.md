@@ -89,10 +89,11 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 
 | Term | Definition | Type | Module |
 | --- | --- | --- | --- |
-| **Meter** | One measured limit with a fill between 0 and 1, a value, a caption and an optional period. | `Meter` | Domain |
+| **Meter** | One measured limit with a fill between 0 and 1, a value, a caption, a scope and an optional period. | `Meter` | Domain |
 | **Meter ID** | Stable key of a meter kind (`"session"`, `"cursorModels"`). Declared by its provider. | `MeterID` (newtype over `String`) | Domain |
+| **Meter scope** | Whose usage a meter counts: the user's own, or the whole team's (a team plan's shared pool). The ring follows only a primary meter of the user's own. | `MeterScope` (`.own` / `.team`), `Meter.scope` | Domain |
 | **Meter set** | The meters of one snapshot, non-empty by construction, with a **primary meter** first. | `MeterSet` | Domain |
-| **Primary meter** | The meter that represents a provider at a glance; the menu bar ring follows it. | `MeterSet.primary` | Domain |
+| **Primary meter** | The meter that represents a provider at a glance; the menu bar ring follows it when its scope is the user's own. | `MeterSet.primary` | Domain |
 | **Fraction** | A number clamped to 0…1. NaN becomes 0. | `Fraction` | Domain |
 | **Tokens** | A count of model tokens. | `Tokens` (newtype over `Int`) | Domain |
 | **Cents** | An amount of money in US cents. | `Cents` (newtype over `Int`) | Domain |
@@ -161,9 +162,10 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Refresh task** | One opaque job a provider declares: it yields one part and has its own policy. The runtime schedules it without knowing what it reads. | `RefreshTask` | Interface |
 | **Refresh policy** | A task's interval, jitter, staleness on popover open, and whether it needs the network. | `RefreshPolicy` | Domain |
 | **Trigger** | Why a refresh is requested: timer, popover opened, manual, wake, network restored, activity changed. | `RefreshTrigger` | Domain |
-| **Backoff** | The wait after a 429: `Retry-After`, or 1, 2, 4… minutes up to 60. | `RateLimitBackoff` | Domain |
+| **Backoff** | The wait after a 429: 1, 2, 4… minutes up to 45, or the `Retry-After` when it's longer than that step, never past 45 minutes. | `RateLimitBackoff` | Domain |
+| **Idle backoff** | The longer timer while a job waits for the user (not found, sign-in expired, a specific issue): each such outcome in a row doubles the job's interval, up to 45 minutes or the interval itself when that's longer; any other outcome resets it. Only the timer waits longer: opening the popover, Refresh, wake and network restored still run the job. | `IdleBackoff` | Domain |
 | **Activity watcher** | Something that reports when local activity changes (FSEvents over Claude's logs). | `ActivityWatcher` port | Interface |
-| **Job** | One refresh task of one enabled provider as the runtime tracks it: its part kind, its policy, the run in flight, when it last ran, and its backoff. | `JobKey`, `JobState` in `RuntimeState.jobs` | Application |
+| **Job** | One refresh task of one enabled provider as the runtime tracks it: its part kind, its policy, the run in flight, when it last ran, its backoff and its idle backoff. | `JobKey`, `JobState` in `RuntimeState.jobs` | Application |
 | **Run ID** | Identifies one run of a job. Drawn from a counter in `RuntimeState`, never reused, so an outcome from a run that no longer counts (its provider was turned off, or off and on) is recognized and dropped. | `RunID` (newtype over `Int`) | Application |
 | **Single flight** | At most one run of a job at a time. The reducer marks the run in the same step that asks for it. | `JobState.running: RunID?` | Application |
 | **Timer ID** | Identifies one armed timer of a job. Drawn from a counter in `RuntimeState`, never reused, so a `timerFired` already on its way when its timer was cancelled or replaced is recognized and dropped. | `TimerID` (newtype over `Int`), `JobState.timer: TimerID?` | Application |
@@ -180,7 +182,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | --- | --- | --- | --- |
 | **Favorite** | The provider the user marked with the heart. Stored only when marked; at most one. | `ProviderID?` in settings | Domain |
 | **Effective favorite** | The stored favorite if it's enabled, else the only enabled provider, else none. Never stored. | `Favorite.effective` | Domain |
-| **Ring** | The menu bar icon's ring: the effective favorite's primary meter, in whole percents. Hidden when off, no favorite or no meters. | `RingState` | Domain |
+| **Ring** | The menu bar icon's ring: the effective favorite's primary meter, in whole percents. Hidden when off, with no favorite or no meters, or when the primary meter counts the team's usage. | `RingState` | Domain |
 | **Feature toggle** | A user switch that hides a snapshot feature (today: on-demand). Shown only when some enabled snapshot has the feature. | `FeatureToggle` | Domain |
 | **Settings** | What the app remembers between launches: enabled, favorite, ring shown, week chart shown, feature toggles. | `AppSettings` | Domain |
 | **Setting change** | One setting the user changed, with its new value. The settings store writes only that key, so a key the user never touched stays absent and keeps its default (section 12). | `SettingChange` | Interface |
@@ -207,6 +209,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **HTTP request** | The value a provider hands the HTTP port: method, URL, headers, body. Never a `URLRequest`. | Interface (`HTTPRequest`) |
 | **HTTP response** | What the HTTP port returns: status, headers (looked up case-insensitively), MIME type, body. Never an `HTTPURLResponse`. | Interface (`HTTPResponse`) |
 | **HTTP failure** | Why the HTTP port got no response: offline (any URL loading error: no network, timeout…), or another error. | Interface (`HTTPFailure`) |
+| **Key-value database failure** | Why the key-value database port read nothing: the database is missing, busy (still locked when the timeout runs out), or unreadable. | Interface (`KeyValueDatabaseFailure`) |
 | **App environment** | What the composition root hands Application: every port and the provider bundles. | Application (`AppEnvironment`) |
 | **Runtime state** | Everything Application knows: the registry, settings, parts, what is shown, history, jobs and open requests. Only the reducer changes it. | Application (`RuntimeState`) |
 | **Registered provider** | What the reducer keeps of a bundle: its descriptor, its renewal's failed copy if it can renew sign-in, its source location, and its tasks as name, part kind and policy. No closures; those stay with the interpreter. | Application (`RegisteredProvider`, `RegisteredTask`) |
@@ -345,7 +348,9 @@ struct Tokens: Hashable, Codable, Sendable, Comparable, AdditiveArithmetic { let
 struct Cents: Hashable, Codable, Sendable, Comparable, AdditiveArithmetic { let amount: Int }
 
 // Meters
-struct Meter { let id: MeterID; let fill: Fraction; let value: MeterValue; let caption: MeterCaption; let period: DateInterval? }
+struct Meter { let id: MeterID; let fill: Fraction; let value: MeterValue; let caption: MeterCaption; let scope: MeterScope;
+               let period: DateInterval? }                       // scope defaults to .own
+enum MeterScope { case own, team }                               // whose usage the meter counts
 enum MeterValue { case percent(Int); case money(used: Cents, limit: Cents?) }
 enum MeterCaption { case resetsIn(Date), resetsAt(Date), cycleEnds(Date), noActiveSession, onDemandIdle }
 struct MeterSet { let primary: Meter; let others: [Meter] }      // non-empty; `all` = [primary] + others;
@@ -400,7 +405,8 @@ struct WeekChart { let days: [LocalDay]; let providers: [ProviderID]; let series
 // Refresh
 struct RefreshPolicy { let interval: TimeInterval; let jitter: TimeInterval; let staleOnOpen: TimeInterval?; let needsNetwork: Bool }
 enum RefreshTrigger { case timer, popoverOpened, manual, wake, networkRestored, activityChanged }
-struct RateLimitBackoff      // as today
+struct RateLimitBackoff      // recordRateLimit(retryAt:now:), reset(), allowsRequest(at:); retryAt clamped (B-33)
+struct IdleBackoff           // record(), reset(), stretch(_ interval:) -> TimeInterval (B-35)
 
 // Settings and the menu bar
 enum Favorite                // effective(stored:enabled:), toggling(_:stored:enabled:), ring(…)
@@ -424,9 +430,10 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 | `MeterSet.cycle` | The longest period among the meters; nil when none has one (B-79). | — |
 | `UsageHistory.cycleTotal(for:startingOn:today:)` | The provider's tokens from the later of the cycle's first day and the day the history is recorded since (the first day of the unbroken run of recorded days ending on its latest one), through today; nil when the history has no day of the cycle (B-79). Internally `total(for:from:through:)` and `recordedSince(for:)`. | — |
 | `ActivityPart.spend(in:)` | Every day's spend when the plan measures money, nil when it measures tokens (B-78). | — |
-| `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent. | `meters.first` |
+| `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent, and hidden when that meter's scope is `team` (B-53). | `meters.first` |
 | `RefreshPolicy.shouldRun(for:lastRun:now:)` | As today. | same |
-| `RateLimitBackoff.*` | As today. | same |
+| `RateLimitBackoff.recordRateLimit(retryAt:now:)` | `retryAt` is `now` plus the server's wait held between the ladder's step (1, 2, 4… minutes for the count of consecutive 429s) and 45 minutes; without a server date, the step (B-33). | same |
+| `IdleBackoff.stretch(_ interval:)` | The interval doubled once per outcome in a row that waits for the user, never past 45 minutes unless the interval itself is longer; the interval itself after `reset()` (B-35). | — |
 
 ### 4.4 Laws
 
@@ -474,14 +481,20 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
   (D-5: never a reversed range); `total` splits at any day: `total(a…c) ≡ total(a…b) + total(b+1…c)` for
   `a ≤ b < c`, and a reversed range totals zero; every day from `recordedSince` through the latest recorded day is
   recorded, and the day before it isn't.
-- **RingState**: `visible` percent is in 0…100 and equals the primary meter's fill × 100, rounded.
-- **RateLimitBackoff**: without `Retry-After`, waits are non-decreasing across consecutive 429s and capped at 60
-  minutes; with it, `retryAt` is exactly the server's date, whatever its length; `reset` returns to the initial value.
+- **RingState**: `visible` percent is in 0…100 and equals the primary meter's fill × 100, rounded; the ring is
+  `hidden` whenever the primary meter's scope is `team`.
+- **RateLimitBackoff**: the wait `retryAt − now` is always at least the ladder's step for the count of consecutive
+  429s (1, 2, 4… minutes) and at most 45 minutes, for any `Retry-After` including none, 0, negative or past dates; a
+  `Retry-After` between the step and 45 minutes is honored exactly; without one, waits are non-decreasing across
+  consecutive 429s; `reset` returns to the initial value.
+- **IdleBackoff**: `stretch(i) ≥ i` for every interval `i`; `stretch(i) ≤ max(i, 45 minutes)`; `stretch` is
+  non-decreasing across consecutive `record()`s; after `reset()`, `stretch(i) == i`.
 - **Codable**: `decode(encode(x)) ≡ x` for every persisted type; every newtype encodes to its bare raw value.
 - **Scheduling** (in `BurnieApplicationTests`, since `Scheduling` lives in Application): for every trigger,
   `canRun` is false while the job is running or before its backoff's `retryAt`, and false when offline for a policy
   that needs the network; `delay` is never negative, is `retryAt − now` during backoff, and otherwise lies in
-  `interval ± policy.jitter`, equal to `interval` for a jitter sample of 0.
+  `idle.stretch(interval) ± policy.jitter`, equal to `idle.stretch(interval)` for a jitter sample of 0 (`interval`
+  when the job isn't waiting for the user).
 
 ---
 
@@ -513,7 +526,7 @@ The contract between the UI, the runtime and the providers. Types, protocols and
 | `HTTPClient` | Send an `HTTPRequest`, get an `HTTPResponse` or throw an `HTTPFailure`. Only the hosts it was built for. | `URLSessionHTTPClient` | Providers |
 | `FileReading` | List, attributes, read from offset, exists, is executable. Read-only. | `LocalFileReader` | Providers |
 | `SecretReader` | Read a generic password from the Keychain. Never writes. | `SecurityCLIKeychain` | Providers |
-| `KeyValueDatabase` | Read one row of a SQLite key-value table. Read-only. | `SQLiteKeyValueReader` | Providers |
+| `KeyValueDatabase` | Read one row of a SQLite key-value table: the value, or nil without the row; it throws a `KeyValueDatabaseFailure` otherwise. Read-only; never copies the database. | `SQLiteKeyValueReader` | Providers |
 | `ProviderStorage` | Load and save one provider's private JSON (Claude's log index) by name. The composition root binds it to the provider's id: `name` is stored as `<provider id>-<name>.json`, so Claude's `log-index` stays `claude-log-index.json` (section 12). | `JSONFileStore` | Providers |
 | `ProcessRunner` | Run an executable from the allowlist it was built with, with fixed arguments, clean environment, no output, a timeout; return the exit status. | `FoundationProcessRunner` | Providers |
 | `ActivityWatcher` | `start(onChange:)` / `stop()` over the directories it was built for. | `DirectoryWatcher` (FSEvents) | Providers (build and declare), Application (start and stop) |
@@ -532,6 +545,7 @@ Port values:
 struct HTTPResponse: Sendable { let status: Int; let headers: [String: String]; let mimeType: String?; let body: Data }
                                    // header(_ name:) looks up case-insensitively (`Retry-After`, B-24)
 enum HTTPFailure: Error { case offline, other(String) }   // offline: any URL loading error (B-24)
+enum KeyValueDatabaseFailure: Error { case missing, busy, unreadable }   // no file; locked past the timeout; else (B-26)
 enum LoginItemStatus { case enabled, disabled, requiresApproval }
 enum Measure: Sendable { case count(StaticString, Int), bytes(StaticString, Int),
                          seconds(StaticString, Double), status(Int) }   // numbers only, always public in the log
@@ -707,7 +721,8 @@ what it reads, how often, or in how many calls.
   placeholders `[session, weekly]`; status "Reading local logs · {sourceLocation}".
 - **Tasks:** `limits` (OAuth usage + hourly profile memo; policy 5 min ± 30 s, stale on open 60 s, needs network) and
   `activity` (incremental log scan with the index memo; 5 min, no jitter, not refreshed on open, no network,
-  watched by FSEvents over the existing log roots).
+  watched by FSEvents over the existing log roots). `limits` reads the credentials only when a Claude Code folder
+  (`~/.claude` or `~/.config/claude`) exists (B-27).
 - **Capabilities:** `signInRenewal` when an installed `claude` executable is found (native installer, Homebrew on
   Apple silicon, Homebrew on Intel/npm, in that order); `sourceLocation` from the existing log root or the default.
 - **Specific issues:** `missingScope` (token without `user:profile`, from `claude setup-token`).
@@ -717,12 +732,13 @@ what it reads, how often, or in how many calls.
 
 - **Descriptor:** id `cursor`; names "Cursor" / "Cursor"; dashboard "Open Cursor dashboard" →
   `https://cursor.com/dashboard/spending`; meters `cursorModels` ("Cursor Models", primary on individual plans),
-  `otherModels` ("Other Models"), `included` ("Included usage", primary on team and enterprise plans), `onDemand`
-  ("On-demand", only as a feature); placeholders `[cursorModels, otherModels]`;
-  status "Signed in · {Plan} plan" or "Signed in".
+  `otherModels` ("Other Models"), `included` ("Included usage", primary on team and enterprise plans), `teamPool`
+  ("Team pool", scope `team`, primary when the summary has only the team's pool), `onDemand` ("On-demand", only as a
+  feature), `teamOnDemand` ("Team on-demand", scope `team`, only as a feature, when the member has no on-demand of
+  their own); placeholders `[cursorModels, otherModels]`; status "Signed in · {Plan} plan" or "Signed in".
 - **Tasks:** `limits` (usage summary; 10 min ± 30 s, stale on open 60 s, needs network) and `activity`
   (events CSV for tokens plus paged usage events for the window's spend, combined; 30 min, no jitter, stale on open 10 min,
-  needs network).
+  needs network; a spend backoff memo, B-47).
 - **Capabilities:** none today.
 - **Specific issues:** none today.
 - **Hosts:** `cursor.com`.
@@ -794,6 +810,7 @@ struct JobState: Equatable {
     var timer: TimerID?                           // the armed timer; nil once it fired or was cancelled
     var lastRun: Date?
     var backoff: RateLimitBackoff
+    var idle: IdleBackoff                         // recorded by not found, sign-in expired, specific; reset by the rest
 }
 
 struct RequestID: Hashable { let value: Int }    // drawn by the interpreter when a use case starts
@@ -806,7 +823,7 @@ struct PendingRequest: Equatable {
 enum Scheduling {
     /// B-31, B-33, B-34: not running, not in backoff, online or no network needed, and the policy accepts the trigger.
     static func canRun(_ job: JobState, trigger: RefreshTrigger, isOnline: Bool, now: Date) -> Bool
-    /// B-35: until `retryAt` during backoff, else interval ± jitter. `jitter` is a sample in -1…1 the
+    /// B-35: until `retryAt` during backoff, else the idle-stretched interval ± jitter. `jitter` is a sample in -1…1 the
     /// interpreter draws and puts in the event, so the function stays pure and tests pass a fixed value.
     static func delay(for job: JobState, now: Date, jitter: Double) -> TimeInterval
 }
@@ -908,8 +925,8 @@ Dumb adapters. Each implements one port and nothing else.
   `LOGNAME`, a system `PATH`), a working directory without `.claude/`, null stdin/stdout/stderr and a timeout.
   `SecurityCLIKeychain` runs `/usr/bin/security` itself, because it reads the password from stdout: fixed
   arguments, no stdin, stderr discarded, the output never logged.
-- **X-6** SQLite opens read-only with a timeout; if busy, copies the database and its WAL to a private 0700 temporary
-  directory, reads the copy and deletes it in a `defer`.
+- **X-6** SQLite opens read-only with a timeout and never copies the database: a missing file throws `missing`, a
+  lock still held when the timeout runs out `busy`, and anything else `unreadable` (`KeyValueDatabaseFailure`).
 - **X-7** `HTTPClient` uses an ephemeral session, no cookies or cache, follows no redirects, and checks the host
   against the allowlist before any header is sent. It maps every `URLError` to `HTTPFailure.offline`, as today,
   and every other error to `.other`.
@@ -1031,10 +1048,10 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-21 | Issue copy per provider: not found, sign-in expired, missing scope (Claude), unexpected ("Couldn't read usage. Burnie may need an update."). | Interface + Providers |
 | B-22 | An expired sign-in shows "Refresh sign-in" only when the provider can renew; on failure the row shows the renewal's `failedCopy`. | Components + Application |
 | B-23 | A successful renewal triggers a manual refresh of that provider's limits. | Application |
-| B-24 | HTTP: no network or timeout → offline; 429 → rate limited with `Retry-After` (seconds or HTTP date); 5xx → offline; other non-2xx → unexpected. | Providers |
+| B-24 | HTTP: no network or timeout → offline; 429 → rate limited with `Retry-After` (seconds or HTTP date; a negative or non-finite number of seconds reads as none); 5xx → offline; other non-2xx → unexpected. | Providers |
 | B-25 | Claude: 401 → sign-in expired; 403 mentioning `user:profile` → missing scope; other 403 → sign-in expired; an expired token is detected before any request. | Providers |
-| B-26 | Cursor: 3xx, 401, 403 or HTML instead of data → sign-in expired; no database or row → not found; malformed or expired JWT → sign-in expired without network. | Providers |
-| B-27 | Claude credentials: Keychain first, then the credentials file. | Providers |
+| B-26 | Cursor: 3xx, 401, 403 or HTML instead of data → sign-in expired; no database or row → not found; a database still locked when the timeout runs out → offline (no issue row; the next refresh tries again), never a copy of it; a database that can't be read otherwise → unexpected; malformed or expired JWT → sign-in expired without network. | Providers |
+| B-27 | Claude credentials: only when a Claude Code folder (`~/.claude` or `~/.config/claude`) exists; without one, not found, and neither the Keychain nor the file is read. With one, the Keychain first, then the credentials file. | Providers |
 | B-28 | Claude's plan comes from the profile at most once an hour, keeps the last good one, and falls back to the credentials' plan. | Providers |
 | B-29 | Providers screen status line: "Off" while disabled; "{displayName} not found"; "Sign-in expired · open {displayName}"; any other state, a specific issue included, shows the provider's healthy line. | Interface + Providers |
 
@@ -1045,9 +1062,9 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-30 | Policies: Claude limits 5 min ± 30 s, stale on open 60 s, network; Claude activity 5 min, no jitter, not on open, no network; Cursor limits 10 min ± 30 s, 60 s, network; Cursor activity 30 min, no jitter, 10 min, network. | Providers |
 | B-31 | Timer, manual, wake and activity-changed always run; popover-opened runs when older than stale-on-open; network-restored runs when older than the interval. | Domain |
 | B-32 | Single flight per task. | Application |
-| B-33 | After a 429, nothing is requested from that task before `retryAt`, not even with Refresh; without `Retry-After`: 1, 2, 4… minutes up to 60; any other outcome resets. | Domain + Application |
+| B-33 | After a 429, nothing is requested from that task before `retryAt`, not even with Refresh. The wait is 1, 2, 4… minutes up to 45 for the count of consecutive 429s, or the `Retry-After` when it's longer, never past 45 minutes: a `Retry-After` of 0 or in the past waits the step, so a 429 never retries at once. Any other outcome resets. | Domain + Application |
 | B-34 | Offline skips tasks that need the network. Burnie starts online until the system reports otherwise. | Application |
-| B-35 | The next timer fires at `retryAt` during backoff, else after interval ± jitter. A timer that fires when its task can't run (offline) isn't re-armed: the job waits for network restored, which runs it if it's older than its interval and otherwise arms its timer, so no job is left without one (decision 47; today it could stall until another trigger). | Application |
+| B-35 | The next timer fires at `retryAt` during backoff, else after interval ± jitter. While a job waits for the user (its last outcomes in a row were not found, sign-in expired or a specific issue), the interval doubles per outcome up to 45 minutes, or stays the interval when that's longer (idle backoff); any other outcome resets it, and the popover, Refresh, wake and network restored run the job as usual. A timer that fires when its task can't run (offline) isn't re-armed: the job waits for network restored, which runs it if it's older than its interval and otherwise arms its timer, so no job is left without one (decision 47; today it could stall until another trigger). | Application |
 | B-36 | The timer releases itself before running, so cancelling it never cancels a request in flight. | Application |
 | B-37 | Activating providers starts their tasks without waiting; deactivating cancels their timers; updates are chained in order. | Application |
 | B-38 | Wake triggers a refresh 3 s later; network restored triggers one when going offline → online. | Application |
@@ -1064,8 +1081,8 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-44 | Claude log scan is incremental: only new bytes per file; a last line without newline waits for the next scan; truncated files are reread without double counting; duplicates by message key are counted once across files; unreadable lines count as diagnostics and never break the scan; files untouched since before the window are dropped. | Providers |
 | B-45 | Claude scans the XDG log root first, then `~/.claude`; no root at all is `notFound`. | Providers |
 | B-46 | An unreadable or old log index is discarded and rebuilt; a failed save only means a rescan next launch. | Providers |
-| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events for the window, every day of it present (0 without events), until a short page; a count mismatch, an event without a valid charge, or a failed spend request (a 429 included, which starts no backoff) makes the sum unknown (no partial sums) without failing the activity part, so today's usage reads in tokens. | Providers |
-| B-48 | Cursor meters: individual plans show Cursor Models and Other Models as percents (unit tokens); team/enterprise show one Included usage meter in money (unit money); on-demand appears only when enabled, after the other meters, with "Kicks in after included usage runs out" while unused; a summary without usage buckets or billing cycle end is unexpected. | Providers |
+| B-47 | Cursor tokens come from the events CSV requested only for the window; spend comes from paged usage events for the window, every day of it present (0 without events), until a short page; a count mismatch, an event without a valid charge, events of more than one owner, or a failed spend request makes the sum unknown (no partial sums) without failing the activity part, so today's usage reads in tokens. A 429 on the spend starts a backoff for the spend alone (B-33's wait): no spend request before its `retryAt`, and the sum is unknown meanwhile. An events CSV with a user or email column is unexpected: it would count more than the member. | Providers |
+| B-48 | Cursor meters: individual plans show Cursor Models and Other Models as percents (unit tokens); team/enterprise show one Included usage meter in money (unit money) from the member's own bucket, or one Team pool meter in money, scope team, when the summary has only the team's pool; on-demand appears only when enabled, after the other meters, with "Kicks in after included usage runs out" while unused, from the member's own on-demand, or as Team on-demand, scope team, from the team's when the member has none; a summary without usage buckets or billing cycle end is unexpected. | Providers |
 | B-49 | Claude meters: prefer `limits[]` (`session`, `weekly_all`), fall back to flat windows; a window without reset shows "No active session"; no windows at all is unexpected. | Providers |
 | B-76 | The week chart's legend shows each provider's cycle total (B-79) next to its name, and a provider without one its name alone; it has no tooltip. VoiceOver reads the cycle totals before the days. | Domain + Interface + Components |
 | B-77 | Hovering a day of the week chart dims the other days and shows a tooltip over it: the day ("Mon 19") and each provider's tokens that day, drawn on top of the legend it rises over. VoiceOver reads the totals and every day instead. | Interface + Components |
@@ -1079,11 +1096,11 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-50 | First launch: every provider enabled, ring on, week chart on, on-demand shown. | Application |
 | B-51 | Turning a provider off keeps its cache and history and stops its watcher and timers; turning it on resumes them. A refresh that finishes after its provider was turned off (or off and on) is dropped. | Application |
 | B-52 | One favorite: the heart replaces the previous one or clears it; a disabled provider can't be marked; an unknown stored id reads as no favorite and is left as is. | Domain |
-| B-53 | Ring: only with the switch on, an effective favorite and a ready snapshot with meters; it follows the primary meter rounded to whole percents. | Domain |
+| B-53 | Ring: only with the switch on, an effective favorite and a ready snapshot with meters whose primary meter counts the user's own usage; it follows that meter rounded to whole percents. A team's meter (scope team) never reaches the menu bar: the flame shows alone. | Domain |
 | B-54 | VoiceOver reads "Burnie usage" or "Burnie usage, {Provider} {n}%". | Interface |
 | B-55 | Header: "Updating…" before any data, "Updated just now", "Updated {n} min ago", "Updated {n} h ago"; hidden with every provider off. | Interface + App |
 | B-56 | Providers screen header: "{enabled} of {total} tracking". | Interface |
-| B-57 | An update shows a dot on the gear and an Update row; scheduled checks never open Sparkle's alert; a skipped version clears the dot on the next check. | Infra + App |
+| B-57 | An update shows a dot on the gear and an Update row; scheduled checks never open Sparkle's alert; a skipped version clears the dot on the next check. Updates come only from a signed appcast, are verified before extraction, and never install automatically: Sparkle's window offers no automatic install. | Infra + App |
 | B-58 | Launch at login is re-read when the providers screen appears; if turning it on needs approval, System Settings opens. | Application + Infra |
 | B-59 | The Refresh button spins and is disabled while any refresh request is open (the button's, the popover's or a sign-in renewal's) until every run it started finishes. | Application + App |
 
@@ -1093,7 +1110,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | --- | --- | --- |
 | B-60 | HTTP only to each provider's allowed hosts, checked before headers are sent; no redirects followed. | Infra |
 | B-61 | Burnie never refreshes or rotates Claude's token; renewal runs Claude Code itself. | Providers |
-| B-62 | Burnie never writes to `~/.claude`, `~/.config/claude`, the Keychain or `state.vscdb`. | Infra |
+| B-62 | Burnie never writes to `~/.claude`, `~/.config/claude`, the Keychain or `state.vscdb`, and never copies `state.vscdb` anywhere. | Infra |
 | B-63 | The renewal process gets a clean environment, a folder without `.claude/`, no tools, no user settings, no session persistence, and its output is discarded. | Providers + Infra |
 | B-64 | Logs carry counts, timings and status codes only; any other interpolation is `.private`. (Today's public method, path and error descriptions go, decision 42.) | Infra |
 
@@ -1127,7 +1144,7 @@ and invented values (`T-7`).
 | Claude log index | `Application Support/Burnie/claude-log-index.json` (Claude's `ProviderStorage` name `log-index`) | `ClaudeLogIndex` | **May** be invalidated (costs one full window rescan); never crash. |
 
 Provider id strings (`claude`, `cursor`), meter id strings (`session`, `weekly`, `cursorModels`, `otherModels`,
-`included`, `onDemand`) and specific issue codes (`missingScope`) are frozen: the newtypes encode exactly these raw
+`included`, `teamPool`, `onDemand`, `teamOnDemand`) and specific issue codes (`missingScope`) are frozen: the newtypes encode exactly these raw
 values, and `SpecificIssue` encodes as its bare code. Every newtype encodes as its bare
 raw value through a single-value container (`ProviderID` as `"claude"`, `Tokens` as `1250000`, never
 `{"count": 1250000}`), and `ProviderID` and `LocalDay` are `CodingKeyRepresentable`, so `history.json` stays a JSON
@@ -1140,6 +1157,9 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 "limit": 2000}}`), never `_0`. Every struct encodes with its property names. For example, `.limits` encodes as
 `{"limits": {"view": {"value": …, "at": 1760000000}, "today": {"tokens": 1250000}}}`. The refactor PR pins it in its own fixture
 (`T-7`), and from then on it is frozen like the rest of this section.
+
+`Meter.scope` (decision 61) is the one field added since: it encodes like any enum (`{"own": {}}`, `{"team": {}}`), and
+a meter without it, as every snapshot written before 0.4.2, decodes as `own`, so those caches still load.
 
 ---
 
@@ -1202,6 +1222,15 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 53 | 2026-10-22 | The cycle total is the longest meter period, not a billing date Burnie doesn't have: Cursor's billing cycle, Claude's weekly limit. It comes from `history.json` (35 days cover any cycle), from the day the history is recorded since when the cycle started earlier, so providers still fetch only the activity window and nothing new is persisted; no cycle spend. Events also carry the time zone, which turns a cycle's start into a local day. Refines decision 29. | Agreed |
 | 54 | 2026-10-22 | The week chart's switch is "Activity chart", since the chart shows the cycle totals too; the chart keeps its "Last 7 days" title, which is what its bars and legend draw. | Agreed |
 | 55 | 2026-10-22 | The legend shows each provider's cycle total instead of its week total, and the cycle tooltip under it (B-80) is gone: a week total next to a cycle total over a different span read as a contradiction. The only tooltip is a day's. The chart is titled "Activity", like its switch, since it no longer shows only the last 7 days. Refines decisions 53 and 54. | Agreed |
+| 56 | 2026-10-22 | Claude reads its credentials only when a Claude Code folder (`~/.claude` or `~/.config/claude`) exists. Without one, limits are not found and neither the Keychain nor the credentials file is read, so a Mac without Claude Code never runs `security find-generic-password`, which endpoint security on managed Macs treats as credential access. First launch still enables every provider (B-50). | Agreed |
+| 57 | 2026-10-22 | A 429's wait is held between the ladder's step (1, 2, 4… minutes) and 45 minutes, with or without `Retry-After`: a `Retry-After` of 0 or in the past no longer retries at once, and a huge one no longer stops the task until relaunch. A negative or non-finite `Retry-After` reads as none. The ladder's cap goes from 60 to 45 minutes. | Agreed |
+| 58 | 2026-10-22 | A 429 on Cursor's spend starts a backoff for the spend alone, a memo inside the provider (P-5) with the same wait as decision 57: the activity part still arrives with its tokens, and the spend isn't requested again before its `retryAt`. Refines B-47, whose spend 429 started no backoff. | Agreed |
+| 59 | 2026-10-22 | Idle backoff: while a job's outcomes in a row wait for the user (not found, sign-in expired, a specific issue), its timer interval doubles per outcome, up to 45 minutes or the interval itself when that's longer; any other outcome resets it. Only the timer slows down: the popover, Refresh, wake and network restored still run the job, so signing in shows up as soon as the user looks. | Agreed |
+| 60 | 2026-10-22 | The key-value database port never copies the database: it throws `KeyValueDatabaseFailure` (`missing`, `busy`, `unreadable`). Cursor reads `missing` as not found, `busy` as offline (no issue row, like a 5xx; the next refresh tries again) and `unreadable` as unexpected. `state.vscdb` holds the Cursor app's chat history, so a copy, even a temporary one, was more than Burnie needs. Replaces X-6's copy. | Agreed |
+| 61 | 2026-10-22 | A meter has a scope, `own` or `team` (`MeterScope`). Cursor's team buckets get their own meters, `teamPool` ("Team pool") and `teamOnDemand` ("Team on-demand"), with scope `team`, and the member's own buckets still come first. The ring never follows a team meter, so a team's spend never shows in the menu bar. A meter without a scope on disk decodes as `own` (section 12). | Agreed |
+| 62 | 2026-10-22 | Cursor's activity counts only the signed-in member: usage events of more than one owner make the spend unknown, and an events CSV with a user or email column is unexpected. Today both endpoints answer for the member alone; this keeps a change on Cursor's side from silently adding the team's usage. | Agreed |
+| 63 | 2026-10-22 | Sparkle takes updates only from a signed appcast (`SURequireSignedFeed`), verified before extraction (`SUVerifyUpdateBeforeExtraction`), and never offers to install them automatically (`SUAllowsAutomaticUpdates` off). `generate_appcast` signs the feed because the app's `Info.plist` asks for it. | Agreed |
+| 64 | 2026-10-22 | The README installs Burnie only from the release DMG, which is signed with a Developer ID and notarized. Building from source moves to Development, with a note that it signs for one Mac only, and the prompts for installing and updating with an agent go. | Agreed |
 
 ---
 
@@ -1506,7 +1535,8 @@ state can't be reproduced live. Each row is checked in light and dark mode.
 | Claude missing scope | today's tokens, no meters, specific copy |
 | Claude logs unreadable | meters, no today's usage |
 | Cursor session expired | cached data, issue row, no renewal button |
-| Cursor enterprise | Included usage in money, today's spend in money |
+| Cursor enterprise | Included usage in money, Team on-demand when the member has no on-demand of their own, today's spend in money |
+| Cursor team pool | Team pool in money; with Cursor as the favorite, the flame alone in the menu bar |
 | rate limited / offline | cached data, no issue row, header shows age |
 | unexpected response | generic copy |
 | all off | empty state with a button to the providers screen; header has no "Updated" |
