@@ -52,24 +52,44 @@ struct CursorUsageMapperTests {
         #expect(reading.features.onDemand == nil)
     }
 
-    @Test("B-53 Cursor Models is primary on individual plans; Included usage on team plans")
+    @Test("B-53 Cursor Models is primary on individual plans; Included usage, or the Team pool without it, on team plans")
     func primaryMeterFollowsThePlan() throws {
         #expect(try limits("cursor-summary-pro.json").meters.primary.id == .cursorModels)
-        #expect(try limits("cursor-summary-team.json").meters.primary.id == .included)
+        #expect(try limits("cursor-summary-enterprise.json").meters.primary.id == .included)
+        #expect(try limits("cursor-summary-team.json").meters.primary.id == .teamPool)
     }
 
-    @Test("B-48 team plans show one Included usage meter in money")
-    func teamPlanWithoutPoolsShowsOneUsageLimitMeter() throws {
-        let meter = Meter(id: .included, fill: Fraction(0.67), value: .money(used: Cents(1_340), limit: Cents(2_000)), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
+    @Test("B-48 a summary with only the team's pool shows it as the Team pool, scope team, in money")
+    func teamPoolAloneShowsAsTheTeamPool() throws {
+        let meter = Meter(
+            id: .teamPool,
+            fill: Fraction(0.67),
+            value: .money(used: Cents(1_340), limit: Cents(2_000)),
+            caption: .cycleEnds(Self.cycleEnd),
+            scope: .team,
+            period: Self.cycle
+        )
         #expect(try limits("cursor-summary-team.json") == LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: meter), unit: .money))
     }
 
-    @Test("B-48 enterprise shows the member's own budget, not the team pool")
+    @Test("B-48 enterprise shows the member's own budget, not the team pool, and the team's on-demand as Team on-demand")
     func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
         let budget = Meter(id: .included, fill: Fraction(0.421), value: .money(used: Cents(4_210), limit: Cents(10_000)), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
-        let onDemand = Meter(id: .onDemand, fill: .zero, value: .money(used: .zero, limit: Cents(100_000)), caption: .onDemandIdle)
-        let expected = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: budget), unit: .money, features: SnapshotFeatures(onDemand: onDemand))
+        let teamOnDemand = Meter(id: .teamOnDemand, fill: .zero, value: .money(used: .zero, limit: Cents(100_000)), caption: .onDemandIdle, scope: .team)
+        let expected = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: budget), unit: .money, features: SnapshotFeatures(onDemand: teamOnDemand))
         #expect(try limits("cursor-summary-enterprise.json") == expected)
+    }
+
+    @Test("B-48 the member's own on-demand comes before the team's, as On-demand of their own")
+    func ownOnDemandComesBeforeTheTeams() throws {
+        let json = #"""
+        {"billingCycleEnd":"2026-11-01T00:00:00Z","individualUsage":{"overall":{"used":100,"limit":1000},"onDemand":{"enabled":true,"used":50,"limit":500}},
+         "teamUsage":{"onDemand":{"enabled":true,"used":9000,"limit":90000}}}
+        """#
+        let onDemand = try #require(CursorUsageMapper.limits(from: JSONDecoder().decode(CursorUsageSummaryDTO.self, from: Data(json.utf8))).features.onDemand)
+        #expect(onDemand.id == .onDemand)
+        #expect(onDemand.scope == .own)
+        #expect(onDemand.value == .money(used: Cents(50), limit: Cents(500)))
     }
 
     @Test("B-48 the Included usage meter fills to the reported percentage when there is one")

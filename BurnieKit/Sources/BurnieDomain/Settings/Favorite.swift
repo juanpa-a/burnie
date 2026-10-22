@@ -16,7 +16,8 @@ public enum Favorite {
     }
 
     /// The ring only appears with the switch on, an effective favorite, and a ready snapshot with meters: a favorite
-    /// still loading or failed shows the flame alone, never an empty ring that reads as 0% (B-53).
+    /// still loading or failed shows the flame alone, never an empty ring that reads as 0%. A team's meter never
+    /// reaches the menu bar, so the ring follows only a primary meter of the user's own (B-53).
     public static func ring(
         stored: ProviderID?,
         enabled: Set<ProviderID>,
@@ -25,7 +26,8 @@ public enum Favorite {
     ) -> RingState {
         guard showRing,
               let favorite = effective(stored: stored, enabled: enabled),
-              let meter = states[favorite]?.snapshot?.meters?.primary
+              let meter = states[favorite]?.snapshot?.meters?.primary,
+              meter.scope == .own
         else { return .hidden }
         // Whole percents, so the icon isn't redrawn for changes nobody can see.
         return .visible(favorite, percent: Int((meter.fill.value * 100).rounded()))

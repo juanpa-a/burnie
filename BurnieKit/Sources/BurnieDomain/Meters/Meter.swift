@@ -1,19 +1,29 @@
 import Foundation
 
-/// One measured limit: how full it is, what it reads, the line under it, and the window it fills over.
-public struct Meter: Hashable, Codable, Sendable, Identifiable {
+/// One measured limit: how full it is, what it reads, the line under it, whose usage it counts, and the window it fills
+/// over.
+public struct Meter: Hashable, Sendable, Identifiable {
     public let id: MeterID
     public let fill: Fraction
     public let value: MeterValue
     public let caption: MeterCaption
+    public let scope: MeterScope
     /// The window the meter fills over, from its start to its reset; nil when there's none to pace against.
     public let period: DateInterval?
 
-    public init(id: MeterID, fill: Fraction, value: MeterValue, caption: MeterCaption, period: DateInterval? = nil) {
+    public init(
+        id: MeterID,
+        fill: Fraction,
+        value: MeterValue,
+        caption: MeterCaption,
+        scope: MeterScope = .own,
+        period: DateInterval? = nil
+    ) {
         self.id = id
         self.fill = fill
         self.value = value
         self.caption = caption
+        self.scope = scope
         self.period = period
     }
 

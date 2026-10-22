@@ -1160,8 +1160,9 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 `{"limits": {"view": {"value": …, "at": 1760000000}, "today": {"tokens": 1250000}}}`. The refactor PR pins it in its own fixture
 (`T-7`), and from then on it is frozen like the rest of this section.
 
-`Meter.scope` (decision 61) is the one field added since: it encodes like any enum (`{"own": {}}`, `{"team": {}}`), and
-a meter without it, as every snapshot written before 0.4.2, decodes as `own`, so those caches still load.
+`Meter.scope` (decision 61) is the one field added since. It's written only for a team's meter, like any enum
+(`"scope": {"team": {}}`), so a meter of the user's own is saved exactly as before; a meter without it, as every snapshot
+written before 0.4.2, decodes as `own`, so those caches still load. `snapshot-team-meters.json` pins it (`T-7`).
 
 ---
 

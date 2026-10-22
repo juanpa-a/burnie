@@ -1,0 +1,35 @@
+{
+  "content": {
+    "limits": {
+      "today": {"money": 1240},
+      "view": {
+        "at": 1791661800,
+        "value": {
+          "features": {
+            "onDemand": {
+              "caption": {"onDemandIdle": {}},
+              "fill": 0,
+              "id": "extra",
+              "scope": {"team": {}},
+              "value": {"money": {"limit": 100000, "used": 0}}
+            }
+          },
+          "meters": {
+            "others": [],
+            "primary": {
+              "caption": {"cycleEnds": 1793491200},
+              "fill": 0.67,
+              "id": "budget",
+              "period": {"duration": 2678400, "start": 1790812800},
+              "scope": {"team": {}},
+              "value": {"money": {"limit": 2000, "used": 1340}}
+            }
+          },
+          "plan": "ENTERPRISE",
+          "unit": {"money": {}}
+        }
+      }
+    }
+  },
+  "provider": "alpha"
+}
