@@ -1,7 +1,8 @@
 import Foundation
 
 /// The last 7 days of history for the given providers, on one shared scale: the same tokens draw the same height for
-/// every provider (B-43). Providers whose plan measures money also carry each day's spend (B-78).
+/// every provider (B-43). Providers whose plan measures money also carry each day's spend (B-78), and providers with a
+/// cycle their cycle total (B-79).
 public struct WeekChart: Hashable, Sendable {
     public static let dayCount = 7
 
@@ -16,14 +17,19 @@ public struct WeekChart: Hashable, Sendable {
     public let spent: [ProviderID: [Cents?]]
     /// The busiest day of any provider, which draws at full height; zero when every day is.
     public let peak: Tokens
+    /// The cycle total of each provider that has one. A provider without a cycle, or whose history has no day of it,
+    /// has no entry.
+    public let cycleTotals: [ProviderID: CycleTotal]
 
-    /// `spent` holds each day's spend of the providers whose plan measures money (`ActivityPart.spend(in:)`); a
-    /// provider that isn't in `providers` is left out.
+    /// `spent` holds each day's spend of the providers whose plan measures money (`ActivityPart.spend(in:)`), and
+    /// `cycleStarts` the local day each provider's cycle starts on (`MeterSet.cycle`); a provider that isn't in
+    /// `providers` is left out of both.
     public static func make(
         history: UsageHistory,
         providers: [ProviderID],
         today: LocalDay,
-        spent: [ProviderID: [LocalDay: Cents]] = [:]
+        spent: [ProviderID: [LocalDay: Cents]] = [:],
+        cycleStarts: [ProviderID: LocalDay] = [:]
     ) -> WeekChart {
         let days = Array(today.advanced(by: 1 - dayCount)...today)
         let series = providers.map { provider in
@@ -32,12 +38,18 @@ public struct WeekChart: Hashable, Sendable {
         let spentSeries = providers.compactMap { provider in
             spent[provider].map { daily in (provider, days.map { daily[$0] }) }
         }
+        let cycleTotals = providers.compactMap { provider -> (ProviderID, CycleTotal)? in
+            guard let start = cycleStarts[provider],
+                  let total = CycleTotal.make(history: history, provider: provider, cycleStart: start, today: today) else { return nil }
+            return (provider, total)
+        }
         return WeekChart(
             days: days,
             providers: providers,
             series: Dictionary(series, uniquingKeysWith: { first, _ in first }),
             spent: Dictionary(spentSeries, uniquingKeysWith: { first, _ in first }),
-            peak: series.flatMap(\.1).max() ?? .zero
+            peak: series.flatMap(\.1).max() ?? .zero,
+            cycleTotals: Dictionary(cycleTotals, uniquingKeysWith: { first, _ in first })
         )
     }
 

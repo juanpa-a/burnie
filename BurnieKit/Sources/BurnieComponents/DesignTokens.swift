@@ -28,7 +28,7 @@ public enum DesignTokens {
         public static let updateBadge = Color.blue
         public static let switchKnob = Color.white
         public static let switchKnobShadow = Color.black.opacity(0.3)
-        /// Under the week chart's tooltip, so it lifts off the popover it shares a color with.
+        /// Under the week chart's tooltips, so they lift off the popover they share a color with.
         public static let tooltipShadow = Color.black.opacity(0.12)
         /// The menu bar glyph, drawn in black to become a template image.
         public static let menuBarGlyph = Color.black
@@ -139,11 +139,11 @@ public enum DesignTokens {
         public static let legendItems: CGFloat = 10
         /// A legend dot, its name and its total.
         public static let legendDot: CGFloat = 4
-        /// The tooltip's day and its rows.
+        /// A tooltip's title and its rows.
         public static let tooltipLines: CGFloat = 3
         /// A tooltip row's name and its values, at least.
         public static let tooltipValues: CGFloat = 12
-        /// The tooltip and the day it's over.
+        /// A tooltip and the day it's over, or the legend it hangs from.
         public static let tooltipGap: CGFloat = 6
         /// The previews' light and dark copies.
         public static let previews: CGFloat = 24
@@ -202,7 +202,7 @@ public enum DesignTokens {
         public static let switchToggle = Animation.easeInOut(duration: 0.15)
         /// Between the usage and providers screens.
         public static let screenChange = Animation.easeInOut(duration: 0.18)
-        /// The week chart's days dimming as the pointer moves over them.
+        /// The week chart's days dimming and its tooltips showing as the pointer moves over them.
         public static let chartHover = Animation.easeOut(duration: 0.12)
         /// How often the time-dependent text (ages, countdowns) is drawn again without a refresh.
         public static let clockTick: TimeInterval = 30

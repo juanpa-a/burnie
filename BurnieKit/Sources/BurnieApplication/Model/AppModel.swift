@@ -5,7 +5,7 @@ import Observation
 
 /// What the views read: the app state, the use cases and the clock. The only Application type the views see (A-1).
 ///
-/// It holds the runtime state privately, stamps each event with the clock's `now` and that moment's local day, reduces
+/// It holds the runtime state privately, stamps each event with the clock's `now`, time zone and local day, reduces
 /// events one at a time in the order they arrive, publishes the derived `AppState` only when it changes (`@Observable`
 /// doesn't compare), and hands each step's effects to the interpreter.
 @MainActor @Observable
@@ -35,7 +35,7 @@ public final class AppModel {
         let registry = environment.providers.map(RegisteredProvider.init)
         let clock = environment.clock
         let model = AppModel(
-            runtime: RuntimeState(registry: registry, today: LocalDay(clock.now, in: clock.timeZone)),
+            runtime: RuntimeState(registry: registry, today: LocalDay(clock.now, in: clock.timeZone), timeZone: clock.timeZone),
             clock: clock,
             useCases: .live(interpreter),
             interpreter: interpreter
@@ -54,7 +54,12 @@ public final class AppModel {
     #if DEBUG
     /// For previews: `state` as given, with use cases that do nothing and no runtime.
     public static func preview(_ state: AppState, clock: any Clock) -> AppModel {
-        let model = AppModel(runtime: RuntimeState(registry: [], today: LocalDay(clock.now, in: clock.timeZone)), clock: clock, useCases: .noop, interpreter: nil)
+        let model = AppModel(
+            runtime: RuntimeState(registry: [], today: LocalDay(clock.now, in: clock.timeZone), timeZone: clock.timeZone),
+            clock: clock,
+            useCases: .noop,
+            interpreter: nil
+        )
         model.state = state
         return model
     }
@@ -64,7 +69,8 @@ public final class AppModel {
     /// the one that caused it (B-37).
     private func send(_ kind: Event.Kind) {
         let now = clock.now
-        queue.append(Event(kind: kind, now: now, today: LocalDay(now, in: clock.timeZone)))
+        let timeZone = clock.timeZone
+        queue.append(Event(kind: kind, now: now, today: LocalDay(now, in: timeZone), timeZone: timeZone))
         guard !isReducing else { return }
         isReducing = true
         defer { isReducing = false }

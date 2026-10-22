@@ -99,6 +99,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Meter value** | What a meter reads: a percent, or money used against an optional limit. | `MeterValue` | Domain |
 | **Meter caption** | What the line under a meter means: resets in, resets at, cycle ends, no active session, on-demand idle. | `MeterCaption` | Domain |
 | **Period** | The window a meter fills over, from its start to its reset. | `DateInterval?` on `Meter` | Domain |
+| **Cycle** | The longest period among a meter set's meters, which a provider's usage is counted over: Cursor's billing cycle, Claude's weekly limit. | `MeterSet.cycle` | Domain |
 | **Pace** | Where the fill would be at an even rate through the period. | `Meter.elapsedFraction(at:)` | Domain |
 | **Over pace** | The part of the fill past the pace; zero without a pace. | `Meter.overPace(at:)` | Domain |
 | **Plan** | The name of the user's subscription as a chip shows it (`"MAX"`, `"PRO+"`). | `PlanName` (newtype over `String`) | Domain |
@@ -146,10 +147,13 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **History** | Tokens per day and provider, kept for 35 days. Days inside the window are rewritten; older ones are frozen. | `UsageHistory` | Domain |
 | **Retention** | How long history keeps a day: 35 days. | `UsageHistory.retentionDays` | Domain |
 | **Daily point** | One day and its tokens. | `DailyPoint` | Domain |
-| **Week chart** | The last 7 days of history for the enabled providers, on one shared scale, with each day's spend for the providers whose plan measures money. | `WeekChart` | Domain |
+| **Recorded since** | The first day of the unbroken run of a provider's recorded days that ends on its latest one: a missing day is one Burnie didn't record. | `UsageHistory.recordedSince(for:)` | Domain |
+| **Week chart** | The last 7 days of history for the enabled providers, on one shared scale, with each day's spend for the providers whose plan measures money and each provider's cycle total. | `WeekChart` | Domain |
 | **Week total** | One provider's tokens over the week chart's 7 days. | `WeekChart.total(for:)` | Domain |
+| **Cycle total** | One provider's tokens from the local day its cycle starts on, or from the day its history is recorded since when that's later, through today. | `CycleTotal` | Domain |
 | **Clock** | The only source of `now` and the time zone. | `Clock` port | Interface |
 | **Today** | The local day of the latest event, which the interpreter computes from `Clock` and puts in every event. What compose, history and the week chart count as today. | `RuntimeState.today: LocalDay` | Application |
+| **Time zone** | The latest event's time zone, which the interpreter reads from `Clock` and puts in every event. What turns a cycle's start into a local day. | `RuntimeState.timeZone: TimeZone` | Application |
 
 ### 2.6 Refresh
 
@@ -346,7 +350,8 @@ struct Meter { let id: MeterID; let fill: Fraction; let value: MeterValue; let c
 enum MeterValue { case percent(Int); case money(used: Cents, limit: Cents?) }
 enum MeterCaption { case resetsIn(Date), resetsAt(Date), cycleEnds(Date), noActiveSession, onDemandIdle }
 struct MeterSet { let primary: Meter; let others: [Meter] }      // non-empty; `all` = [primary] + others;
-                                                                 // init?(_ meters: [Meter]) is nil only for []
+                                                                 // init?(_ meters: [Meter]) is nil only for [];
+                                                                 // cycle: the longest period, nil without one
 
 // Snapshot
 enum UsageUnit { case tokens, money }
@@ -387,9 +392,12 @@ struct SpecificIssue: Hashable, Codable, Sendable { let code: String }   // copy
 struct LocalDay              // as today, plus dayOfMonth; Strideable, Codable as "yyyy-MM-dd", CodingKeyRepresentable (a JSON key)
 enum ActivityWindow          // dayCount = 8; days(endingAt:)
 struct DailyPoint { var day: LocalDay; var tokens: Tokens }
-struct UsageHistory          // record(_ tokens:for:today:), points(for:endingAt:count:); retentionDays = 35
+struct UsageHistory          // record(_ tokens:for:today:), points(for:endingAt:count:), total(for:from:through:),
+                             // recordedSince(for:); retentionDays = 35
+struct CycleTotal { let since: LocalDay; let tokens: Tokens }   // make(history:provider:cycleStart:today:)
 struct WeekChart { let days: [LocalDay]; let providers: [ProviderID]; let series: [ProviderID: [Tokens]];
-                   let spent: [ProviderID: [Cents?]]; let peak: Tokens }   // total(for:), tokens(of:on:), spent(of:on:)
+                   let spent: [ProviderID: [Cents?]]; let peak: Tokens;
+                   let cycleTotals: [ProviderID: CycleTotal] }   // total(for:), tokens(of:on:), spent(of:on:)
 
 // Refresh
 struct RefreshPolicy { let interval: TimeInterval; let jitter: TimeInterval; let staleOnOpen: TimeInterval?; let needsNetwork: Bool }
@@ -414,8 +422,12 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 | `ProviderState.failing(_ issue:, previous:)` | A total failure over a cached snapshot becomes `.ready(previous with issue)`; without one, `.failed(issue)`. Rule B-18. | `with(issue:)` + store code |
 | `UsageSnapshot.hiding(_ toggles:)` | Removes hidden features from the limits part. Rule B-40. | `hidingOnDemand()` |
 | `UsageHistory.record(_ tokens:for:today:)` | Writes every day of the activity window ending `today`, 0 for the days `tokens` doesn't mention; prunes that provider's days past retention and leaves every other provider untouched, as today. `today` is the event's day: a part read just before midnight lands one day short, and the next refresh corrects it. Rule B-42. | `history(days:)` + `record` |
-| `WeekChart.make(history:providers:today:spent:)` | 7 days ending today, zero-filled, shared peak; each day's spend for the providers `spent` names, nil for a day it doesn't mention (B-78). | logic in `WeekChart` view |
+| `WeekChart.make(history:providers:today:spent:cycleStarts:)` | 7 days ending today, zero-filled, shared peak; each day's spend for the providers `spent` names, nil for a day it doesn't mention (B-78); the cycle total of each provider `cycleStarts` names that has one (B-79). | logic in `WeekChart` view |
 | `WeekChart.total(for:)` | The provider's tokens over the 7 days (B-76). | — |
+| `MeterSet.cycle` | The longest period among the meters; nil when none has one (B-79). | — |
+| `UsageHistory.total(for:from:through:)` | The provider's tokens from the first day through the last, 0 for the days without data; zero for a reversed range. | — |
+| `UsageHistory.recordedSince(for:)` | The first day of the unbroken run of recorded days ending on the provider's latest one; nil before it records (B-79). | — |
+| `CycleTotal.make(history:provider:cycleStart:today:)` | From the later of `cycleStart` and the day the history is recorded since, through today; nil when the history has no day of the cycle (B-79). | — |
 | `ActivityPart.spend(in:)` | Every day's spend when the plan measures money, nil when it measures tokens (B-78). | — |
 | `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent. | `meters.first` |
 | `RefreshPolicy.shouldRun(for:lastRun:now:)` | As today. | same |
@@ -451,7 +463,13 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
 - **WeekChart**: `days` are 7 consecutive local days ending today; `series[p].count == 7` for every `p` in
   `providers`, which keep the order they were given; `peak` is the largest value of every series, `.zero` when all are
   zero; `total(for: p)` is the sum of `series[p]`; `spent` names only providers in `providers` that `spent` was given
-  for, with 7 values each, `spent[p][i]` being what was given for `days[i]`.
+  for, with 7 values each, `spent[p][i]` being what was given for `days[i]`; `cycleTotals[p]` is
+  `CycleTotal.make(history, p, cycleStarts[p], today)` for every `p` in `providers` with a cycle start, and no other
+  provider has one.
+- **MeterSet.cycle**: nil exactly when no meter has a period; otherwise one of the periods, and none is longer.
+- **CycleTotal**: when `make` gives a total, `since` is the later of `cycleStart` and `recordedSince`, it's never after
+  `today`, and `tokens ≡ history.total(for: p, from: since, through: today)`; it gives nil exactly when the provider
+  has no recorded day or that later day is after `today`.
 - **Favorite**: when `id ∈ e`, `toggling(id, s, e)` is nil if `s == id`, else `id`; so tapping twice gives back `s` when
   `s` is nil or `id`, and nil when `s` was another provider (the first tap replaced it). `effective` result is always
   in `enabled` or nil; toggling a disabled provider is the identity.
@@ -460,7 +478,9 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
 - **UsageHistory**: `record(p)` twice ≡ once (idempotent); after `record(p, for: id)`, no day of `id` older than
   retention remains, every day of the window has a value (0 if `p` didn't mention it), and every other provider's
   days are unchanged; `points(count: n)` has `n` consecutive days ending today for `n ≥ 1`, and is empty for `n ≤ 0`
-  (D-5: never a reversed range).
+  (D-5: never a reversed range); `total` splits at any day: `total(a…c) ≡ total(a…b) + total(b+1…c)` for
+  `a ≤ b < c`, and a reversed range totals zero; every day from `recordedSince` through the latest recorded day is
+  recorded, and the day before it isn't.
 - **RingState**: `visible` percent is in 0…100 and equals the primary meter's fill × 100, rounded.
 - **RateLimitBackoff**: without `Retry-After`, waits are non-decreasing across consecutive 429s and capped at 60
   minutes; with it, `retryAt` is exactly the server's date, whatever its length; `reset` returns to the initial value.
@@ -647,8 +667,9 @@ struct ProviderPanel: Equatable, Sendable {
 
 Everything that turns domain values into text, moved from `BurnieCore/Format/`:
 `TokenCountFormatter`, `MoneyFormatter`, `MeterValueFormatter`, `MeterCaptionFormatter`, `TodayUsageFormatter`,
-`LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `WeekChartAccessibilityValue` (the totals and
-every day, spend included, since hovering isn't reachable with VoiceOver; B-77), `StatusLine`, `IssueMessage`, and `Copy`
+`LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `WeekChartAccessibilityValue` (the week totals,
+the cycle totals and every day, spend included, since hovering isn't reachable with VoiceOver; B-77, B-80),
+`StatusLine`, `IssueMessage`, and `Copy`
 (every fixed string the views show: "Usage", "Providers", "Last 7 days", "Refresh sign-in", "Quit"…).
 Provider-specific text comes from `ProviderDescriptor.copy`, never from a switch. `StatusLine` (B-29) builds the
 non-healthy lines as common templates over `displayName` ("Off", "{displayName} not found",
@@ -733,10 +754,10 @@ The runtime: the only owner of state, the scheduler, and the implementation of t
   turn `scheduleTimer`/`cancelTimer` effects into `Sleeper` waits that come back as `timerFired` events, and the
   continuations of the use cases that await (7.3).
 - **A-5** Time only from `Clock`; waiting only through `Sleeper`. Tests never wait for real time. The reducer never
-  reads a clock: every event carries `now` and `today`.
-- **A-6** `AppState` is derived by a pure function `AppState.derive(from: RuntimeState)`. Its only link to time is
-  `RuntimeState.today`, which events advance (the week chart ends there); nothing in it changes while no event
-  arrives. Views may evaluate pure functions of `(state, now)`, from `BurnieDomain` (`isStale`, `elapsedFraction`)
+  reads a clock: every event carries `now`, `today` and the time zone.
+- **A-6** `AppState` is derived by a pure function `AppState.derive(from: RuntimeState)`. Its only links to time are
+  `RuntimeState.today` and `RuntimeState.timeZone`, which events advance (the week chart ends on today; a cycle's start
+  becomes a local day in the time zone); nothing in it changes while no event arrives. Views may evaluate pure functions of `(state, now)`, from `BurnieDomain` (`isStale`, `elapsedFraction`)
   and from `BurnieInterface` (formatters), with `now` from `AppModel.clock` under a `TimelineView`; they hold no
   state and make no decisions.
 - **A-7** Every behavior in section 11 tagged *Application* has a test that names its ID.
@@ -747,6 +768,7 @@ The runtime: the only owner of state, the scheduler, and the implementation of t
 struct RuntimeState: Equatable {
     let registry: [RegisteredProvider]           // registry order; built once from the bundles
     var today: LocalDay                          // the latest event's local day
+    var timeZone: TimeZone                       // the latest event's time zone
     var settings: AppSettings
     var parts: [ProviderID: ProviderParts]       // Latest<LimitsPart>?, Latest<ActivityPart>?
     var shown: [ProviderID: ProviderState]       // after compose + merge, or failing; cached only after a success
@@ -799,8 +821,8 @@ enum Scheduling {
 
 ### 7.3 Events and effects
 
-Every event also carries `now` and `today`, which the interpreter reads from `Clock` when it sends it; the reducer
-sets `RuntimeState.today` before anything else. **Start a run** of a job means: if `canRun` for the trigger, take
+Every event also carries `now`, `today` and the time zone, which the interpreter reads from `Clock` when it sends it;
+the reducer sets `RuntimeState.today` and `RuntimeState.timeZone` before anything else. **Start a run** of a job means: if `canRun` for the trigger, take
 `nextRun`, set the job's `running` to it, add it to the event's request if there is one, set the job's `timer` to
 nil, and emit `cancelTimer(key)` and `runTask(key, run)`. **Arm the timer** of a job means: take `nextTimer`, set the
 job's `timer` to it, and emit `scheduleTimer(key, timer, after: delay(…))`; the interpreter replaces any live timer of
@@ -944,7 +966,8 @@ component can't reach the app model, a provider or an adapter.
 ### 9.2 Components
 
 `BurnieDivider`, `BurnieSwitchStyle`, `ChipButton`, `HoverHighlightStyle`, `IconButton`, `IssueRow`, `MeterView`,
-`PlanChip`, `Spin`, `SwitchRow`, `UpdateBadge`, `FooterItem`, `MenuBarIcon`, `WeekChartView`, `WeekChartTooltip`, `LegendDot`, `ProviderRow`,
+`PlanChip`, `Spin`, `SwitchRow`, `UpdateBadge`, `FooterItem`, `MenuBarIcon`, `WeekChartView`, `ChartTooltip`,
+`WeekChartTooltip`, `CycleTotalTooltip`, `LegendDot`, `ProviderRow`,
 `SignInRenewalRow`, `PreviewFrame` and `PreviewValues` (both `#if DEBUG`), and `DesignTokens` (today's `Tokens.swift`,
 minus provider colors).
 
@@ -1054,6 +1077,8 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-76 | The week chart's legend shows each provider's week total next to its name. | Domain + Components |
 | B-77 | Hovering a day of the week chart dims the other days and shows a tooltip over it: the day ("Mon 19") and each provider's tokens that day. VoiceOver reads the totals and every day instead. | Interface + Components |
 | B-78 | A day in the tooltip adds its spend ("· $6.55") when the provider's plan measures money (the shown snapshot's unit, B-7, B-8) and its latest activity added that day's spend up; tokens alone otherwise. The spend isn't persisted: after a launch it shows once the first activity arrives. | Domain + Application + Components |
+| B-79 | A provider's cycle total adds up its history from the local day its cycle starts on (the longest period of its shown snapshot's meters, in the latest event's time zone), or from the day the history is recorded since when that's later, through today. A provider without a cycle, or whose history has no day of it, has none. Tokens only; nothing new is persisted. | Domain + Application |
+| B-80 | Hovering the week chart's legend shows a tooltip under it, "This cycle", with each provider's cycle total and the day it counts from ("since Oct 3"); providers without one are left out, and without any there's no tooltip. VoiceOver reads the cycle totals after the week totals. | Interface + Components |
 
 ### 11.6 Settings and app features
 
@@ -1182,6 +1207,7 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 50 | 2026-10-17 | `AppModel.preview` takes the clock the previews draw with, so they stay deterministic. | Proposed |
 | 51 | 2026-10-17 | Once the refactor lands, the architecture check drops its support for the old layout and its legacy samples: every rule runs on the repo. | Proposed |
 | 52 | 2026-10-21 | The week chart's daily spend comes from each provider's latest activity in memory, not from `history.json`: the activity window (8 days) covers the chart's 7, so the persistence contract stays as it is. Money shows by the plan's unit, never by provider. | Agreed |
+| 53 | 2026-10-22 | The cycle total is the longest meter period, not a billing date Burnie doesn't have: Cursor's billing cycle, Claude's weekly limit. It comes from `history.json` (35 days cover any cycle), from the day the history is recorded since when the cycle started earlier, so providers still fetch only the activity window and nothing new is persisted; no cycle spend. Events also carry the time zone, which turns a cycle's start into a local day. Refines decision 29. | Agreed |
 
 ---
 
@@ -1493,6 +1519,7 @@ state can't be reproduced live. Each row is checked in light and dark mode.
 | week chart hidden / on-demand hidden | chart gone / on-demand meter gone, switch still present |
 | week chart hover | legend with each week total; hovering a day dims the others and shows its tooltip, inside the popover at the first and last days |
 | week chart with a money plan | the tooltip adds the day's spend for that provider only |
+| week chart legend hover | "This cycle" tooltip under the legend with each provider's cycle total and its "since" day, inside the chart; gone when the pointer leaves |
 | favorite marked / only one on / ring off | ring follows the right provider / implicit favorite / flame alone |
 | update available | dot on gear, Update row |
 | VoiceOver | menu bar label, meters combined, icon buttons labeled |

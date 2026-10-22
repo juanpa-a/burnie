@@ -2,12 +2,13 @@ import BurnieDomain
 import BurnieInterface
 import Foundation
 
-/// Something that happened that may change the state, stamped with the moment it was sent and that moment's local day.
-/// The reducer never reads a clock (A-5).
+/// Something that happened that may change the state, stamped with the moment it was sent, that moment's local day and
+/// the time zone it was read in. The reducer never reads a clock (A-5).
 struct Event: Equatable, Sendable {
     let kind: Kind
     let now: Date
     let today: LocalDay
+    let timeZone: TimeZone
 
     enum Kind: Equatable, Sendable {
         case launched(settings: AppSettings, cached: [ProviderID: UsageSnapshot], history: UsageHistory)

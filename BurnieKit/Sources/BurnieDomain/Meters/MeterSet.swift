@@ -21,4 +21,10 @@ public struct MeterSet: Hashable, Codable, Sendable {
     public var all: [Meter] {
         [primary] + others
     }
+
+    /// The longest period among the meters, which the provider's usage is counted over (B-79); nil when no meter has
+    /// one.
+    public var cycle: DateInterval? {
+        all.compactMap(\.period).max { $0.duration < $1.duration }
+    }
 }

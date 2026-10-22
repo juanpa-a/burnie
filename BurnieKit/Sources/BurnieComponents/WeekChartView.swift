@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Tokens over the last 7 days: one bar per provider for each day, every series on one shared scale, so the same
 /// tokens draw the same height for every provider (B-43). The legend shows each provider's week total (B-76), and
-/// hovering a day dims the others and shows that day's tooltip (B-77).
+/// hovering it shows the cycle totals (B-80); hovering a day dims the others and shows that day's tooltip (B-77).
 public struct WeekChartView: View {
     /// How many days at each end line their tooltip up with their outer edge instead of centering it, so it stays
     /// inside the chart.
@@ -17,6 +17,8 @@ public struct WeekChartView: View {
     @Environment(\.colorScheme) private var colorScheme
     /// The day under the pointer, which shows its tooltip.
     @State private var hoveredDay: LocalDay?
+    /// Whether the pointer is over the legend, which shows the cycle totals.
+    @State private var isLegendHovered = false
 
     public init(chart: WeekChart, descriptors: [ProviderDescriptor]) {
         self.chart = chart
@@ -33,6 +35,8 @@ public struct WeekChartView: View {
                 Spacer()
                 legend
             }
+            // Over the columns, so the cycle totals' tooltip hanging under the legend draws on top of them.
+            .zIndex(1)
             HStack(spacing: DesignTokens.Spacing.chartColumns) {
                 ForEach(chart.days, id: \.self) { day in
                     column(day)
@@ -69,6 +73,20 @@ public struct WeekChartView: View {
                 .font(DesignTokens.Typography.caption)
             }
         }
+        .onHover { isLegendHovered = $0 }
+        .overlay(alignment: .bottomTrailing) {
+            if isLegendHovered && !chart.cycleTotals.isEmpty {
+                // A line along the legend's bottom, with the tooltip hanging from it over the columns.
+                Color.clear
+                    .frame(height: 0)
+                    .overlay(alignment: .topTrailing) {
+                        CycleTotalTooltip(chart: chart, providers: shown)
+                            .padding(.top, DesignTokens.Spacing.tooltipGap)
+                    }
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(DesignTokens.Motion.chartHover, value: isLegendHovered)
     }
 
     private func column(_ day: LocalDay) -> some View {

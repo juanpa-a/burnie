@@ -112,6 +112,29 @@ struct AppStateDeriveTests {
         #expect(withoutSpend.spent[.beta] == Array(repeating: nil, count: WeekChart.dayCount))
     }
 
+    @Test("B-79 a cycle total counts from the local day the shown snapshot's cycle starts on, in the latest event's time zone")
+    func cycleTotalsStartOnTheCyclesLocalDay() throws {
+        // 03:00 GMT on the 3rd is still the 2nd in Mexico City.
+        let cycle = DateInterval(start: .iso("2026-10-03T03:00:00Z"), duration: 31 * 86_400)
+        let meters = MeterSet(primary: Meter(id: .budget, fill: Fraction(0.37), value: .percent(37), caption: .cycleEnds(cycle.end), period: cycle))
+        var outcomes = ReducerHarness.healthyOutcomes
+        outcomes[TestProviders.betaLimitsJob] = .success(.limits(LimitsPart(plan: PlanName(rawValue: "PRO"), meters: meters)))
+        var history = UsageHistory()
+        history.record([.day("2026-10-02"): Tokens(50_000)], for: .beta, today: .day("2026-10-02"))
+
+        var harness = ReducerHarness.launched(history: history, finishing: outcomes)
+        let chart = try #require(AppState.derive(from: harness.state).weekChart)
+        #expect(Set(chart.cycleTotals.keys) == [.beta])
+        #expect(chart.cycleTotals[.beta]?.since == .day("2026-10-02"))
+        #expect(chart.cycleTotals[.beta]?.tokens == Tokens(2_250_000))
+
+        harness.timeZone = .gmt
+        harness.send(.trigger(.timer))
+        let inGMT = try #require(AppState.derive(from: harness.state).weekChart)
+        #expect(inGMT.cycleTotals[.beta]?.since == .day("2026-10-03"))
+        #expect(inGMT.cycleTotals[.beta]?.tokens == Tokens(2_200_000))
+    }
+
     @Test("the week chart is gone with its switch off or with every provider off")
     func weekChartNeedsItsSwitchAndAProvider() {
         var harness = ReducerHarness.launched()

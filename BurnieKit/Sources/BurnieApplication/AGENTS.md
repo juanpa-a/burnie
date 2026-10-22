@@ -12,6 +12,6 @@ in [7.2](../../../SPEC.md#72-runtime-state), events and effects in [7.3](../../.
 - **A-2** State changes only in the reducer, pure and synchronous.
 - **A-3** One interpreter performs the effects and feeds results back as events; nothing else calls a port.
 - **A-4** No scheduler actor: job state lives in the reducer, scheduling decisions are pure functions.
-- **A-5** Time only from `Clock`, waiting only through `Sleeper`; every event carries `now` and `today`.
+- **A-5** Time only from `Clock`, waiting only through `Sleeper`; every event carries `now`, `today` and the time zone.
 - **A-6** `AppState` is derived by a pure function of `RuntimeState`.
 - **A-7** Every Application behavior of SPEC section 11 has a test that names its ID.
