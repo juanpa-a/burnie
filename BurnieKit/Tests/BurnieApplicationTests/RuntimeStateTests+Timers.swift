@@ -51,8 +51,17 @@ extension RuntimeStateTests {
         #expect(effects.timerDelays == [TestProviders.betaLimitsJob: 90])
     }
 
-    @Test("B-33 without Retry-After, each 429 in a row waits 1, 2, 4… minutes, up to 60")
-    func backoffDoublesUpToAnHour() {
+    @Test("B-33 a 429 whose Retry-After is now waits a minute instead of requesting again at once")
+    func retryAfterOfZeroDoesNotRetryAtOnce() {
+        var harness = ReducerHarness()
+        let runs = harness.send(.launched(settings: .defaults(enabled: [.beta]), cached: [:], history: UsageHistory())).runs
+        let limits = runs.first { $0.0 == TestProviders.betaLimitsJob }!
+        let effects = harness.send(.taskFinished(limits.0, limits.1, .failure(.rateLimited(retryAt: harness.now)), jitter: 1))
+        #expect(effects.timerDelays == [TestProviders.betaLimitsJob: 60])
+    }
+
+    @Test("B-33 without Retry-After, each 429 in a row waits 1, 2, 4… minutes, up to 45")
+    func backoffDoublesUpToFortyFiveMinutes() {
         var outcomes = ReducerHarness.healthyOutcomes
         outcomes[TestProviders.betaLimitsJob] = .failure(.rateLimited(retryAt: nil))
         var harness = ReducerHarness.launched(finishing: outcomes)
@@ -60,7 +69,7 @@ extension RuntimeStateTests {
         for _ in 1...7 {
             waits.append(fireAndFinish(&harness, TestProviders.betaLimitsJob, with: .failure(.rateLimited(retryAt: nil))) ?? -1)
         }
-        #expect(waits == [60, 120, 240, 480, 960, 1_920, 3_600, 3_600])
+        #expect(waits == [60, 120, 240, 480, 960, 1_920, 2_700, 2_700])
     }
 
     @Test("B-33 any other outcome resets the backoff", arguments: [
