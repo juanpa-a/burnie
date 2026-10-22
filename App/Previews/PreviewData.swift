@@ -91,13 +91,24 @@ enum PreviewData {
         let effective = Favorite.effective(stored: favorite, enabled: enabled)
         let order = [claude.id, cursor.id].filter(enabled.contains)
         let snapshots = order.compactMap { states[$0]?.snapshot }
+        let cycleStarts = Dictionary(uniqueKeysWithValues: order.compactMap { id in
+            states[id]?.snapshot?.meters?.cycle.map { (id, LocalDay($0.start, in: clock.timeZone)) }
+        })
         return AppState(
             providers: [
                 panel(claude, state: claudeState, settings: settings, effective: effective, renewal: "Couldn't refresh sign-in. Run `claude` in Terminal and log in again.", source: "~/.claude"),
                 panel(cursor, state: cursorState, settings: settings, effective: effective, renewal: nil, source: nil),
             ],
             ring: Favorite.ring(stored: favorite, enabled: enabled, showRing: showRing, states: states),
-            weekChart: showWeekChart && !order.isEmpty ? WeekChart.make(history: history, providers: order, today: today, spent: weekSpend) : nil,
+            weekChart: showWeekChart && !order.isEmpty
+                ? WeekChart.make(
+                    history: history,
+                    providers: order,
+                    today: today,
+                    spent: weekSpend,
+                    cycleStarts: cycleStarts
+                )
+                : nil,
             lastUpdated: snapshots.map(\.fetchedAt).max(),
             isRefreshing: false,
             settings: settings,

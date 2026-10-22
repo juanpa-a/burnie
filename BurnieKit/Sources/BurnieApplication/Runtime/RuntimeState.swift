@@ -7,6 +7,8 @@ struct RuntimeState: Equatable, Sendable {
     let registry: [RegisteredProvider]
     /// The latest event's local day: what compose, the history and the week chart count as today.
     var today: LocalDay
+    /// The latest event's time zone: what turns a cycle's start into a local day (B-79).
+    var timeZone: TimeZone
     var settings: AppSettings
     var parts: [ProviderID: ProviderParts] = [:]
     /// After compose and merge, or failing; the cache keeps it only after a success.
@@ -26,9 +28,10 @@ struct RuntimeState: Equatable, Sendable {
     var availableUpdate: String?
 
     /// Before launch: every provider of the registry enabled and nothing shown, until `launched` brings what was saved.
-    init(registry: [RegisteredProvider], today: LocalDay) {
+    init(registry: [RegisteredProvider], today: LocalDay, timeZone: TimeZone) {
         self.registry = registry
         self.today = today
+        self.timeZone = timeZone
         settings = .defaults(enabled: Set(registry.map(\.id)))
     }
 

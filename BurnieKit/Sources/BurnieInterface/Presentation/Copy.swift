@@ -34,6 +34,19 @@ public enum Copy {
         "· \(amount)"
     }
 
+    /// Over the cycle totals, under the hovered legend (B-80).
+    public static let thisCycle = "This cycle"
+
+    /// The day a cycle total counts from, after its tokens: "since Oct 3" (B-80).
+    public static func since(_ day: String) -> String {
+        "since \(day)"
+    }
+
+    /// One provider's cycle total for VoiceOver: "Claude 48M tokens since Oct 3" (B-80).
+    public static func cycleUsage(provider shortName: String, tokens: String, since day: String) -> String {
+        "\(providerUsage(provider: shortName, tokens: tokens)) \(since(day))"
+    }
+
     // MARK: Providers screen
 
     public static let backToUsage = "Back to usage"

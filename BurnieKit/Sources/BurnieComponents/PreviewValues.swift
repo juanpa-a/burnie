@@ -31,6 +31,9 @@ enum PreviewValues {
     static let footerTitle = "Open Northwind usage page"
     static let plan = PlanName(rawValue: "MAX")
 
+    static let tooltipTitle = "Sat 10"
+    static let tooltipDetail = "· $12.40"
+
     static let fill = Fraction(0.64)
     static let pace = Fraction(0.55)
     static let overPace = Fraction(0.09)
@@ -40,7 +43,9 @@ enum PreviewValues {
         history.record(week([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000].map(Tokens.init)), for: northwind.id, today: today)
         history.record(week([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000].map(Tokens.init)), for: tailspin.id, today: today)
         let spent = [tailspin.id: week([412, 0, 1_310, 980, 412, 655, 1_240].map(Cents.init))]
-        return WeekChart.make(history: history, providers: [northwind.id, tailspin.id], today: today, spent: spent)
+        // Northwind's cycle started 3 days ago; Tailspin's 19, before its history, which then counts from its first day.
+        let cycleStarts = [northwind.id: today.advanced(by: -3), tailspin.id: today.advanced(by: -19)]
+        return WeekChart.make(history: history, providers: [northwind.id, tailspin.id], today: today, spent: spent, cycleStarts: cycleStarts)
     }()
 
     /// One value per day of the week ending today.

@@ -7,11 +7,15 @@ import Testing
 struct WeekChartAccessibilityValueTests {
     static let today = LocalDay.day("2026-10-10")
 
-    static var chart: WeekChart {
+    static var history: UsageHistory {
         var history = UsageHistory()
         history.record([today: Tokens(1_800_000), .day("2026-10-08"): Tokens(400_000)], for: .alpha, today: today)
         history.record([today: Tokens(2_600_000)], for: .beta, today: today)
-        return WeekChart.make(history: history, providers: [.alpha, .beta], today: today, spent: [.beta: [today: Cents(412), .day("2026-10-09"): .zero]])
+        return history
+    }
+
+    static var chart: WeekChart {
+        WeekChart.make(history: history, providers: [.alpha, .beta], today: today, spent: [.beta: [today: Cents(412), .day("2026-10-09"): .zero]])
     }
 
     @Test("B-77 VoiceOver reads the week totals, then every day; B-78 with each day's spend where it's known")
@@ -27,5 +31,12 @@ struct WeekChartAccessibilityValueTests {
             "Fri: Alpha 0 tokens, Beta 0 tokens ($0.00)",
             "Sat: Alpha 1.8M tokens, Beta 2.6M tokens ($4.12)",
         ].joined(separator: "; "))
+    }
+
+    @Test("B-80 VoiceOver reads the cycle totals after the week totals, only for the providers that have one")
+    func readsTheCycleTotalsAfterTheWeekTotals() {
+        let chart = WeekChart.make(history: Self.history, providers: [.alpha, .beta], today: Self.today, cycleStarts: [.beta: .day("2026-10-08")])
+        let text = WeekChartAccessibilityValue.text(for: chart, providers: [.alpha, .beta], locale: .enUS)
+        #expect(text.hasPrefix("Last 7 days: Alpha 2.2M tokens, Beta 2.6M tokens; This cycle: Beta 2.6M tokens since Oct 8; Sun: "))
     }
 }

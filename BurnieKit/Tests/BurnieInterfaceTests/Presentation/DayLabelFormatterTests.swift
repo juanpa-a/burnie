@@ -18,4 +18,11 @@ struct DayLabelFormatterTests {
         #expect(DayLabelFormatter(locale: .enUS).shortDate(for: .day("2026-10-10")) == "Sat 10")
         #expect(DayLabelFormatter(locale: .enUS).shortDate(for: .day("2026-10-19")) == "Mon 19")
     }
+
+    @Test("B-80 a cycle total's first day reads as its month and day, in the locale")
+    func cycleDaysNameTheMonthAndTheDay() {
+        #expect(DayLabelFormatter(locale: .enUS).monthDay(for: .day("2026-10-03")) == "Oct 3")
+        #expect(DayLabelFormatter(locale: .enUS).monthDay(for: .day("2026-11-01")) == "Nov 1")
+        #expect(DayLabelFormatter(locale: Locale(identifier: "es_MX")).monthDay(for: .day("2026-10-03")) == "3 oct")
+    }
 }

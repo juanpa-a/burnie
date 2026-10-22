@@ -30,6 +30,22 @@ public struct UsageHistory: Hashable, Sendable {
         let days = tokens[provider] ?? [:]
         return (today.advanced(by: 1 - count)...today).map { DailyPoint(day: $0, tokens: days[$0, default: .zero]) }
     }
+
+    /// The provider's tokens from `first` through `last`, 0 for the days without data; zero when `first` is after
+    /// `last`.
+    public func total(for provider: ProviderID, from first: LocalDay, through last: LocalDay) -> Tokens {
+        points(for: provider, endingAt: last, count: first.distance(to: last) + 1).map(\.tokens).reduce(.zero, +)
+    }
+
+    /// The first day of the unbroken run of recorded days that ends on the provider's latest one; nil before it
+    /// records. A missing day means Burnie didn't record it, so nothing before it is counted on (B-79).
+    public func recordedSince(for provider: ProviderID) -> LocalDay? {
+        guard let days = tokens[provider], var first = days.keys.max() else { return nil }
+        while days[first.advanced(by: -1)] != nil {
+            first = first.advanced(by: -1)
+        }
+        return first
+    }
 }
 
 extension UsageHistory: Codable {

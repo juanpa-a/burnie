@@ -16,7 +16,7 @@ struct ReducerHarness {
     private var nextRequest = 0
 
     init(providers: TestProviders = TestProviders()) {
-        state = RuntimeState(registry: providers.bundles.map(RegisteredProvider.init), today: LocalDay(Self.start, in: .mexicoCity))
+        state = RuntimeState(registry: providers.bundles.map(RegisteredProvider.init), today: LocalDay(Self.start, in: .mexicoCity), timeZone: .mexicoCity)
     }
 
     /// After a first launch with nothing saved, and each job's first run finished with its fake's outcome.
@@ -45,7 +45,7 @@ struct ReducerHarness {
 
     @discardableResult
     mutating func send(_ kind: Event.Kind, sourceLocation: SourceLocation = #_sourceLocation) -> [Effect] {
-        let (next, effects) = Reducer.reduce(state, Event(kind: kind, now: now, today: LocalDay(now, in: timeZone)))
+        let (next, effects) = Reducer.reduce(state, Event(kind: kind, now: now, today: LocalDay(now, in: timeZone), timeZone: timeZone))
         state = next
         checkInvariant(sourceLocation: sourceLocation)
         return effects

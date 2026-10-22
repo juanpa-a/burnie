@@ -8,7 +8,7 @@ Click the flame icon in the menu bar to see:
 
 - **Claude Code:** your plan, the 5-hour session and weekly limits with their reset times, and today's tokens.
 - **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens (today's spend on team and enterprise plans).
-- **Last 7 days:** daily tokens for each provider, with each one's weekly total. Hover a day to see its tokens, and its spend on team and enterprise plans.
+- **Last 7 days:** daily tokens for each provider, with each one's weekly total. Hover a day to see its tokens, and its spend on team and enterprise plans. Hover the totals to see each provider's tokens over its current cycle: Cursor's billing cycle, Claude's weekly limit.
 
 Every bar except on-demand has a small tick where you'd be at an even pace: halfway through a 5-hour session, it sits in the middle. If you're using it faster than that, the part of the bar past the tick turns red.
 
