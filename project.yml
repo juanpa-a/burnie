@@ -30,8 +30,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.juanpa.burnie
         PRODUCT_NAME: Burnie
         # 0.x while Burnie is an MVP. Sparkle compares CURRENT_PROJECT_VERSION, so it goes up by one on every release.
-        MARKETING_VERSION: 0.2.3
-        CURRENT_PROJECT_VERSION: 5
+        MARKETING_VERSION: 0.3.0
+        CURRENT_PROJECT_VERSION: 6
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
         CODE_SIGN_ENTITLEMENTS: App/Burnie.entitlements
