@@ -407,7 +407,7 @@ struct RefreshPolicy { let interval: TimeInterval; let jitter: TimeInterval; let
 enum RefreshTrigger { case timer, popoverOpened, manual, wake, networkRestored, activityChanged }
 struct RateLimitBackoff      // recordRateLimit(retryAt:now:), record(_ outcome:now:), reset(), allowsRequest(at:);
                              // retryAt clamped (B-33)
-struct IdleBackoff           // record(), reset(), stretch(_ interval:) -> TimeInterval (B-35)
+struct IdleBackoff           // record(_ outcome:), stretch(_ interval:) -> TimeInterval (B-35)
 
 // Settings and the menu bar
 enum Favorite                // effective(stored:enabled:), toggling(_:stored:enabled:), ring(…)
@@ -434,7 +434,7 @@ struct AppSettings { var enabled: Set<ProviderID>; var favorite: ProviderID?; va
 | `Favorite.*`, `RingState` | As today, with the ring reading `meters.primary` as a whole percent, and hidden when that meter's scope is `team` (B-53). | `meters.first` |
 | `RefreshPolicy.shouldRun(for:lastRun:now:)` | As today. | same |
 | `RateLimitBackoff.recordRateLimit(retryAt:now:)` | `retryAt` is `now` plus the server's wait held between the ladder's step (1, 2, 4… minutes for the count of consecutive 429s) and 45 minutes; without a server date, the step (B-33). | same |
-| `IdleBackoff.stretch(_ interval:)` | The interval doubled once per outcome in a row that waits for the user, never past 45 minutes unless the interval itself is longer; the interval itself after `reset()` (B-35). | — |
+| `IdleBackoff.stretch(_ interval:)` | The interval doubled once per outcome in a row that waits for the user, never past 45 minutes unless the interval itself is longer; the interval itself once `record(_:)` takes any other outcome (B-35). | — |
 
 ### 4.4 Laws
 
@@ -489,7 +489,8 @@ Each law is a property test in `BurnieDomainTests` (section 16.4). `≡` means e
   `Retry-After` between the step and 45 minutes is honored exactly; without one, waits are non-decreasing across
   consecutive 429s; `reset` returns to the initial value.
 - **IdleBackoff**: `stretch(i) ≥ i` for every interval `i`; `stretch(i) ≤ max(i, 45 minutes)`; `stretch` is
-  non-decreasing across consecutive `record()`s; after `reset()`, `stretch(i) == i`.
+  non-decreasing across outcomes in a row that wait for the user; after any other outcome, `stretch(i) == i` and the
+  backoff equals its initial value.
 - **Codable**: `decode(encode(x)) ≡ x` for every persisted type; every newtype encodes to its bare raw value.
 - **Scheduling** (in `BurnieApplicationTests`, since `Scheduling` lives in Application): for every trigger,
   `canRun` is false while the job is running or before its backoff's `retryAt`, and false when offline for a policy

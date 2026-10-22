@@ -12,13 +12,13 @@ enum Scheduling {
             && job.policy.shouldRun(for: trigger, lastRun: job.lastRun, now: now)
     }
 
-    /// Until `retryAt` during a backoff, else the interval moved by `jitter`, a sample in -1…1 the interpreter draws,
-    /// times the policy's jitter (B-35). Never negative.
+    /// Until `retryAt` during a backoff, else the interval, stretched while the job waits for the user, moved by
+    /// `jitter`, a sample in -1…1 the interpreter draws, times the policy's jitter (B-35). Never negative.
     static func delay(for job: JobState, now: Date, jitter: Double) -> TimeInterval {
         if let retryAt = job.backoff.retryAt {
             return max(retryAt.timeIntervalSince(now), 0)
         }
         let sample = min(max(jitter, -1), 1)
-        return max(job.policy.interval + job.policy.jitter * sample, 0)
+        return max(job.idle.stretch(job.policy.interval) + job.policy.jitter * sample, 0)
     }
 }
