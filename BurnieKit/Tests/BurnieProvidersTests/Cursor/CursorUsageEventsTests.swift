@@ -29,4 +29,13 @@ struct CursorUsageEventsTests {
             try CursorUsageEvents.dailyTokens(csv: "When,Tokens\n", in: window, calendar: calendar)
         }
     }
+
+    @Test("B-47 an export with a user or email column is unexpected: it would count more than the member", arguments: [
+        "Date,User,Total Tokens", "Date,Email,Total Tokens", "Date,User Email,Total Tokens",
+    ])
+    func exportNamingWhoMadeEachRowIsUnexpected(header: String) {
+        #expect(throws: ProviderIssue.unexpectedResponse("Cursor CSV with more than the member's usage")) {
+            try CursorUsageEvents.dailyTokens(csv: header + "\n", in: window, calendar: calendar)
+        }
+    }
 }

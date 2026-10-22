@@ -42,4 +42,16 @@ struct CursorSpendMapperTests {
     func oneEventWithoutAValidChargeMakesTheSumUnknown(eventsJSON: String) {
         #expect(throws: ProviderIssue.unexpectedResponse("Cursor event without a valid charge")) { try spent(eventsJSON) }
     }
+
+    @Test("B-47 events of more than one member make the sum unknown")
+    func eventsOfMoreThanOneMemberMakeTheSumUnknown() {
+        let events = #"[{"timestamp":"1791648000000","chargedCents":5,"owningUser":"100000"},{"timestamp":"1791648000000","chargedCents":5,"owningUser":"100001"}]"#
+        #expect(throws: ProviderIssue.unexpectedResponse("Cursor usage events of more than one member")) { try spent(events) }
+    }
+
+    @Test("B-47 the member's own events add up, with or without an owner")
+    func theMembersOwnEventsAddUp() throws {
+        let events = #"[{"timestamp":"1791648000000","chargedCents":5,"owningUser":"100000"},{"timestamp":"1791648000000","chargedCents":5,"owningUser":100000},{"timestamp":"1791648000000","chargedCents":5}]"#
+        #expect(try spent(events) == [Self.today: Cents(15)])
+    }
 }

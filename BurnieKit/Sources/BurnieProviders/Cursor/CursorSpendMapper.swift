@@ -5,6 +5,7 @@ import Foundation
 ///
 /// All or nothing: a single event without a valid charge makes the whole sum unknown,
 /// because a partial sum would read as less spent than there was (B-47).
+/// Only the member's: events of more than one owner make it unknown too, since they would count the team.
 enum CursorSpendMapper {
     /// Every day in `days` is present, with 0 if it had no events.
     static func dailySpentCents(
@@ -12,6 +13,9 @@ enum CursorSpendMapper {
         in days: ClosedRange<LocalDay>,
         calendar: Calendar
     ) throws(ProviderIssue) -> [LocalDay: Cents] {
+        guard Set(events.compactMap { $0.owningUser?.value }).count <= 1 else {
+            throw .unexpectedResponse("Cursor usage events of more than one member")
+        }
         var totals = Dictionary(uniqueKeysWithValues: days.map { ($0, 0.0) })
         for event in events {
             let (day, cents) = try charge(of: event, calendar: calendar)
