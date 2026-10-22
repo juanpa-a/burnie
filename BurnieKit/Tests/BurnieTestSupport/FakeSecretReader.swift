@@ -1,7 +1,7 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
-/// `SecretReader` whose Keychain items, by service, the test sets.
+/// A `SecretReader` whose Keychain items, by service, the test sets.
 public struct FakeSecretReader: SecretReader {
     public var items: [String: Data]
 

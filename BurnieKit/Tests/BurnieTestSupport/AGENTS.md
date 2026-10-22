@@ -1,17 +1,16 @@
 # BurnieTestSupport
 
-What the test targets share: `FixedClock` and `ManualClock`, `ManualSleeper`, `Gate` (holds a fake's calls until
-the test lets them through), the port fakes, fixture loading and `Gen`, the seeded generator for property tests.
-Only test targets link it. Its library product exists only for the Xcode `BurnieAppTests` target, and the refactor
-deletes both ([SPEC 15.4](../../../SPEC.md#154-tests)). It imports only `Foundation` and `BurnieCore`, never
-`Testing` or `@testable`, so everything another target uses is `public`. Fixtures stay in each test target's
-resources; `Fixture` takes that target's bundle.
+What the test targets share: `Gen`, the seeded generator for property tests, fixture loading, literal helpers, sample
+ids, `FixedClock`, `ManualSleeper` and the port fakes. A regular target that only test targets link, never a product. It
+imports only `Foundation`, `BurnieDomain` and `BurnieInterface`, never `Testing` or `@testable`, so everything another
+target uses is `public`. Fixtures stay in each test target's resources; `Fixture` takes that target's bundle.
 
 The rules' text lives only in [`SPEC.md`](../../../SPEC.md): `G-*` in
 [3.3](../../../SPEC.md#33-rules-for-every-module-g-), `T-*` in [16.3](../../../SPEC.md#163-test-strategy-per-module),
 `Gen` in [16.4](../../../SPEC.md#164-property-tests).
 
 - **G-4** One top-level type per file, named like the file; extensions are `Type+Topic.swift`.
+- **G-5** Sample providers are invented (`.alpha`, `.beta`); only `BurnieProvidersTests` names a real one.
 - **G-11** `@unchecked Sendable` only in Infra and test code, with a comment naming the lock that serializes the state.
 - **T-1** Swift Testing only.
 - **T-2** One test file per type under test, `<Type>Tests.swift`.

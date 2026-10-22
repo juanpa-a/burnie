@@ -3,8 +3,8 @@
 The target architecture for Burnie's refactor, the internal language it is written in, the behavior it must keep,
 the migration that gets there, and how every step is verified.
 
-- **Status:** agreed design, implementation not started. Section 13 records every decision, all agreed. The open
-  questions in section 18 are verified during implementation, not before.
+- **Status:** implemented. Section 13 records every decision; 49–51 came out of the implementation and are proposed
+  until the PR that adds them merges. The open questions of section 18 are answered there.
 - **Audience:** humans and agents. Every rule has an ID (`D-3`, `A-7`…) so that reviews, commit messages and the
   architecture check can point at it.
 - **Precedence:** this file wins over the module `AGENTS.md` files for anything about layers, names and
@@ -100,7 +100,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Meter caption** | What the line under a meter means: resets in, resets at, cycle ends, no active session, on-demand idle. | `MeterCaption` | Domain |
 | **Period** | The window a meter fills over, from its start to its reset. | `DateInterval?` on `Meter` | Domain |
 | **Pace** | Where the fill would be at an even rate through the period. | `Meter.elapsedFraction(at:)` | Domain |
-| **Over pace** | The part of the fill past the pace. | derived | Domain |
+| **Over pace** | The part of the fill past the pace; zero without a pace. | `Meter.overPace(at:)` | Domain |
 | **Plan** | The name of the user's subscription as a chip shows it (`"MAX"`, `"PRO+"`). | `PlanName` (newtype over `String`) | Domain |
 | **Usage unit** | How a plan measures usage: tokens (percentage windows) or money (dollar budget). | `UsageUnit` | Domain |
 | **Today's usage** | What the section header shows for today: tokens or money. | `TodayUsage` | Domain |
@@ -350,8 +350,8 @@ struct MeterSet { let primary: Meter; let others: [Meter] }      // non-empty; `
 // Snapshot
 enum UsageUnit { case tokens, money }
 enum TodayUsage { case tokens(Tokens), money(Cents) }
-struct SnapshotFeatures { var onDemand: Meter? }
-struct Stamped<Value> { var value: Value; var at: Date }
+struct SnapshotFeatures { var onDemand: Meter? }   // .empty; has(_ toggle:), hiding(_ toggles:)
+struct Stamped<Value> { var value: Value; var at: Date }   // map(_:) keeps the moment, transforms the value
 enum SnapshotContent {
     case limits(view: Stamped<LimitsPart>, today: TodayUsage?)   // today nil if activity failed or never loaded
     case activityOnly(Stamped<TodayUsage>)                       // limits failed or never loaded
@@ -373,8 +373,8 @@ enum PartKind { case limits, activity }
 enum Latest<Value> {
     case success(Stamped<Value>)
     case failure(ProviderIssue, at: Date, lastSuccess: Stamped<Value>?)
-    // recording(_ outcome:, at:) is the only way forward: a success replaces everything,
-    // a failure keeps the previous lastSuccess. Computed: lastSuccess, issue.
+    // init(_ outcome:, at:) records the first outcome; recording(_ outcome:, at:) is the only way forward:
+    // a success replaces everything, a failure keeps the previous lastSuccess. Computed: lastSuccess, issue.
 }
 
 // Issues
@@ -716,7 +716,8 @@ The runtime: the only owner of state, the scheduler, and the implementation of t
 ### 7.1 Rules (`A-*`)
 
 - **A-1** The only public types are `AppModel` and its factory input `AppEnvironment` (ports + provider bundles).
-  `AppModel`'s public members are `state`, `useCases`, `clock`, `live(_:)` and, under `DEBUG`, `preview(_:)` (7.4).
+  `AppModel`'s public members are `state`, `useCases`, `clock`, `live(_:)` and, under `DEBUG`, `preview(_:clock:)`
+  (7.4).
 - **A-2** State changes only in the reducer: `reduce(_ state: RuntimeState, _ event: Event) -> (RuntimeState, [Effect])`,
   pure and synchronous.
 - **A-3** Effects are performed by one interpreter that calls ports and feeds results back as events.
@@ -809,7 +810,7 @@ it isn't renewing.
 | `timerFired(key, timer)` | Dropped unless `timer` is the job's `timer`; else `timer = nil`. | start a run if `canRun(.timer)`; otherwise nothing, and no new timer until another trigger runs the job (B-35) |
 | `trigger(RefreshTrigger)` | — | start a run of every job where `canRun` (the wake below) |
 | `woke` | — | `wait(3 s, then: .trigger(.wake))` (B-38) |
-| `networkChanged(isOnline)` | `isOnline = isOnline`. | on offline → online, start a run of every job where `canRun(.networkRestored)` (B-38), and arm the timer of every other job that has neither a run nor a timer (B-35) |
+| `networkChanged(isOnline, jitter)` | `isOnline = isOnline`. | on offline → online, start a run of every job where `canRun(.networkRestored)` (B-38), and arm the timer of every other job that has neither a run nor a timer (B-35) |
 | `activityChanged(id)` | — | start a run of `id`'s activity job if `canRun(.activityChanged)` |
 | `providerToggled(id, isOn)` | Ignored if `id` isn't in the registry or is already in that state. Else update settings; add or remove `id`'s jobs (B-51). | `saveSetting(.enabled(settings.enabled))`; `startWatcher`/`stopWatcher`; on add start a run of the new jobs with `.manual`, on remove `cancelTimer` for the old ones (B-37) |
 | `favoriteTapped(id)` | `Favorite.toggling`. | `saveSetting(.favorite(settings.favorite))` |
@@ -854,7 +855,8 @@ reduces `launched` and publishes the first `AppState` before returning, so the f
 (never the empty "all off" state), then hands the launch effects to the interpreter. It holds `RuntimeState`
 privately, runs the reducer on each event, derives `AppState`, and assigns `state` only when the derived value
 differs (`@Observable` doesn't compare, so an equal value would still redraw). Previews build it with
-`AppModel.preview(_ state: AppState)`, which has no-op use cases and no runtime.
+`AppModel.preview(_ state: AppState, clock:)`, which has no-op use cases and no runtime; the clock is the previews'
+fixed one.
 
 ### 7.5 Scheduling
 
@@ -952,7 +954,7 @@ minus provider colors).
 - **V-3** The composition root (`App/Composition/`) is the only code that imports `BurnieProviders` and
   `BurnieInfra`. It builds adapters, provider bundles and the app model, in that order. Previews (`App/Previews/`,
   `#if DEBUG`) may import `BurnieProviders` only to read each provider's `descriptor` (P-3), never `bundle`.
-- **V-4** Previews build an `AppState` value and `AppModel.preview(_:)`. Every scenario of section 16.7 has a
+- **V-4** Previews build an `AppState` value and `AppModel.preview(_:clock:)`. Every scenario of section 16.7 has a
   preview, except VoiceOver, which is only checked live.
 - **V-5** AppKit only for what SwiftUI can't do (window placement, the template menu bar image).
 
@@ -1167,6 +1169,9 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 46 | 2026-10-16 | `LimitsView` folds into `LimitsPart`, so the cached snapshot keeps its unit and `compose` uses it until limits succeed again (B-8 across launches). | Agreed |
 | 47 | 2026-10-16 | After network restored, a job that doesn't run arms its timer: every job has a run or a timer unless it waits for the network. | Agreed |
 | 48 | 2026-10-16 | The checks skip comments, see unstaged new files and leave `scripts/` out; `make check` scans the whole tree for sensitive data; G-9 gets a check; C-4 covers every literal measurement and stays dormant until the refactor PR. | Agreed |
+| 49 | 2026-10-17 | Every event that may arm a timer carries its own jitter sample: `taskFinished` and `networkChanged`, which arms the timers decision 47 asks for. | Proposed |
+| 50 | 2026-10-17 | `AppModel.preview` takes the clock the previews draw with, so they stay deterministic. | Proposed |
+| 51 | 2026-10-17 | Once the refactor lands, the architecture check drops its support for the old layout and its legacy samples: every rule runs on the repo. | Proposed |
 
 ---
 
@@ -1363,9 +1368,9 @@ author runs the rest and says so in the PR body.
 
 ### 16.2 Architecture check
 
-`scripts/check-architecture.sh` greps the Swift files under `App/`, `AppTests/` and `BurnieKit/` that git tracks or
-would track (`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/`
-and generated code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the
+`scripts/check-architecture.sh` greps the Swift files under `App/` and `BurnieKit/` that git tracks or would track
+(`git ls-files --cached --others --exclude-standard`, so a new file counts before it's staged, and `.build/` and
+generated code never do) and fails with the rule ID, file and line. `scripts/` holds standalone tools outside the
 layers and isn't checked. Every pattern except G-8's skips comment lines (`//`, `///`), so a doc comment that names a
 forbidden call doesn't fail; G-8 reads them, because that's where its markers live.
 Rules:
@@ -1526,19 +1531,17 @@ Agents should hit the right rule without being told:
 
 ## 18. Open questions
 
-1. **Sparkle in a SwiftPM module.** `BurnieInfra` would depend on Sparkle through SwiftPM while the app embeds the
-   framework. If Xcode can't unify both references into one embedded copy, `SparkleUpdater` stays in
-   `App/Composition/` instead. Verified in the refactor PR; a cheap spike before it is welcome.
-2. **Newtypes for IDs (decision 16).** Losing `CaseIterable` means "all providers" comes from the registry. The nine
-   `ProviderID.allCases` uses in today's `App/` all become reads of the registry order in `AppState.providers`.
-3. **Copy localization.** Copy stays English-only. If Burnie is ever localized, `Copy` becomes the single place to
-   change; not in scope.
-4. **Components module and assets.** Moving the non-provider colorsets and the `FlameGlyph` imageset into
-   `BurnieComponents` resources means `Color(_:bundle: .module)` and `Image(_:bundle: .module)`, and the glyph must
-   still render as a template in the menu bar. Fine on macOS 14; confirmed in the refactor PR.
-5. **Render tests under `swift test`.** `T-9` assumes `ImageRenderer` works in a SwiftPM test run without a window
-   server session. If it doesn't, the render smoke tests move to an Xcode test target that `make verify` runs.
-   A cheap spike in the guardrails PR is welcome.
-6. **Test support before the refactor.** `BurnieTestSupport` lands in the guardrails PR against today's `BurnieCore`
-   ports and is rewritten against `BurnieInterface` in the refactor PR. Fixtures stay in each test target's
-   resources; the loader takes the bundle as a parameter.
+All answered in the refactor PR.
+
+1. **Sparkle in a SwiftPM module.** Works. `BurnieInfra` depends on Sparkle through SwiftPM (pinned in
+   `Package.swift`), the app links it only through `BurnieInfra`, and the built app embeds exactly one
+   `Sparkle.framework`, signed, in Debug and Release. `SparkleUpdater` lives in `BurnieInfra`.
+2. **Newtypes for IDs (decision 16).** Done: "all providers" is the registry, read in `AppState.providers` order.
+3. **Copy localization.** Unchanged: copy stays English-only, and `Copy` is the single place to change it.
+4. **Components module and assets.** Works: the color sets and `FlameGlyph` live in `BurnieComponents`'s asset
+   catalog, which SwiftPM compiles into the module's bundle (a test checks it ships), read with `bundle: .module`; the
+   app embeds that bundle, and the glyph still renders as a template in the menu bar.
+5. **Render tests under `swift test`.** Works: `ImageRenderer` renders every component in a plain `swift test` run, so
+   the render smoke tests live in `BurnieComponentsTests`.
+6. **Test support.** `BurnieTestSupport` is rewritten against `BurnieDomain` and `BurnieInterface`; fixtures stay in
+   each test target's resources, and the loader takes the bundle as a parameter.

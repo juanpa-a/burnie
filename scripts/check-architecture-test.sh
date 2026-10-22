@@ -4,8 +4,8 @@
 #
 # Usage: scripts/check-architecture-test.sh
 #
-# Runs check-architecture.sh over each sample root in check-architecture-samples/ (legacy/ is today's layout, layered/
-# the target one) and holds every sample to the first line it starts with:
+# Runs check-architecture.sh over each sample root in check-architecture-samples/ and holds every sample to the first
+# line it starts with:
 #   // expect: G-6 C-4    these rules fail on the file, and no others
 #   // expect: none       nothing fails on the file
 # It also checks that every failure line has the documented format, that a root with failures exits 1, and that every

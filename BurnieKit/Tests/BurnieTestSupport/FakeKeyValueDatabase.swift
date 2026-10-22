@@ -1,12 +1,12 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
-/// `KeyValueDatabase` with the rows the test sets, or a failure for every read.
+/// A `KeyValueDatabase` with the rows the test sets, or a failure for every read.
 public struct FakeKeyValueDatabase: KeyValueDatabase {
     public var rows: [String: String]
-    public var failure: Error?
+    public var failure: (any Error & Sendable)?
 
-    public init(rows: [String: String] = [:], failure: Error? = nil) {
+    public init(rows: [String: String] = [:], failure: (any Error & Sendable)? = nil) {
         self.rows = rows
         self.failure = failure
     }

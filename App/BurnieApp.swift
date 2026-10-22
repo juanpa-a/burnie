@@ -1,19 +1,16 @@
+import BurnieApplication
 import SwiftUI
 
 @main
 struct BurnieApp: App {
-    @State private var store = UsageStore.live()
-    @State private var launchAtLogin = LaunchAtLogin()
-    @State private var updater = AppUpdater.live()
+    @State private var model = CompositionRoot.makeModel()
 
     var body: some Scene {
         MenuBarExtra {
             RootView()
-                .environment(store)
-                .environment(launchAtLogin)
-                .environment(updater)
+                .environment(model)
         } label: {
-            MenuBarLabel(ring: store.ring)
+            MenuBarLabel(ring: model.state.ring, providers: model.state.providers)
         }
         .menuBarExtraStyle(.window)
     }

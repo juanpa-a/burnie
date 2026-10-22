@@ -4,11 +4,10 @@
 #
 # Usage: scripts/check-architecture.sh [root]
 #
-# root is a folder laid out like the repo (App/, AppTests/, BurnieKit/) inside a git work tree; it defaults to the repo
-# that holds this script. The check reads the Swift files under root's App/, AppTests/ and BurnieKit/ that git tracks or
-# would track (git ls-files --cached --others --exclude-standard), so a new file counts before it's staged and ignored
-# folders (.build/, generated code) never do. AppTests/, the app's Xcode test target until the refactor, is test code
-# like BurnieKit/Tests/.
+# root is a folder laid out like the repo (App/, BurnieKit/) inside a git work tree; it defaults to the repo that holds
+# this script. The check reads the Swift files under root's App/ and BurnieKit/ that git tracks or would track
+# (git ls-files --cached --others --exclude-standard), so a new file counts before it's staged and ignored folders
+# (.build/, generated code) never do.
 #
 # Output: one line per failure, "SPEC <rule>: <file>:<line>: <fix>", with <file> relative to root. If anything fails,
 # a summary goes to stderr and the exit status is 1; otherwise one OK line is printed and the status is 0. A check that
@@ -17,10 +16,10 @@
 # Comment lines (first non-blank characters "//", so "///" too) are skipped by every rule except G-8, because the
 # markers G-8 forbids live in comments.
 #
-# Dormancy (SPEC 14.1): a module exists once it holds a Swift file. A rule scoped to a module has nothing to scan
-# until then, and a rule that guards the code around a module wakes when that module appears: G-5 with
-# BurnieProviders, C-4 and C-5 with BurnieComponents, G-3 on the app target with BurnieApplication. On today's
-# layout BurnieCore stands for Domain in G-3 and D-3, and BurnieSystem (with its tests) for Infra in G-6 and G-11.
+# Dormancy: a module exists once it holds a Swift file. A rule scoped to a module has nothing to scan until then, and a
+# rule that guards the code around a module wakes when that module appears: G-5 with BurnieProviders, C-4 and C-5 with
+# BurnieComponents, G-3 on the app target with BurnieApplication. In the repo every module exists, so every rule runs;
+# the sample trees of the check's test lean on it.
 #
 # Plain bash 3.2, grep and awk, BSD or GNU; nothing else.
 
@@ -38,12 +37,10 @@ readonly PROVIDERS='^BurnieKit/Sources/BurnieProviders/'
 readonly APPLICATION='^BurnieKit/Sources/BurnieApplication/'
 readonly INFRA='^BurnieKit/Sources/BurnieInfra/'
 readonly COMPONENTS='^BurnieKit/Sources/BurnieComponents/'
-readonly LEGACY_CORE='^BurnieKit/Sources/BurnieCore/'
-readonly LEGACY_SYSTEM='^BurnieKit/Sources/BurnieSystem/'
-readonly TESTS='^(BurnieKit/Tests|AppTests)/'
+readonly TESTS='^BurnieKit/Tests/'
 readonly TEST_SUPPORT='^BurnieKit/Tests/BurnieTestSupport/'
 readonly PROVIDERS_TESTS='^BurnieKit/Tests/BurnieProvidersTests/'
-readonly INFRA_TESTS='^BurnieKit/Tests/Burnie(Infra|System)Tests/'
+readonly INFRA_TESTS='^BurnieKit/Tests/BurnieInfraTests/'
 readonly APP='^App/'
 readonly COMPOSITION='^App/Composition/'
 readonly PREVIEWS='^App/Previews/'
@@ -53,14 +50,14 @@ readonly ICON_BUTTON='(^|/)IconButton[.]swift$'
 readonly DESIGN_TOKENS='(^|/)DesignTokens[.]swift$'
 readonly PREVIEW_VALUES='(^|/)PreviewValues[.]swift$'
 
-# Persistence fixtures and tests of SPEC section 12 that must spell the frozen provider ids ("claude", "cursor"), so G-5
-# skips them. One path per line, relative to the root. Empty while G-5 is dormant: the refactor PR fills it with the
-# paths those tests land on.
-readonly PROVIDER_ID_ALLOWLIST=''
+# Persistence tests of SPEC section 12 that must spell the frozen provider ids ("claude", "cursor"), as the files on
+# users' disks do, so G-5 skips them. One path per line, relative to the root.
+readonly PROVIDER_ID_ALLOWLIST='BurnieKit/Tests/BurnieDomainTests/PersistenceContractTests.swift'
 
 # --- What may be imported (SPEC 3.2), space separated. Each module's own list is in allowed_imports.
 
 readonly TEST_TARGET_IMPORTS='Testing BurnieTestSupport'
+readonly TEST_SUPPORT_IMPORTS='Foundation BurnieDomain BurnieInterface'
 readonly VIEW_IMPORTS='Foundation SwiftUI AppKit BurnieDomain BurnieInterface BurnieComponents BurnieApplication'
 
 # --- What the rules look for: extended regexes over one line.
@@ -151,10 +148,9 @@ die() {
 	exit 2
 }
 
-# The Swift files under App/, AppTests/ and BurnieKit/ that git tracks or would track and that are on disk, one
-# per line.
+# The Swift files under App/ and BurnieKit/ that git tracks or would track and that are on disk, one per line.
 swift_files() {
-	git -c core.quotePath=false ls-files --cached --others --exclude-standard -- App AppTests BurnieKit |
+	git -c core.quotePath=false ls-files --cached --others --exclude-standard -- App BurnieKit |
 		{ grep '\.swift$' || true; } |
 		sort -u |
 		while IFS= read -r path; do
@@ -251,27 +247,17 @@ allowed_imports() {
 	esac
 }
 
-# BurnieTestSupport builds on today's BurnieCore ports while the legacy layout exists (SPEC 18, question 6).
-test_support_imports() {
-	if module_exists "$LEGACY_CORE"; then
-		echo 'Foundation BurnieDomain BurnieInterface BurnieCore'
-	else
-		echo 'Foundation BurnieDomain BurnieInterface'
-	fi
-}
-
 # --- Rules, in the order of SPEC 16.2. Each function opens with "# <rule>:", which the check's test reads.
 
 # G-3: every import is in its module's allowed list (SPEC 3.2).
 check_g3_imports() {
 	local module
-	report_imports 'Foundation' '' $(files_in "$LEGACY_CORE")
 	for module in BurnieDomain BurnieInterface BurnieProviders BurnieApplication BurnieInfra BurnieComponents; do
 		report_imports "$(allowed_imports "$module")" '' $(files_in "^BurnieKit/Sources/$module/")
 		report_imports "$TEST_TARGET_IMPORTS $module $(allowed_imports "$module")" "$module" \
 			$(files_in "^BurnieKit/Tests/${module}Tests/")
 	done
-	report_imports "$(test_support_imports)" '' $(files_in "$TEST_SUPPORT")
+	report_imports "$TEST_SUPPORT_IMPORTS" '' $(files_in "$TEST_SUPPORT")
 	if module_exists "$APPLICATION"; then
 		report_imports "$VIEW_IMPORTS" '' $(files_in "$APP" "$COMPOSITION|$PREVIEWS")
 		report_imports "$VIEW_IMPORTS BurnieProviders" '' $(files_in "$PREVIEWS")
@@ -313,18 +299,15 @@ check_g5_specific_providers() {
 # G-6: the system clock, time zone and locale are read only in Infra and the composition root.
 check_g6_system_time() {
 	local fix="reads the system clock, time zone or locale; take now from the Clock port, today from the events and the locale from SwiftUI's environment (SPEC 3.3)"
-	local exempt="$INFRA|$LEGACY_SYSTEM|$INFRA_TESTS|$COMPOSITION"
+	local exempt="$INFRA|$INFRA_TESTS|$COMPOSITION"
 	scan code G-6 "$fix" "$SYSTEM_TIME" "$TIMELINE_START" $(files_in "$ANY" "$exempt|$ICON_BUTTON")
 	scan code G-6 "$fix" "$SYSTEM_TIME" "$TIMELINE_START|$ICON_BUTTON_ANIMATION" $(files_in "$ICON_BUTTON" "$exempt")
 }
 
 # G-7: no print, NSLog or debugPrint, except the timings of the performance test.
 check_g7_printing() {
-	local fix="prints; record diagnostics through the DiagnosticsLog port (SPEC 3.3)"
-	if ! module_exists "$INTERFACE"; then
-		fix="prints; log counts and timings with os.Logger in BurnieSystem until the DiagnosticsLog port exists (SPEC 3.3)"
-	fi
-	scan code G-7 "$fix" "$PRINTING" '' $(files_in "$ANY" "$PERFORMANCE_TEST")
+	scan code G-7 "prints; record diagnostics through the DiagnosticsLog port (SPEC 3.3)" \
+		"$PRINTING" '' $(files_in "$ANY" "$PERFORMANCE_TEST")
 }
 
 # G-8: no TODO, FIXME or XXX markers. The one rule that reads comment lines, where these markers live.
@@ -341,7 +324,7 @@ check_g9_force_unwraps() {
 
 # G-11: @unchecked Sendable only in Infra and test code, and there with a comment on the line above.
 check_g11_unchecked_sendable() {
-	local allowed="$INFRA|$LEGACY_SYSTEM|$TESTS"
+	local allowed="$INFRA|$TESTS"
 	scan code G-11 "uses @unchecked Sendable outside Infra and test fakes; make the type Sendable or an actor (SPEC 3.3)" \
 		"$UNCHECKED_SENDABLE" '' $(files_in "$ANY" "$allowed")
 	scan uncommented G-11 "uses @unchecked Sendable without a comment on the line above naming the lock or queue that serializes its state (SPEC 3.3, X-8)" \
@@ -358,8 +341,6 @@ check_d2_pure_values() {
 check_d3_no_io() {
 	scan code D-3 "does I/O in a pure module; declare a port in BurnieInterface and implement it in Infra (SPEC 4.1, 5.2)" \
 		"$IO_TYPES" '' $(files_in "$DOMAIN|$INTERFACE|$PROVIDERS|$APPLICATION")
-	scan code D-3 "does I/O in BurnieCore; declare a port in BurnieCore/Ports and implement it in BurnieSystem (SPEC 4.1, 14.1)" \
-		"$IO_TYPES" '' $(files_in "$LEGACY_CORE")
 }
 
 # D-6: no user-visible strings in Domain.

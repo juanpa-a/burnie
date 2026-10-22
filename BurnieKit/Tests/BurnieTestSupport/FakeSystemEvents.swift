@@ -1,20 +1,27 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
-/// `SystemEvents` the test drives: it keeps the wake callback it's started with and calls it when the test says.
-/// It never reports a network change: the scheduler's tests set it online or offline themselves.
+/// `SystemEvents` the test drives: it wakes the Mac and moves the network when told.
 @MainActor
 public final class FakeSystemEvents: SystemEvents {
     private var onWake: (@Sendable () -> Void)?
+    private var onNetworkChange: (@Sendable (Bool) -> Void)?
+
+    public private(set) var starts = 0
 
     public init() {}
 
     public func start(onWake: @escaping @Sendable () -> Void, onNetworkChange: @escaping @Sendable (_ isOnline: Bool) -> Void) {
+        starts += 1
         self.onWake = onWake
+        self.onNetworkChange = onNetworkChange
     }
 
-    /// Calls the wake callback, as the Mac waking up would.
     public func wake() {
         onWake?()
+    }
+
+    public func setOnline(_ isOnline: Bool) {
+        onNetworkChange?(isOnline)
     }
 }

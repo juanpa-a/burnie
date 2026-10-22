@@ -1,4 +1,4 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
 /// A `Clock` the test moves forward while the code under test holds it; `FixedClock` is a value, so a copy handed

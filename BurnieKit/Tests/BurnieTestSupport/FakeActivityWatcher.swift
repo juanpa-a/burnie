@@ -1,4 +1,4 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
 /// An `ActivityWatcher` that counts its starts and stops and reports a change when the test says, as FSEvents would

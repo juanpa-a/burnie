@@ -1,4 +1,4 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
 /// A `Sleeper` whose time only passes when the test says: every sleep waits, with the duration it asked for, until
@@ -50,7 +50,7 @@ public final class ManualSleeper: Sleeper {
     }
 
     /// Waits for the next `count` sleeps to start, counting on from the ones an earlier call returned, and returns
-    /// their durations in the order they started.
+    /// their durations in the order they started; fewer if the waiting task is cancelled first.
     @discardableResult
     public func nextSleeps(_ count: Int) async -> [TimeInterval] {
         let range = state.update { state in
@@ -58,7 +58,8 @@ public final class ManualSleeper: Sleeper {
             return state.returned..<state.returned + count
         }
         await state.wait { $0.started.count >= range.upperBound }
-        return state.read { Array($0.started[range]) }
+        // Fewer than asked only when the wait was cancelled, as a test's time limit does.
+        return state.read { Array($0.started[range.clamped(to: 0..<$0.started.count)]) }
     }
 
     /// Returns once exactly `count` sleeps are waiting.

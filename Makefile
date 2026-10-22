@@ -18,11 +18,8 @@ build: gen
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-derivedDataPath $(DERIVED_DATA) -destination "platform=macOS,arch=$(shell uname -m)" -quiet build
 
-# The package's tests, then the app's store tests, which live in an Xcode test target (BurnieAppTests).
-test: gen
+test:
 	swift test --package-path BurnieKit
-	xcodebuild -project $(PROJECT) -scheme BurnieAppTests -derivedDataPath $(DERIVED_DATA) \
-		-destination "platform=macOS,arch=$(shell uname -m)" -quiet test
 
 # The architecture rules of SPEC.md section 16.2 (and the check's own test), and sensitive data in every file.
 check:

@@ -1,8 +1,9 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
-/// In-memory `FileReading`: files with contents and modification dates the test controls.
-/// `lock` serializes `files`, so tasks can share it.
+/// An in-memory `FileReading`: files with contents and modification dates the test controls, and the executables it
+/// marks.
+/// `lock` serializes `files`, `directories` and `executables`, so tasks can share it.
 public final class InMemoryFiles: FileReading, @unchecked Sendable {
     private struct File {
         var contents: Data
@@ -11,6 +12,7 @@ public final class InMemoryFiles: FileReading, @unchecked Sendable {
 
     private let lock = NSLock()
     private var files: [URL: File] = [:]
+    private var executables: Set<URL> = []
 
     public init() {}
 
@@ -20,8 +22,8 @@ public final class InMemoryFiles: FileReading, @unchecked Sendable {
 
     public func append(_ contents: Data, to url: URL, modified: Date) {
         lock.withLock {
-            files[url]!.contents.append(contents)
-            files[url]!.modified = modified
+            files[url]?.contents.append(contents)
+            files[url]?.modified = modified
         }
     }
 
@@ -29,10 +31,14 @@ public final class InMemoryFiles: FileReading, @unchecked Sendable {
         lock.withLock { _ = files.removeValue(forKey: url) }
     }
 
-    public func list(_ dir: URL, ext: String) throws -> [URL] {
+    /// Makes `url` an executable that `isExecutable` reports.
+    public func installExecutable(_ url: URL) {
+        lock.withLock { _ = executables.insert(url) }
+    }
+
+    public func list(_ directory: URL, ext: String) throws -> [URL] {
         try lock.withLock {
-            let prefix = dir.path + "/"
-            let matches = files.keys.filter { $0.path.hasPrefix(prefix) && $0.pathExtension == ext }
+            let matches = files.keys.filter { isInside($0, directory) && $0.pathExtension == ext }
             guard !matches.isEmpty else { throw CocoaError(.fileNoSuchFile) }
             return matches.sorted { $0.path < $1.path }
         }
@@ -50,5 +56,18 @@ public final class InMemoryFiles: FileReading, @unchecked Sendable {
             guard let file = files[url] else { throw CocoaError(.fileNoSuchFile) }
             return file.contents.subdata(in: Int(offset)..<file.contents.count)
         }
+    }
+
+    /// A file, or a directory that holds one.
+    public func exists(_ url: URL) -> Bool {
+        lock.withLock { files[url] != nil || files.keys.contains { isInside($0, url) } }
+    }
+
+    public func isExecutable(_ url: URL) -> Bool {
+        lock.withLock { executables.contains(url) }
+    }
+
+    private func isInside(_ file: URL, _ directory: URL) -> Bool {
+        file.path.hasPrefix(directory.path + "/")
     }
 }

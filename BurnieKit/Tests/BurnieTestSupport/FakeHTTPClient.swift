@@ -1,10 +1,10 @@
-import BurnieCore
+import BurnieInterface
 import Foundation
 
-/// `HTTPClient` that answers whatever the test says and remembers every request.
+/// An `HTTPClient` that answers whatever the test says and remembers every request.
 /// `lock` serializes `reply`, `routes` and `sent`, so tasks can share it.
 public final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
-    private typealias Reply = @Sendable (URL) throws -> (Data, HTTPURLResponse)
+    private typealias Reply = Result<HTTPResponse, HTTPFailure>
 
     private let lock = NSLock()
     private var reply: Reply
@@ -15,18 +15,22 @@ public final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
     /// Every request sent so far, in order.
     public var requests: [HTTPRequest] { lock.withLock { sent } }
 
-    public init(status: Int = 200, body: Data = Data(), headers: [String: String] = [:]) {
-        reply = Self.reply(status: status, body: body, headers: headers)
+    public init(status: Int = 200, body: Data = Data(), headers: [String: String] = [:], mimeType: String? = nil) {
+        reply = .success(HTTPResponse(status: status, headers: headers, mimeType: mimeType, body: body))
     }
 
-    public init(failingWith error: Error) {
-        reply = { _ in throw error }
+    public init(failingWith failure: HTTPFailure) {
+        reply = .failure(failure)
     }
 
-    public func respond(status: Int = 200, body: Data = Data(), headers: [String: String] = [:]) {
+    public func respond(status: Int = 200, body: Data = Data(), headers: [String: String] = [:], mimeType: String? = nil) {
         lock.withLock {
-            reply = Self.reply(status: status, body: body, headers: headers)
+            reply = .success(HTTPResponse(status: status, headers: headers, mimeType: mimeType, body: body))
         }
+    }
+
+    public func fail(with failure: HTTPFailure) {
+        lock.withLock { reply = .failure(failure) }
     }
 
     public func respond(to url: URL, status: Int = 200, body: Data = Data(), headers: [String: String] = [:]) {
@@ -36,16 +40,11 @@ public final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
     /// Answers successive requests to `url` with each body in turn, like the pages of a listing.
     public func respond(to url: URL, withEach bodies: [Data], status: Int = 200, headers: [String: String] = [:]) {
         lock.withLock {
-            routes[url] = bodies.map { Self.reply(status: status, body: $0, headers: headers) }
+            routes[url] = bodies.map { .success(HTTPResponse(status: status, headers: headers, body: $0)) }
         }
     }
 
-    private static func reply(status: Int, body: Data, headers: [String: String]) -> Reply {
-        // A test's status and headers on an absolute URL always make a response.
-        { url in (body, HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: headers)!) }
-    }
-
-    public func send(_ request: HTTPRequest) async throws -> (Data, HTTPURLResponse) {
+    public func send(_ request: HTTPRequest) async throws(HTTPFailure) -> HTTPResponse {
         let reply = lock.withLock {
             sent.append(request)
             guard let replies = routes[request.url], let next = replies.first else { return self.reply }
@@ -54,6 +53,6 @@ public final class FakeHTTPClient: HTTPClient, @unchecked Sendable {
             }
             return next
         }
-        return try reply(request.url)
+        return try reply.get()
     }
 }

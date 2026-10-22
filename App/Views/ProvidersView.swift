@@ -1,83 +1,82 @@
-import BurnieCore
+import BurnieApplication
+import BurnieComponents
+import BurnieDomain
+import BurnieInterface
 import SwiftUI
 
-/// Offers a new Burnie when there is one, turns each provider on or off (turning one off keeps its history),
-/// picks the favorite for the menu bar ring, shows or hides the week chart and the on-demand meter, and Launch at login.
+/// Offers a new Burnie when there is one, turns each provider on or off (turning one off keeps its history), picks the
+/// favorite for the menu bar ring, shows or hides the week chart and each feature, and Launch at login.
 struct ProvidersView: View {
-    @Environment(UsageStore.self) private var store
-    @Environment(AppUpdater.self) private var updater
+    @Environment(AppModel.self) private var model
     let onBack: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             header
             BurnieDivider()
-            if let version = updater.availableVersion {
-                UpdateRow(version: version, onUpdate: updater.installUpdate)
+            if let version = model.state.availableUpdate {
+                UpdateRow(version: version, onUpdate: { model.useCases.installUpdate() })
                 BurnieDivider()
             }
             VStack(spacing: 0) {
-                ForEach(ProviderID.allCases, id: \.self) { provider in
+                ForEach(model.state.providers, id: \.id) { panel in
                     ProviderRow(
-                        provider: provider,
-                        status: status(of: provider),
-                        isFavorite: store.effectiveFavorite == provider,
-                        onToggleFavorite: { store.toggleFavorite(provider) },
-                        isOn: isOn(provider)
+                        displayName: panel.descriptor.displayName,
+                        status: StatusLine.text(for: panel),
+                        accent: panel.descriptor.color,
+                        isFavorite: panel.isFavorite,
+                        onToggleFavorite: { model.useCases.toggleFavorite(panel.id) },
+                        isOn: isEnabled(panel.id)
                     )
                 }
             }
-            .padding(6)
+            .padding(DesignTokens.Insets.list)
             BurnieDivider()
-            RingInMenuBarRow(favorite: store.effectiveFavorite, isOn: showRing)
+            RingInMenuBarRow(favorite: model.state.providers.first(where: \.isFavorite)?.descriptor, isOn: showRing)
             BurnieDivider()
-            SwitchRow(title: "Last 7 days", subtitle: Text("Shows daily tokens per provider"), isOn: showWeekChart)
-                .padding(Tokens.Metrics.settingRowInsets)
+            SwitchRow(title: Copy.lastSevenDays, subtitle: Text(Copy.weekChartSubtitle), isOn: showWeekChart)
+                .padding(DesignTokens.Insets.settingRow)
             BurnieDivider()
-            if store.hasOnDemand {
-                SwitchRow(title: "On-demand", subtitle: Text("Show on-demand spend"), isOn: showOnDemand)
-                    .padding(Tokens.Metrics.settingRowInsets)
+            // Each feature's switch shows only while an enabled snapshot has the feature (B-40).
+            ForEach(model.state.visibleToggles, id: \.self) { toggle in
+                SwitchRow(title: Copy.title(of: toggle), subtitle: Text(Copy.subtitle(of: toggle)), isOn: isShown(toggle))
+                    .padding(DesignTokens.Insets.settingRow)
                 BurnieDivider()
             }
             LaunchAtLoginRow()
-                .padding(6)
+                .padding(DesignTokens.Insets.list)
         }
     }
 
     private var header: some View {
-        HStack(spacing: 4) {
-            IconButton(systemName: "chevron.left", accessibilityLabel: "Back to usage", weight: .semibold, action: onBack)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Providers")
-                    .font(Tokens.Typography.title)
-                    .foregroundStyle(Tokens.Palette.fg)
-                Text("\(store.enabled.count) of \(ProviderID.allCases.count) tracking")
-                    .font(Tokens.Typography.caption)
-                    .foregroundStyle(Tokens.Palette.fg2)
+        HStack(spacing: DesignTokens.Spacing.backButton) {
+            IconButton(systemName: "chevron.left", accessibilityLabel: Copy.backToUsage, weight: .semibold, action: onBack)
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.textLines) {
+                Text(Copy.providers)
+                    .font(DesignTokens.Typography.title)
+                    .foregroundStyle(DesignTokens.Palette.fg)
+                Text(Copy.tracking(enabled: model.state.enabledProviders.count, total: model.state.providers.count))
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(DesignTokens.Palette.fg2)
             }
             Spacer()
         }
-        .padding(EdgeInsets(top: 12, leading: 8, bottom: 10, trailing: 16))
+        .padding(DesignTokens.Insets.providersHeader)
     }
 
-    private func status(of provider: ProviderID) -> String {
-        provider.statusText(isEnabled: store.enabled.contains(provider), state: store.states[provider], sourceLocation: store.sourceLocations[provider])
-    }
-
-    private func isOn(_ provider: ProviderID) -> Binding<Bool> {
-        Binding(get: { store.enabled.contains(provider) }, set: { store.setEnabled(provider, $0) })
+    private func isEnabled(_ id: ProviderID) -> Binding<Bool> {
+        Binding(get: { model.state.settings.enabled.contains(id) }, set: { model.useCases.setProviderEnabled(id, $0) })
     }
 
     private var showRing: Binding<Bool> {
-        Binding(get: { store.showRing }, set: { store.setShowRing($0) })
+        Binding(get: { model.state.settings.showRing }, set: { model.useCases.setRingShown($0) })
     }
 
     private var showWeekChart: Binding<Bool> {
-        Binding(get: { store.showWeekChart }, set: { store.setShowWeekChart($0) })
+        Binding(get: { model.state.settings.showWeekChart }, set: { model.useCases.setWeekChartShown($0) })
     }
 
-    private var showOnDemand: Binding<Bool> {
-        Binding(get: { store.showOnDemand }, set: { store.setShowOnDemand($0) })
+    private func isShown(_ toggle: FeatureToggle) -> Binding<Bool> {
+        Binding(get: { !model.state.settings.hiddenFeatures.contains(toggle) }, set: { model.useCases.setFeatureShown(toggle, $0) })
     }
 }
-

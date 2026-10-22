@@ -1,10 +1,11 @@
 import Foundation
 
 /// A fake's state that tasks share and a test can await: `wait(until:)` returns once the state meets a condition,
-/// checked again after every `update`, so tests wait on what happened instead of polling for it.
+/// checked again after every `update`, so tests wait on what happened instead of polling for it. A cancelled wait, like
+/// one a test's time limit ends, returns at once, so a lost signal fails the test instead of hanging the run.
 /// `lock` serializes `state` and `waiters`, so tasks can share it.
 final class AwaitableState<State>: @unchecked Sendable {
-    private typealias Waiter = (isMet: (State) -> Bool, continuation: CheckedContinuation<Void, Never>)
+    private typealias Waiter = (id: UUID, isMet: (State) -> Bool, continuation: CheckedContinuation<Void, Never>)
 
     private let lock = NSLock()
     private var state: State
@@ -31,17 +32,28 @@ final class AwaitableState<State>: @unchecked Sendable {
         return value
     }
 
-    /// Returns once the state meets `isMet`, at once if it already does.
+    /// Returns once the state meets `isMet`, at once if it already does, or once the waiting task is cancelled.
     func wait(until isMet: @escaping (State) -> Bool) async {
-        await withCheckedContinuation { continuation in
-            let isMetAlready = lock.withLock {
-                guard !isMet(state) else { return true }
-                waiters.append((isMet, continuation))
-                return false
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                // Cancellation is checked under the lock that registers the waiter, so either `onCancel` finds it
+                // waiting or this check sees the cancellation.
+                let returnsAtOnce = lock.withLock {
+                    guard !isMet(state), !Task.isCancelled else { return true }
+                    waiters.append((id, isMet, continuation))
+                    return false
+                }
+                if returnsAtOnce {
+                    continuation.resume()
+                }
             }
-            if isMetAlready {
-                continuation.resume()
+        } onCancel: {
+            let cancelled = lock.withLock {
+                defer { waiters.removeAll { $0.id == id } }
+                return waiters.filter { $0.id == id }
             }
+            cancelled.forEach { $0.continuation.resume() }
         }
     }
 }

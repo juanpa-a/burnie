@@ -1,26 +1,28 @@
-import BurnieCore
+import BurnieComponents
+import BurnieDomain
+import BurnieInterface
 import SwiftUI
 
-/// A provider's section: title with plan and today's usage, its meters, and the issue row if any.
+/// A provider's section: title with plan and today's usage, its meters and features, and the issue row if any.
 struct ProviderSection: View {
-    let provider: ProviderID
-    let state: ProviderState
+    let panel: ProviderPanel
     let now: Date
     let timeZone: TimeZone
     /// Renews an expired sign-in through the provider's own app; nil if Burnie can't.
-    var renewSignIn: (() async -> Bool)?
+    let renewSignIn: (() async -> Bool)?
     @Environment(\.locale) private var locale
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.sectionItems) {
             titleRow
-            switch state {
+            switch panel.state {
             case .loading:
-                ForEach(provider.placeholderMeters, id: \.self) { id in
-                    MeterView(label: id.label, value: nil, fraction: 0, elapsed: nil, caption: nil, accent: accent)
+                ForEach(descriptor.placeholderMeters, id: \.self) { id in
+                    MeterView(label: descriptor.label(for: id), value: nil, fill: .zero, pace: nil, overPace: .zero, caption: nil, accent: descriptor.color)
                 }
             case .ready(let snapshot):
-                ForEach(snapshot.meters) { meter in
+                ForEach(meters(of: snapshot)) { meter in
                     meterView(meter, isStale: snapshot.isStale(at: now))
                 }
                 issueRow(snapshot.issue)
@@ -28,60 +30,61 @@ struct ProviderSection: View {
                 issueRow(issue)
             }
         }
-        .padding(EdgeInsets(top: 14, leading: 16, bottom: 16, trailing: 16))
+        .padding(DesignTokens.Insets.providerSection)
+    }
+
+    private var descriptor: ProviderDescriptor {
+        panel.descriptor
     }
 
     private var titleRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DesignTokens.Spacing.related) {
             Circle()
-                .fill(accent)
-                .frame(width: Tokens.Metrics.providerDot, height: Tokens.Metrics.providerDot)
-            Text(provider.displayName)
-                .font(Tokens.Typography.title)
-                .foregroundStyle(Tokens.Palette.fg)
-            if let plan = snapshot?.plan {
+                .fill(DesignTokens.Palette.accent(descriptor.color, in: colorScheme))
+                .frame(width: DesignTokens.Metrics.providerDot, height: DesignTokens.Metrics.providerDot)
+            Text(descriptor.displayName)
+                .font(DesignTokens.Typography.title)
+                .foregroundStyle(DesignTokens.Palette.fg)
+            if let plan = panel.state.snapshot?.plan {
                 PlanChip(plan: plan)
             }
-            Spacer(minLength: 8)
-            if let snapshot, let today = snapshot.today {
+            Spacer(minLength: DesignTokens.Spacing.related)
+            if let snapshot = panel.state.snapshot, let today = snapshot.today {
                 Text(TodayUsageFormatter(locale: locale).string(for: today))
-                    .font(Tokens.Typography.caption)
-                    .foregroundStyle(Tokens.Palette.fg2)
+                    .font(DesignTokens.Typography.caption)
+                    .foregroundStyle(DesignTokens.Palette.fg2)
                     .monospacedDigit()
-                    .opacity(snapshot.isStale(at: now) ? Tokens.staleOpacity : 1)
+                    .opacity(snapshot.isStale(at: now) ? DesignTokens.Opacity.stale : DesignTokens.Opacity.opaque)
             }
         }
     }
 
+    /// The meter set, then the features, like on-demand, after it.
+    private func meters(of snapshot: UsageSnapshot) -> [Meter] {
+        (snapshot.meters?.all ?? []) + [snapshot.features.onDemand].compactMap { $0 }
+    }
+
     private func meterView(_ meter: Meter, isStale: Bool) -> some View {
         MeterView(
-            label: meter.id.label,
+            label: descriptor.label(for: meter.id),
             value: MeterValueFormatter(locale: locale).parts(for: meter.value),
-            fraction: meter.fraction,
-            elapsed: meter.elapsedFraction(at: now),
+            fill: meter.fill,
+            pace: meter.elapsedFraction(at: now),
+            overPace: meter.overPace(at: now),
             caption: MeterCaptionFormatter(locale: locale, timeZone: timeZone).string(for: meter.caption, now: now),
-            accent: accent,
+            accent: descriptor.color,
             isStale: isStale
         )
     }
 
     @ViewBuilder
     private func issueRow(_ issue: ProviderIssue?) -> some View {
-        if let issue, let message = issue.message(for: provider) {
-            if issue == .signInExpired, let renewSignIn {
-                SignInRenewalRow(message: message, failedMessage: ProviderIssue.renewalFailedMessage(for: provider), renew: renewSignIn)
+        if let issue, let message = IssueMessage.message(for: issue, copy: descriptor.copy) {
+            if issue == .signInExpired, let renewSignIn, let failedMessage = panel.renewalFailedCopy {
+                SignInRenewalRow(message: message, failedMessage: failedMessage, renew: renewSignIn)
             } else {
                 IssueRow(message: message)
             }
         }
-    }
-
-    private var snapshot: UsageSnapshot? {
-        guard case .ready(let snapshot) = state else { return nil }
-        return snapshot
-    }
-
-    private var accent: Color {
-        Tokens.Palette.accent(provider)
     }
 }
