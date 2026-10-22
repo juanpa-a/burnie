@@ -17,7 +17,9 @@ struct WeekChartViewTests {
     static var chart: WeekChart {
         var history = UsageHistory()
         history.record([today: Tokens(283_000_000), .day("2026-10-08"): Tokens(197_000_000)], for: .beta, today: today)
-        return WeekChart.make(history: history, providers: [.beta], today: today, spent: [.beta: [today: Cents(3_065)]])
+        return WeekChart.make(
+            history: history, providers: [.beta], today: today, spent: [.beta: [today: Cents(3_065)]], cycleStarts: [.beta: .day("2026-10-01")]
+        )
     }
 
     @Test("B-77 a day's tooltip draws over the legend it rises over", arguments: [ColorScheme.light, .dark])
@@ -26,7 +28,7 @@ struct WeekChartViewTests {
         let chart = try #require(RenderedImage(view.environment(\.colorScheme, scheme), width: Self.width))
         let background = try #require(RenderedImage(DesignTokens.Palette.pop.environment(\.colorScheme, scheme), width: 1))
             .color(atX: 0, y: 0)
-        // The tooltip's right padding, across the legend's row: the end of the week total is drawn there unless the
+        // The tooltip's right padding, across the legend's row: the end of the cycle total is drawn there unless the
         // tooltip covers it.
         let padding = Int(DesignTokens.Insets.tooltip.trailing)
         let legendRow = Int(DesignTokens.Insets.weekChart.top)...Int(DesignTokens.Insets.weekChart.top) + 12

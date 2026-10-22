@@ -31,15 +31,24 @@ public struct UsageHistory: Hashable, Sendable {
         return (today.advanced(by: 1 - count)...today).map { DailyPoint(day: $0, tokens: days[$0, default: .zero]) }
     }
 
+    /// The provider's tokens over its cycle (B-79): from the day the cycle starts on, or from the day the history is
+    /// recorded since when that's later, through today; nil when the history has no day of the cycle.
+    public func cycleTotal(for provider: ProviderID, startingOn cycleStart: LocalDay, today: LocalDay) -> Tokens? {
+        guard let recorded = recordedSince(for: provider) else { return nil }
+        let first = max(cycleStart, recorded)
+        guard first <= today else { return nil }
+        return total(for: provider, from: first, through: today)
+    }
+
     /// The provider's tokens from `first` through `last`, 0 for the days without data; zero when `first` is after
     /// `last`.
-    public func total(for provider: ProviderID, from first: LocalDay, through last: LocalDay) -> Tokens {
+    func total(for provider: ProviderID, from first: LocalDay, through last: LocalDay) -> Tokens {
         points(for: provider, endingAt: last, count: first.distance(to: last) + 1).map(\.tokens).reduce(.zero, +)
     }
 
     /// The first day of the unbroken run of recorded days that ends on the provider's latest one; nil before it
     /// records. A missing day means Burnie didn't record it, so nothing before it is counted on (B-79).
-    public func recordedSince(for provider: ProviderID) -> LocalDay? {
+    func recordedSince(for provider: ProviderID) -> LocalDay? {
         guard let days = tokens[provider], var first = days.keys.max() else { return nil }
         while days[first.advanced(by: -1)] != nil {
             first = first.advanced(by: -1)

@@ -100,6 +100,19 @@ struct UsageHistoryTests {
         #expect(history.recordedSince(for: .beta) == nil)
     }
 
+    @Test("B-79 a cycle total counts from the day the cycle starts, or from the day the history is recorded since")
+    func cycleTotalsCountTheRecordedDaysOfTheCycle() {
+        var history = UsageHistory()
+        // Unbroken from September 25 through today.
+        history.record([.day("2026-09-26"): Tokens(1), .day("2026-10-02"): Tokens(20)], for: .alpha, today: .day("2026-10-02"))
+        history.record([.day("2026-10-08"): Tokens(300), .day("2026-10-10"): Tokens(4_000)], for: .alpha, today: .day("2026-10-10"))
+        let today = LocalDay.day("2026-10-10")
+        #expect(history.cycleTotal(for: .alpha, startingOn: .day("2026-10-02"), today: today) == Tokens(4_320))
+        #expect(history.cycleTotal(for: .alpha, startingOn: .day("2026-09-10"), today: today) == Tokens(4_321))
+        #expect(history.cycleTotal(for: .alpha, startingOn: today.advanced(by: 1), today: today) == nil)
+        #expect(history.cycleTotal(for: .beta, startingOn: .day("2026-10-02"), today: today) == nil)
+    }
+
     @Test func encodesAsProviderThenDay() throws {
         var history = UsageHistory()
         history.record([.day("2026-10-10"): Tokens(1_250_000)], for: .alpha, today: .day("2026-10-10"))
@@ -202,5 +215,20 @@ struct UsageHistoryTests {
         }
         #expect((since...latest).allSatisfy { stored[$0] != nil }, "seed \(seed)")
         #expect(stored[since.advanced(by: -1)] == nil, "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
+    func cycleTotalsCountFromTheLaterOfTheCycleAndTheHistory(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let history = randomHistory(&gen)
+        let provider = gen.providerID()
+        let cycleStart = gen.localDay()
+        let today = gen.localDay()
+        let first = history.recordedSince(for: provider).map { max($0, cycleStart) }
+        guard let first, first <= today else {
+            #expect(history.cycleTotal(for: provider, startingOn: cycleStart, today: today) == nil, "seed \(seed)")
+            return
+        }
+        #expect(history.cycleTotal(for: provider, startingOn: cycleStart, today: today) == history.total(for: provider, from: first, through: today), "seed \(seed)")
     }
 }

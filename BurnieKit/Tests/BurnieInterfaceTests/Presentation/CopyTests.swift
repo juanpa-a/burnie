@@ -35,18 +35,12 @@ struct CopyTests {
         #expect(Copy.providerUsage(provider: "Alpha", tokens: "1.8M") == "Alpha 1.8M tokens")
         #expect(Copy.providerUsage(provider: "Beta", tokens: "2.6M", spent: "$4.12") == "Beta 2.6M tokens ($4.12)")
         #expect(Copy.weekChartSpend("$6.55") == "· $6.55")
-        #expect(Copy.cycleUsage(provider: "Alpha", tokens: "48M", since: "Oct 3") == "Alpha 48M tokens since Oct 3")
-    }
-
-    @Test("B-80 the cycle totals' tooltip names the cycle and the day each total counts from")
-    func cycleTotals() {
         #expect(Copy.thisCycle == "This cycle")
-        #expect(Copy.since("Oct 3") == "since Oct 3")
     }
 
     @Test func screensAndSwitches() {
         #expect(Copy.usage == "Usage")
-        #expect(Copy.lastSevenDays == "Last 7 days")
+        #expect(Copy.activity == "Activity")
         #expect(Copy.activityChart == "Activity chart")
         #expect(Copy.activityChartSubtitle == "Shows daily tokens and cycle totals per provider")
         #expect(Copy.title(of: .onDemand) == "On-demand")

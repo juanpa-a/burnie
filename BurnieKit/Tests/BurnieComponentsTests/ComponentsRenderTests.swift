@@ -78,17 +78,6 @@ struct ComponentsRenderTests {
         let chart = WeekChart.make(history: history, providers: providers, today: today, spent: spent, cycleStarts: cycleStarts)
         #expect(RenderedSize.isDrawn(WeekChartView(chart: chart, descriptors: [.alpha, .beta])), "seed \(seed)")
         #expect(RenderedSize.isDrawn(WeekChartTooltip(chart: chart, day: today, providers: [.alpha, .beta]), width: 160), "seed \(seed)")
-        #expect(RenderedSize.isDrawn(CycleTotalTooltip(chart: chart, providers: [.alpha, .beta]), width: 160), "seed \(seed)")
-    }
-
-    @Test("B-77 B-80 a chart tooltip renders its title and rows, with and without a detail")
-    func chartTooltipRenders() {
-        let rows = [
-            ChartTooltip.Row(provider: .alpha, tokens: Tokens(1_800_000), detail: nil),
-            ChartTooltip.Row(provider: .beta, tokens: Tokens(48_000_000), detail: Copy.since("Oct 3")),
-        ]
-        #expect(RenderedSize.isDrawn(ChartTooltip(title: Copy.thisCycle, rows: rows), width: 160))
-        #expect(RenderedSize.isDrawn(ChartTooltip(title: Copy.thisCycle, rows: []), width: 160))
     }
 
     @Test("B-76 the legend's dot renders in each provider's color")

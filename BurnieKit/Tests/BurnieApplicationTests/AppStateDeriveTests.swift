@@ -124,15 +124,14 @@ struct AppStateDeriveTests {
 
         var harness = ReducerHarness.launched(history: history, finishing: outcomes)
         let chart = try #require(AppState.derive(from: harness.state).weekChart)
-        #expect(Set(chart.cycleTotals.keys) == [.beta])
-        #expect(chart.cycleTotals[.beta]?.since == .day("2026-10-02"))
-        #expect(chart.cycleTotals[.beta]?.tokens == Tokens(2_250_000))
+        // From the 2nd: its 50K, the 8th's 400K and today's 1.8M.
+        #expect(chart.cycleTotals == [.beta: Tokens(2_250_000)])
 
         harness.timeZone = .gmt
         harness.send(.trigger(.timer))
         let inGMT = try #require(AppState.derive(from: harness.state).weekChart)
-        #expect(inGMT.cycleTotals[.beta]?.since == .day("2026-10-03"))
-        #expect(inGMT.cycleTotals[.beta]?.tokens == Tokens(2_200_000))
+        // From the 3rd, without the 2nd's 50K.
+        #expect(inGMT.cycleTotals == [.beta: Tokens(2_200_000)])
     }
 
     @Test("the week chart is gone with its switch off or with every provider off")
