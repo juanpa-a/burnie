@@ -34,7 +34,7 @@ struct ProvidersView: View {
             BurnieDivider()
             RingInMenuBarRow(favorite: model.state.providers.first(where: \.isFavorite)?.descriptor, isOn: showRing)
             BurnieDivider()
-            SwitchRow(title: Copy.lastSevenDays, subtitle: Text(Copy.weekChartSubtitle), isOn: showWeekChart)
+            SwitchRow(title: Copy.activityChart, subtitle: Text(Copy.activityChartSubtitle), isOn: showWeekChart)
                 .padding(DesignTokens.Insets.settingRow)
             BurnieDivider()
             // Each feature's switch shows only while an enabled snapshot has the feature (B-40).

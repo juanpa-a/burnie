@@ -12,7 +12,7 @@ private func providers(_ scenario: PreviewScenario) -> some View {
 #Preview("Favorite marked") { providers(.favoriteMarked) }
 #Preview("Only one on") { providers(.onlyOneOn) }
 #Preview("Ring off") { providers(.ringOff) }
-#Preview("Last 7 days off") { providers(.weekChartHidden) }
+#Preview("Activity chart off") { providers(.weekChartHidden) }
 #Preview("On-demand off") { providers(.onDemandHidden) }
 #Preview("Claude not found") { providers(.claudeNotFound) }
 #Preview("Cursor session expired") { providers(.cursorSessionExpired) }

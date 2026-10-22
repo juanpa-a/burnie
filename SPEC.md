@@ -627,7 +627,7 @@ a struct of closures, so previews and tests replace them with no-ops or recorder
 | `SetProviderEnabled` | `(ProviderID, Bool) -> Void` | Track or stop tracking a provider. Keeps cache and history. |
 | `ToggleFavorite` | `(ProviderID) -> Void` | The heart. One favorite at a time. |
 | `SetRingShown` | `(Bool) -> Void` | The "Ring in menu bar" switch. |
-| `SetWeekChartShown` | `(Bool) -> Void` | The "Last 7 days" switch. |
+| `SetWeekChartShown` | `(Bool) -> Void` | The "Activity chart" switch, which shows the week chart. |
 | `SetFeatureShown` | `(FeatureToggle, Bool) -> Void` | Feature switches ("On-demand"). |
 | `SetLaunchAtLogin` | `(Bool) -> Void` | Launch at login. |
 | `ReadLaunchAtLogin` | `() -> Void` | Re-reads it when the providers screen appears (System Settings can change it). |
@@ -670,7 +670,7 @@ Everything that turns domain values into text, moved from `BurnieCore/Format/`:
 `LastUpdatedFormatter`, `DayLabelFormatter`, `RingAccessibilityLabel`, `WeekChartAccessibilityValue` (the week totals,
 the cycle totals and every day, spend included, since hovering isn't reachable with VoiceOver; B-77, B-80),
 `StatusLine`, `IssueMessage`, and `Copy`
-(every fixed string the views show: "Usage", "Providers", "Last 7 days", "Refresh sign-in", "Quit"…).
+(every fixed string the views show: "Usage", "Providers", "Last 7 days", "Activity chart", "Refresh sign-in", "Quit"…).
 Provider-specific text comes from `ProviderDescriptor.copy`, never from a switch. `StatusLine` (B-29) builds the
 non-healthy lines as common templates over `displayName` ("Off", "{displayName} not found",
 "Sign-in expired · open {displayName}"); every other state, a specific issue included, shows the provider's healthy
@@ -1208,6 +1208,7 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 | 51 | 2026-10-17 | Once the refactor lands, the architecture check drops its support for the old layout and its legacy samples: every rule runs on the repo. | Proposed |
 | 52 | 2026-10-21 | The week chart's daily spend comes from each provider's latest activity in memory, not from `history.json`: the activity window (8 days) covers the chart's 7, so the persistence contract stays as it is. Money shows by the plan's unit, never by provider. | Agreed |
 | 53 | 2026-10-22 | The cycle total is the longest meter period, not a billing date Burnie doesn't have: Cursor's billing cycle, Claude's weekly limit. It comes from `history.json` (35 days cover any cycle), from the day the history is recorded since when the cycle started earlier, so providers still fetch only the activity window and nothing new is persisted; no cycle spend. Events also carry the time zone, which turns a cycle's start into a local day. Refines decision 29. | Agreed |
+| 54 | 2026-10-22 | The week chart's switch is "Activity chart", since the chart shows the cycle totals too; the chart keeps its "Last 7 days" title, which is what its bars and legend draw. | Agreed |
 
 ---
 

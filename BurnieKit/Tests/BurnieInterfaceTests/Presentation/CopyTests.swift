@@ -47,7 +47,8 @@ struct CopyTests {
     @Test func screensAndSwitches() {
         #expect(Copy.usage == "Usage")
         #expect(Copy.lastSevenDays == "Last 7 days")
-        #expect(Copy.weekChartSubtitle == "Shows daily tokens per provider")
+        #expect(Copy.activityChart == "Activity chart")
+        #expect(Copy.activityChartSubtitle == "Shows daily tokens and cycle totals per provider")
         #expect(Copy.title(of: .onDemand) == "On-demand")
         #expect(Copy.subtitle(of: .onDemand) == "Show on-demand spend")
         #expect(Copy.ringInMenuBar == "Ring in menu bar")
