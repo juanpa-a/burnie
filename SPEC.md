@@ -405,7 +405,8 @@ struct WeekChart { let days: [LocalDay]; let providers: [ProviderID]; let series
 // Refresh
 struct RefreshPolicy { let interval: TimeInterval; let jitter: TimeInterval; let staleOnOpen: TimeInterval?; let needsNetwork: Bool }
 enum RefreshTrigger { case timer, popoverOpened, manual, wake, networkRestored, activityChanged }
-struct RateLimitBackoff      // recordRateLimit(retryAt:now:), reset(), allowsRequest(at:); retryAt clamped (B-33)
+struct RateLimitBackoff      // recordRateLimit(retryAt:now:), record(_ outcome:now:), reset(), allowsRequest(at:);
+                             // retryAt clamped (B-33)
 struct IdleBackoff           // record(), reset(), stretch(_ interval:) -> TimeInterval (B-35)
 
 // Settings and the menu bar
