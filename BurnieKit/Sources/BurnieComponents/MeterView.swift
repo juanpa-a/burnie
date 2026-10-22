@@ -48,7 +48,9 @@ public struct MeterView: View {
                 valueText
                     .opacity(dataOpacity)
             }
+            // Flattened first, so dimming fades the bar as one picture and its layers don't show through each other.
             bar
+                .compositingGroup()
                 .opacity(dataOpacity)
             if let caption {
                 Text(caption)
