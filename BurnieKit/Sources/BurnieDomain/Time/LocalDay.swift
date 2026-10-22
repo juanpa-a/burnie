@@ -41,6 +41,12 @@ public struct LocalDay: Hashable, Sendable {
         Self.utc.component(.weekday, from: utcDate)
     }
 
+    /// 1 … 31: the 10 of "2026-10-10".
+    public var dayOfMonth: Int {
+        // `components` always holds the day it was built with.
+        components.day!
+    }
+
     private var components: DateComponents {
         // `iso` always holds a valid yyyy-MM-dd, so each part is a number.
         let parts = iso.split(separator: "-").map { Int($0)! }

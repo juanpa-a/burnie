@@ -58,10 +58,13 @@ enum PreviewData {
 
     static let history: UsageHistory = {
         var history = UsageHistory()
-        history.record(week([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000]), for: claude.id, today: today)
-        history.record(week([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000]), for: cursor.id, today: today)
+        history.record(week([420_000, 980_000, 0, 1_200_000, 640_000, 1_100_000, 1_250_000].map(Tokens.init)), for: claude.id, today: today)
+        history.record(week([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000].map(Tokens.init)), for: cursor.id, today: today)
         return history
     }()
+
+    /// What the enterprise budget was charged each day of the week, ending with today's usage (B-78).
+    static let cursorEnterpriseSpend = week([412, 0, 1_310, 980, 412, 655, 1_240].map(Cents.init))
 
     /// A snapshot with limits, stamped `minutesAgo` before now.
     static func snapshot(_ provider: ProviderID, limits: LimitsPart, today: TodayUsage?, minutesAgo: Double = 2) -> UsageSnapshot {
@@ -79,6 +82,7 @@ enum PreviewData {
         showWeekChart: Bool = true,
         hiddenFeatures: Set<FeatureToggle> = [],
         history: UsageHistory = history,
+        weekSpend: [ProviderID: [LocalDay: Cents]] = [:],
         availableUpdate: String? = nil
     ) -> AppState {
         let enabled = enabled ?? [claude.id, cursor.id]
@@ -93,7 +97,7 @@ enum PreviewData {
                 panel(cursor, state: cursorState, settings: settings, effective: effective, renewal: nil, source: nil),
             ],
             ring: Favorite.ring(stored: favorite, enabled: enabled, showRing: showRing, states: states),
-            weekChart: showWeekChart && !order.isEmpty ? WeekChart.make(history: history, providers: order, today: today) : nil,
+            weekChart: showWeekChart && !order.isEmpty ? WeekChart.make(history: history, providers: order, today: today, spent: weekSpend) : nil,
             lastUpdated: snapshots.map(\.fetchedAt).max(),
             isRefreshing: false,
             settings: settings,
@@ -122,8 +126,8 @@ enum PreviewData {
     }
 
     /// One value per day of the week ending today.
-    private static func week(_ values: [Int]) -> [LocalDay: Tokens] {
-        Dictionary(uniqueKeysWithValues: values.enumerated().map { (today.advanced(by: $0.offset - values.count + 1), Tokens($0.element)) })
+    private static func week<Value>(_ values: [Value]) -> [LocalDay: Value] {
+        Dictionary(uniqueKeysWithValues: values.enumerated().map { (today.advanced(by: $0.offset - values.count + 1), $0.element) })
     }
 }
 #endif

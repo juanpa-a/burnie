@@ -51,7 +51,7 @@ enum PreviewScenario: CaseIterable {
         case .cursorSessionExpired:
             PreviewData.state(cursor: .ready(stale(PreviewData.cursorSnapshot, minutesAgo: 40, issue: .signInExpired)))
         case .cursorEnterprise:
-            PreviewData.state(cursor: .ready(PreviewData.cursorEnterprise))
+            PreviewData.state(cursor: .ready(PreviewData.cursorEnterprise), weekSpend: [cursor: PreviewData.cursorEnterpriseSpend])
         case .rateLimited:
             PreviewData.state(
                 claude: .ready(stale(PreviewData.claudeSnapshot, minutesAgo: 8, issue: .rateLimited(retryAt: nil))),

@@ -99,50 +99,62 @@ struct CursorFetchersTests {
         #expect(http.requests.first?.headers["Accept"] == "text/csv")
     }
 
-    func spentToday() async throws(ProviderIssue) -> [LocalDay: Cents] {
+    func spentInWindow() async throws(ProviderIssue) -> [LocalDay: Cents] {
         try await CursorSpendFetcher(dashboard: dashboard, clock: FixedClock(now: Self.now)).dailySpentCents()
     }
 
-    @Test("B-47 spend comes from the usage events of today, asked like the dashboard")
-    func spendPostsTodaysRangeLikeTheDashboard() async throws {
+    /// Every day of the window ending on the 10th, 0 except for the days in `spent`.
+    static func window(_ spent: [LocalDay: Cents] = [:]) -> [LocalDay: Cents] {
+        Dictionary(uniqueKeysWithValues: ActivityWindow.days(endingAt: .day("2026-10-10")).map { ($0, spent[$0, default: .zero]) })
+    }
+
+    @Test("B-47 spend comes from the usage events of the window, asked like the dashboard")
+    func spendPostsTheWindowsRangeLikeTheDashboard() async throws {
         http.respond(to: CursorSpendFetcher.url, body: Fixture.data("cursor-usage-events.json"))
-        #expect(try await spentToday() == [.day("2026-10-10"): Cents(117)])
+        #expect(try await spentInWindow() == Self.window([.day("2026-10-10"): Cents(117)]))
 
         let request = try #require(http.requests.first)
         guard case .post(let body) = request.method else { Issue.record("Expected a POST"); return }
         let query = try JSONSerialization.jsonObject(with: body) as? NSDictionary
-        #expect(query == ["page": 1, "pageSize": 1_000, "startDate": "1791612000000", "endDate": "1791684000000"])
+        #expect(query == ["page": 1, "pageSize": 1_000, "startDate": "1791007200000", "endDate": "1791684000000"])
         #expect(request.headers["Origin"] == "https://cursor.com")
         #expect(request.headers["Content-Type"] == "application/json")
         #expect(request.headers["Cookie"] == (try CursorAccessToken(jwt: CursorAccessTokenTests.jwt).sessionCookie))
     }
 
-    @Test("B-47 an empty usage events answer means nothing was spent today")
-    func anEmptyAnswerMeansNothingSpentToday() async throws {
+    @Test("B-47 spend adds up each day of the window on its own")
+    func spendAddsUpEachDay() async throws {
+        let events = [#"{"timestamp":"1791475200000","chargedCents":250}"#, #"{"timestamp":"1791648000000","chargedCents":1}"#]
+        http.respond(to: CursorSpendFetcher.url, body: Data(#"{"totalUsageEventsCount":2,"usageEventsDisplay":[\#(events.joined(separator: ","))]}"#.utf8))
+        #expect(try await spentInWindow() == Self.window([.day("2026-10-08"): Cents(250), .day("2026-10-10"): Cents(1)]))
+    }
+
+    @Test("B-47 an empty usage events answer means nothing was spent in the window")
+    func anEmptyAnswerMeansNothingSpent() async throws {
         http.respond(to: CursorSpendFetcher.url, body: Data("{}".utf8))
-        #expect(try await spentToday() == [.day("2026-10-10"): Cents(0)])
+        #expect(try await spentInWindow() == Self.window())
     }
 
     @Test("B-47 spend reads pages until a short one")
     func spendReadsEveryPage() async throws {
         http.respond(to: CursorSpendFetcher.url, withEach: [Self.page(events: 1_000, reported: 1_001), Self.page(events: 1, reported: 1_001)])
-        #expect(try await spentToday() == [.day("2026-10-10"): Cents(1_001)])
+        #expect(try await spentInWindow() == Self.window([.day("2026-10-10"): Cents(1_001)]))
         #expect(http.requests.count == 2)
     }
 
     @Test("B-47 pages that don't add up to the reported count make the spend unknown")
     func pagesThatDontAddUpAreNotSummed() async {
         http.respond(to: CursorSpendFetcher.url, withEach: [Self.page(events: 1_000, reported: 1_002), Self.page(events: 1, reported: 1_002)])
-        await #expect(throws: ProviderIssue.unexpectedResponse("Cursor usage events don't add up")) { try await spentToday() }
+        await #expect(throws: ProviderIssue.unexpectedResponse("Cursor usage events don't add up")) { try await spentInWindow() }
     }
 
-    @Test("B-47 Cursor's activity carries tokens and today's spend")
-    func activityCarriesTodaysSpend() async throws {
+    @Test("B-47 Cursor's activity carries tokens and each day's spend")
+    func activityCarriesEachDaysSpend() async throws {
         http.respond(status: 200, body: Fixture.data("cursor-events.csv"), headers: ["Content-Type": "text/csv; charset=utf-8"])
         http.respond(to: CursorSpendFetcher.url, body: Fixture.data("cursor-usage-events.json"))
         let reading = try await activity.activity()
         #expect(reading.tokens[.day("2026-10-10")] == Tokens(2_662_000))
-        #expect(reading.spent == [.day("2026-10-10"): Cents(117)])
+        #expect(reading.spent == Self.window([.day("2026-10-10"): Cents(117)]))
     }
 
     @Test("B-47 a failed spend request, a 429 included, keeps the tokens and leaves spend unknown", arguments: [403, 429, 503])

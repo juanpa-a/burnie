@@ -22,4 +22,9 @@ public struct DayLabelFormatter: Sendable {
     public func shortName(for day: LocalDay) -> String {
         calendar.shortWeekdaySymbols[day.weekday - 1]
     }
+
+    /// Over the week chart's tooltip: "Sat 10", "Mon 19"… (B-77)
+    public func shortDate(for day: LocalDay) -> String {
+        "\(shortName(for: day)) \(day.dayOfMonth.formatted(.number.locale(locale)))"
+    }
 }

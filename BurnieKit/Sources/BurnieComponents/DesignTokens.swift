@@ -28,6 +28,8 @@ public enum DesignTokens {
         public static let updateBadge = Color.blue
         public static let switchKnob = Color.white
         public static let switchKnobShadow = Color.black.opacity(0.3)
+        /// Under the week chart's tooltip, so it lifts off the popover it shares a color with.
+        public static let tooltipShadow = Color.black.opacity(0.12)
         /// The menu bar glyph, drawn in black to become a template image.
         public static let menuBarGlyph = Color.black
         /// Behind the previews' light and dark copies.
@@ -85,6 +87,10 @@ public enum DesignTokens {
         /// An empty day's mark, and the shortest bar of a day with usage (B-43).
         public static let chartBarMinimum: CGFloat = 2
         public static let legendDot: CGFloat = 6
+        public static let tooltipRadius: CGFloat = 6
+        public static let tooltipBorder: CGFloat = 0.5
+        public static let tooltipShadowRadius: CGFloat = 6
+        public static let tooltipShadowOffset: CGFloat = 2
         public static let footerItemHeight: CGFloat = 26
         public static let footerItemRadius: CGFloat = 6
         public static let providerRowHeight: CGFloat = 52
@@ -131,8 +137,14 @@ public enum DesignTokens {
         public static let chartLabel: CGFloat = 5
         /// The legend's providers.
         public static let legendItems: CGFloat = 10
-        /// A legend dot and its name.
+        /// A legend dot, its name and its total.
         public static let legendDot: CGFloat = 4
+        /// The tooltip's day and its rows.
+        public static let tooltipLines: CGFloat = 3
+        /// A tooltip row's name and its values, at least.
+        public static let tooltipValues: CGFloat = 12
+        /// The tooltip and the day it's over.
+        public static let tooltipGap: CGFloat = 6
         /// The previews' light and dark copies.
         public static let previews: CGFloat = 24
     }
@@ -143,6 +155,7 @@ public enum DesignTokens {
         public static let providersHeader = EdgeInsets(top: 12, leading: 8, bottom: 10, trailing: 16)
         public static let providerSection = EdgeInsets(top: 14, leading: 16, bottom: 16, trailing: 16)
         public static let weekChart = EdgeInsets(top: 12, leading: 16, bottom: 14, trailing: 16)
+        public static let tooltip = EdgeInsets(top: 7, leading: 9, bottom: 7, trailing: 9)
         public static let settingRow = EdgeInsets(top: 12, leading: Metrics.contentInset, bottom: 12, trailing: Metrics.contentInset)
         /// Around a list of rows: the footer, the providers.
         public static let list: CGFloat = 6
@@ -181,12 +194,16 @@ public enum DesignTokens {
         public static let disabledSwitch = 0.45
         /// An enabled provider's tile: its accent color at this opacity.
         public static let tileTint = 0.18
+        /// The week chart's other days while one is hovered (B-77).
+        public static let chartDimmed = 0.35
     }
 
     public enum Motion {
         public static let switchToggle = Animation.easeInOut(duration: 0.15)
         /// Between the usage and providers screens.
         public static let screenChange = Animation.easeInOut(duration: 0.18)
+        /// The week chart's days dimming as the pointer moves over them.
+        public static let chartHover = Animation.easeOut(duration: 0.12)
         /// How often the time-dependent text (ages, countdowns) is drawn again without a refresh.
         public static let clockTick: TimeInterval = 30
     }
