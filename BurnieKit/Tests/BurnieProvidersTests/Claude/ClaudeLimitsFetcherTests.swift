@@ -8,11 +8,19 @@ import Testing
 struct ClaudeLimitsFetcherTests {
     static let paths = ClaudePaths(home: URL(filePath: "/home"))
     static let beforeExpiry = Date.iso("2026-10-11T02:00:00Z") // the fixture's token expires at 05:00 UTC
+    /// A file in each Claude Code folder, so the folder exists: `~/.claude`'s, and the XDG one.
+    static let settingsFile = paths.claudeCodeFolders[1].appending(path: "settings.json")
+    static let xdgSettingsFile = paths.claudeCodeFolders[0].appending(path: "settings.json")
 
     var secrets = FakeSecretReader(items: [ClaudeCredentialsReader.keychainService: Fixture.data("claude-credentials.json")])
     let files = InMemoryFiles()
     let http = FakeHTTPClient(status: 200, body: Fixture.data("claude-usage-both.json"))
     var now = beforeExpiry
+
+    /// Claude Code is installed.
+    init() {
+        files.write(Data("{}".utf8), to: Self.settingsFile, modified: Self.beforeExpiry)
+    }
 
     func limits() async throws(ProviderIssue) -> LimitsPart {
         try await ClaudeLimitsFetcher(
@@ -68,6 +76,21 @@ struct ClaudeLimitsFetcherTests {
         secrets.items = [:]
         await #expect(throws: ProviderIssue.notFound) { try await limits() }
         #expect(http.requests.isEmpty)
+    }
+
+    @Test("B-27 without a Claude Code folder, Claude is not found and its Keychain item isn't read")
+    func withoutClaudeCodeTheKeychainIsNotRead() async {
+        files.remove(Self.settingsFile)
+        // The Keychain still holds the item: reading it would have found the credentials.
+        await #expect(throws: ProviderIssue.notFound) { try await limits() }
+        #expect(http.requests.isEmpty)
+    }
+
+    @Test("B-27 the XDG folder alone is enough for Claude Code to be installed")
+    func theXDGFolderIsEnough() async throws {
+        files.remove(Self.settingsFile)
+        files.write(Data("{}".utf8), to: Self.xdgSettingsFile, modified: now)
+        #expect(try await limits().meters.all == ClaudeUsageMapperTests.fixtureMeters)
     }
 
     @Test("B-25 an expired token is sign-in expired before any request")

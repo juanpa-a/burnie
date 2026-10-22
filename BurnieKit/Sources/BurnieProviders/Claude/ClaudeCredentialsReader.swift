@@ -13,12 +13,17 @@ struct ClaudeCredentialsReader: Sendable {
     let account: String
 
     func oauth() throws(ProviderIssue) -> ClaudeCredentialsDTO.OAuth {
-        guard let payload = keychainItem() ?? credentialsFileContents() else { throw .notFound }
+        guard hasClaudeCodeFolder, let payload = keychainItem() ?? credentialsFileContents() else { throw .notFound }
         guard let credentials = try? JSONDecoder().decode(ClaudeCredentialsDTO.self, from: payload) else {
             throw .unexpectedResponse("Unreadable Claude Code credentials")
         }
         guard let oauth = credentials.claudeAiOauth else { throw .notFound }
         return oauth
+    }
+
+    /// Without one, Claude Code isn't installed and nothing is read: a Mac without it never runs `security` (B-27).
+    private var hasClaudeCodeFolder: Bool {
+        paths.claudeCodeFolders.contains(where: files.exists)
     }
 
     private func keychainItem() -> Data? {
