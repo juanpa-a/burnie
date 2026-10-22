@@ -33,6 +33,7 @@ hdiutil create -volname "$volume" -srcfolder "$work/stage" -fs HFS+ -format UDRW
 hdiutil attach "$work/rw.dmg" -readwrite -noverify -noautoopen -quiet
 
 # Bounds are the window's frame: 660×440 of content plus the title bar.
+# .background sits below the window, so it stays out of sight for anyone who shows hidden files.
 osascript <<EOF
 tell application "Finder"
 	tell disk "$volume"
@@ -48,6 +49,7 @@ tell application "Finder"
 		set background picture of viewOptions to file ".background:background.tiff"
 		set position of item "Burnie.app" to {170, 290}
 		set position of item "Applications" to {490, 290}
+		set position of item ".background" to {330, 640}
 		update without registering applications
 		delay 1
 		close
@@ -55,6 +57,8 @@ tell application "Finder"
 end tell
 EOF
 
+# The read-write mount left .fseventsd, macOS's log of file events, which would also show with hidden files.
+rm -rf "/Volumes/$volume/.fseventsd"
 sync
 hdiutil detach "/Volumes/$volume" -quiet
 rm -f "$dmg"
