@@ -15,6 +15,6 @@ The rules' text lives only in [`SPEC.md`](../../../SPEC.md): `G-*` in
   0600 files, atomic), `UserDefaults`, and what Sparkle needs for an update the user asked for.
 - **X-5** The process runner only runs its allowlist, with fixed arguments, a minimal environment, a folder without
   `.claude/`, no input or output, and a timeout.
-- **X-6** SQLite opens read-only with a timeout; when busy, it reads a private copy deleted in a `defer`.
+- **X-6** SQLite opens read-only with a timeout and never copies the database: missing, busy or unreadable.
 - **X-7** HTTP: ephemeral session, no cookies or cache, no redirects, hosts checked before any header is sent.
 - **X-8** `@unchecked Sendable` only with a comment naming the queue or lock that serializes state.

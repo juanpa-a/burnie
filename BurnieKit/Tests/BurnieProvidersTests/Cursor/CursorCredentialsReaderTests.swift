@@ -21,7 +21,19 @@ struct CursorCredentialsReaderTests {
     @Test("B-26 no database or no row is not found")
     func missingRowOrDatabaseIsNotFound() {
         #expect(throws: ProviderIssue.notFound) { try token(FakeKeyValueDatabase(), at: beforeExpiry) }
-        #expect(throws: ProviderIssue.notFound) { try token(FakeKeyValueDatabase(failure: CocoaError(.fileNoSuchFile)), at: beforeExpiry) }
+        #expect(throws: ProviderIssue.notFound) { try token(FakeKeyValueDatabase(failure: .missing), at: beforeExpiry) }
+    }
+
+    @Test("B-26 a database still locked when the timeout runs out reads as offline, so the next refresh tries again")
+    func busyDatabaseIsOffline() {
+        #expect(throws: ProviderIssue.offline) { try token(FakeKeyValueDatabase(failure: .busy), at: beforeExpiry) }
+    }
+
+    @Test("B-26 a database that can't be read otherwise is unexpected")
+    func unreadableDatabaseIsUnexpected() {
+        #expect(throws: ProviderIssue.unexpectedResponse("Cursor's state database can't be read")) {
+            try token(FakeKeyValueDatabase(failure: .unreadable), at: beforeExpiry)
+        }
     }
 
     @Test("B-26 an expired token is sign-in expired")
