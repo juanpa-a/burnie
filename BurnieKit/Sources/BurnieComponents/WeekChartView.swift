@@ -3,8 +3,8 @@ import BurnieInterface
 import SwiftUI
 
 /// Tokens over the last 7 days: one bar per provider for each day, every series on one shared scale, so the same
-/// tokens draw the same height for every provider (B-43). The legend shows each provider's week total (B-76), and
-/// hovering it shows the cycle totals (B-80); hovering a day dims the others and shows that day's tooltip (B-77).
+/// tokens draw the same height for every provider (B-43). The legend shows each provider's cycle total (B-76), and
+/// hovering a day dims the others and shows that day's tooltip (B-77).
 public struct WeekChartView: View {
     /// How many days at each end line their tooltip up with their outer edge instead of centering it, so it stays
     /// inside the chart.
@@ -17,35 +17,28 @@ public struct WeekChartView: View {
     @Environment(\.colorScheme) private var colorScheme
     /// The day under the pointer, which shows its tooltip.
     @State private var hoveredDay: LocalDay?
-    /// Whether the pointer is over the legend, which shows the cycle totals.
-    @State private var isLegendHovered = false
 
     public init(chart: WeekChart, descriptors: [ProviderDescriptor]) {
         self.init(chart: chart, descriptors: descriptors, hoveredDay: nil)
     }
 
-    /// Starting with `hoveredDay`'s tooltip, or the legend's, already shown: for the previews and the tests that look
-    /// at a tooltip.
-    init(chart: WeekChart, descriptors: [ProviderDescriptor], hoveredDay: LocalDay?, isLegendHovered: Bool = false) {
+    /// Starting with `hoveredDay`'s tooltip already shown: for the previews and the tests that look at it.
+    init(chart: WeekChart, descriptors: [ProviderDescriptor], hoveredDay: LocalDay?) {
         self.chart = chart
         self.descriptors = descriptors
         _hoveredDay = State(initialValue: hoveredDay)
-        _isLegendHovered = State(initialValue: isLegendHovered)
     }
 
     public var body: some View {
         VStack(spacing: DesignTokens.Spacing.chartRows) {
             HStack {
-                Text(Copy.lastSevenDays)
+                Text(Copy.activity)
                     .font(DesignTokens.Typography.captionStrong)
                     .tracking(DesignTokens.Typography.chartTitleTracking)
                     .foregroundStyle(DesignTokens.Palette.fg2)
                 Spacer()
                 legend
             }
-            // Each tooltip crosses into the other row: the cycle totals hang over the columns, a day's rises over the legend.
-            // Whichever row shows its tooltip draws on top.
-            .zIndex(isLegendHovered ? 1 : 0)
             HStack(spacing: DesignTokens.Spacing.chartColumns) {
                 ForEach(chart.days, id: \.self) { day in
                     column(day)
@@ -76,26 +69,14 @@ public struct WeekChartView: View {
                     LegendDot(color: descriptor.color)
                     Text(descriptor.shortName)
                         .foregroundStyle(DesignTokens.Palette.fg2)
-                    Text(TokenCountFormatter(locale: locale).string(from: chart.total(for: descriptor.id)))
-                        .foregroundStyle(DesignTokens.Palette.fg)
+                    if let cycleTotal = chart.cycleTotals[descriptor.id] {
+                        Text(TokenCountFormatter(locale: locale).string(from: cycleTotal))
+                            .foregroundStyle(DesignTokens.Palette.fg)
+                    }
                 }
                 .font(DesignTokens.Typography.caption)
             }
         }
-        .onHover { isLegendHovered = $0 }
-        .overlay(alignment: .bottomTrailing) {
-            if isLegendHovered && !chart.cycleTotals.isEmpty {
-                // A line along the legend's bottom, with the tooltip hanging from it over the columns.
-                Color.clear
-                    .frame(height: 0)
-                    .overlay(alignment: .topTrailing) {
-                        CycleTotalTooltip(chart: chart, providers: shown)
-                            .padding(.top, DesignTokens.Spacing.tooltipGap)
-                    }
-                    .allowsHitTesting(false)
-            }
-        }
-        .animation(DesignTokens.Motion.chartHover, value: isLegendHovered)
     }
 
     private func column(_ day: LocalDay) -> some View {
@@ -163,12 +144,6 @@ public struct WeekChartView: View {
 #Preview("Day hovered") {
     PreviewFrame {
         WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin], hoveredDay: PreviewValues.today)
-    }
-}
-
-#Preview("Legend hovered") {
-    PreviewFrame {
-        WeekChartView(chart: PreviewValues.chart, descriptors: [PreviewValues.northwind, PreviewValues.tailspin], hoveredDay: nil, isLegendHovered: true)
     }
 }
 #endif

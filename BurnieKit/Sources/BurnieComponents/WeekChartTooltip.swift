@@ -12,16 +12,43 @@ struct WeekChartTooltip: View {
     @Environment(\.locale) private var locale
 
     var body: some View {
-        ChartTooltip(
-            title: DayLabelFormatter(locale: locale).shortDate(for: day),
-            rows: providers.map { provider in
-                ChartTooltip.Row(
-                    provider: provider,
-                    tokens: chart.tokens(of: provider.id, on: day),
-                    detail: chart.spent(of: provider.id, on: day).map { Copy.weekChartSpend(MoneyFormatter(locale: locale).amount($0)) }
-                )
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.tooltipLines) {
+            Text(DayLabelFormatter(locale: locale).shortDate(for: day))
+                .font(DesignTokens.Typography.captionStrong)
+                .foregroundStyle(DesignTokens.Palette.fg)
+            ForEach(providers, id: \.id) { provider in
+                row(provider)
             }
+        }
+        .padding(DesignTokens.Insets.tooltip)
+        .background(DesignTokens.Palette.pop, in: shape)
+        .overlay(shape.strokeBorder(DesignTokens.Palette.line, lineWidth: DesignTokens.Metrics.tooltipBorder))
+        .shadow(
+            color: DesignTokens.Palette.tooltipShadow,
+            radius: DesignTokens.Metrics.tooltipShadowRadius,
+            y: DesignTokens.Metrics.tooltipShadowOffset
         )
+        .fixedSize()
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: DesignTokens.Metrics.tooltipRadius)
+    }
+
+    private func row(_ provider: ProviderDescriptor) -> some View {
+        HStack(spacing: DesignTokens.Spacing.legendDot) {
+            LegendDot(color: provider.color)
+            Text(provider.shortName)
+                .foregroundStyle(DesignTokens.Palette.fg2)
+            Spacer(minLength: DesignTokens.Spacing.tooltipValues)
+            Text(TokenCountFormatter(locale: locale).string(from: chart.tokens(of: provider.id, on: day)))
+                .foregroundStyle(DesignTokens.Palette.fg)
+            if let spent = chart.spent(of: provider.id, on: day) {
+                Text(Copy.weekChartSpend(MoneyFormatter(locale: locale).amount(spent)))
+                    .foregroundStyle(DesignTokens.Palette.fg2)
+            }
+        }
+        .font(DesignTokens.Typography.caption)
     }
 }
 

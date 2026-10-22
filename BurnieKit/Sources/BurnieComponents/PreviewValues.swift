@@ -31,9 +31,6 @@ enum PreviewValues {
     static let footerTitle = "Open Northwind usage page"
     static let plan = PlanName(rawValue: "MAX")
 
-    static let tooltipTitle = "Sat 10"
-    static let tooltipDetail = "· $12.40"
-
     static let fill = Fraction(0.64)
     static let pace = Fraction(0.55)
     static let overPace = Fraction(0.09)

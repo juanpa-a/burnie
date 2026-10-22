@@ -2,7 +2,7 @@ import Foundation
 
 /// The last 7 days of history for the given providers, on one shared scale: the same tokens draw the same height for
 /// every provider (B-43). Providers whose plan measures money also carry each day's spend (B-78), and providers with a
-/// cycle their cycle total (B-79).
+/// cycle their cycle total, which the legend shows (B-76, B-79).
 public struct WeekChart: Hashable, Sendable {
     public static let dayCount = 7
 
@@ -19,7 +19,7 @@ public struct WeekChart: Hashable, Sendable {
     public let peak: Tokens
     /// The cycle total of each provider that has one. A provider without a cycle, or whose history has no day of it,
     /// has no entry.
-    public let cycleTotals: [ProviderID: CycleTotal]
+    public let cycleTotals: [ProviderID: Tokens]
 
     /// `spent` holds each day's spend of the providers whose plan measures money (`ActivityPart.spend(in:)`), and
     /// `cycleStarts` the local day each provider's cycle starts on (`MeterSet.cycle`); a provider that isn't in
@@ -38,9 +38,9 @@ public struct WeekChart: Hashable, Sendable {
         let spentSeries = providers.compactMap { provider in
             spent[provider].map { daily in (provider, days.map { daily[$0] }) }
         }
-        let cycleTotals = providers.compactMap { provider -> (ProviderID, CycleTotal)? in
+        let cycleTotals = providers.compactMap { provider -> (ProviderID, Tokens)? in
             guard let start = cycleStarts[provider],
-                  let total = CycleTotal.make(history: history, provider: provider, cycleStart: start, today: today) else { return nil }
+                  let total = history.cycleTotal(for: provider, startingOn: start, today: today) else { return nil }
             return (provider, total)
         }
         return WeekChart(
@@ -51,11 +51,6 @@ public struct WeekChart: Hashable, Sendable {
             peak: series.flatMap(\.1).max() ?? .zero,
             cycleTotals: Dictionary(cycleTotals, uniquingKeysWith: { first, _ in first })
         )
-    }
-
-    /// The provider's tokens over the 7 days (B-76); zero for a provider the chart doesn't have.
-    public func total(for provider: ProviderID) -> Tokens {
-        series[provider, default: []].reduce(.zero, +)
     }
 
     /// The provider's tokens on `day`; zero for a day or a provider the chart doesn't have.

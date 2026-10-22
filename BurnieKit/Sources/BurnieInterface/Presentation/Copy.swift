@@ -19,10 +19,13 @@ public enum Copy {
 
     // MARK: Week chart
 
-    public static let lastSevenDays = "Last 7 days"
+    /// Over the chart, whose bars are the last 7 days and whose legend is each provider's cycle.
+    public static let activity = "Activity"
     public static let weekChartAccessibilityLabel = "Daily usage, last 7 days"
+    /// Before the cycle totals VoiceOver reads (B-76).
+    public static let thisCycle = "This cycle"
 
-    /// One provider's week or day for VoiceOver: "Claude 1.8M tokens", or with the day's spend
+    /// One provider's cycle or day for VoiceOver: "Claude 1.8M tokens", or with the day's spend
     /// "Cursor 2.6M tokens ($4.12)".
     public static func providerUsage(provider shortName: String, tokens: String, spent: String? = nil) -> String {
         guard let spent else { return "\(shortName) \(tokens) tokens" }
@@ -32,19 +35,6 @@ public enum Copy {
     /// A day's spend after its tokens in the week chart's tooltip: "· $6.55" (B-78).
     public static func weekChartSpend(_ amount: String) -> String {
         "· \(amount)"
-    }
-
-    /// Over the cycle totals, under the hovered legend (B-80).
-    public static let thisCycle = "This cycle"
-
-    /// The day a cycle total counts from, after its tokens: "since Oct 3" (B-80).
-    public static func since(_ day: String) -> String {
-        "since \(day)"
-    }
-
-    /// One provider's cycle total for VoiceOver: "Claude 48M tokens since Oct 3" (B-80).
-    public static func cycleUsage(provider shortName: String, tokens: String, since day: String) -> String {
-        "\(providerUsage(provider: shortName, tokens: tokens)) \(since(day))"
     }
 
     // MARK: Providers screen
@@ -78,7 +68,7 @@ public enum Copy {
         "Shows \(displayName) usage"
     }
 
-    /// The switch of the week chart, which shows the cycle totals too, so it isn't named after its 7 days.
+    /// The switch of the week chart, named like its title.
     public static let activityChart = "Activity chart"
     public static let activityChartSubtitle = "Shows daily tokens and cycle totals per provider"
 
