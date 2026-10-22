@@ -1,8 +1,10 @@
 import Foundation
 
-/// Wait after a 429: honors `Retry-After`; without it, 1, 2, 4… minutes up to 60.
+/// Wait after a 429: 1, 2, 4… minutes up to 45 for the 429s in a row, or the server's `Retry-After` when it's longer,
+/// never past 45 minutes. A `Retry-After` of 0 or in the past never retries at once, and a huge one never stops the task
+/// until relaunch (B-33).
 public struct RateLimitBackoff: Hashable, Sendable {
-    private static let longestWait: TimeInterval = 60 * 60
+    private static let longestWait: TimeInterval = 45 * 60
 
     private var consecutiveRateLimits = 0
     /// Nothing is requested from the task before this date, not even with the Refresh button (B-33).
@@ -12,8 +14,12 @@ public struct RateLimitBackoff: Hashable, Sendable {
 
     public mutating func recordRateLimit(retryAt serverRetryAt: Date?, now: Date) {
         consecutiveRateLimits += 1
-        let minutes = 1 << min(consecutiveRateLimits - 1, 6)
-        retryAt = serverRetryAt ?? now.addingTimeInterval(min(TimeInterval(minutes * 60), Self.longestWait))
+        let step = TimeInterval(60 << min(consecutiveRateLimits - 1, 6))
+        let earliest = now.addingTimeInterval(step)
+        let latest = now.addingTimeInterval(Self.longestWait)
+        // A date that isn't finite counts as no `Retry-After` (D-5).
+        let serverDate = serverRetryAt.flatMap { $0.timeIntervalSinceReferenceDate.isFinite ? $0 : nil } ?? earliest
+        retryAt = min(max(serverDate, earliest), latest)
     }
 
     public mutating func reset() {

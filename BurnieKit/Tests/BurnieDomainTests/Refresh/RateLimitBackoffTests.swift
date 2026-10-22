@@ -14,15 +14,31 @@ struct RateLimitBackoffTests {
         #expect(backoff.allowsRequest(at: now.addingTimeInterval(90)))
     }
 
-    @Test("B-33 without Retry-After the wait doubles from 1 minute up to 60")
-    func doublesFromOneMinuteUpToAnHour() {
+    @Test("B-33 without Retry-After the wait doubles from 1 minute up to 45")
+    func doublesFromOneMinuteUpToFortyFive() {
         var backoff = RateLimitBackoff()
         var waits: [TimeInterval] = []
         for _ in 0..<8 {
             backoff.recordRateLimit(retryAt: nil, now: now)
             waits.append(backoff.retryAt!.timeIntervalSince(now) / 60)
         }
-        #expect(waits == [1, 2, 4, 8, 16, 32, 60, 60])
+        #expect(waits == [1, 2, 4, 8, 16, 32, 45, 45])
+    }
+
+    @Test("B-33 a Retry-After of 0, in the past, or not finite waits the step, never retrying at once", arguments: [
+        0, -600, .infinity, -.infinity, .nan,
+    ] as [TimeInterval])
+    func retryAfterShorterThanTheStepWaitsTheStep(serverWait: TimeInterval) {
+        var backoff = RateLimitBackoff()
+        backoff.recordRateLimit(retryAt: now.addingTimeInterval(serverWait), now: now)
+        #expect(backoff.retryAt == now.addingTimeInterval(60))
+    }
+
+    @Test("B-33 a Retry-After past 45 minutes waits 45 minutes")
+    func retryAfterPastTheLongestWaitIsCapped() {
+        var backoff = RateLimitBackoff()
+        backoff.recordRateLimit(retryAt: now.addingTimeInterval(24 * 60 * 60), now: now)
+        #expect(backoff.retryAt == now.addingTimeInterval(45 * 60))
     }
 
     @Test("B-33 any other outcome resets the wait")
@@ -37,7 +53,7 @@ struct RateLimitBackoffTests {
     }
 
     @Test(arguments: Gen.seeds(200))
-    func waitsWithoutRetryAfterNeverShrinkAndStopAtAnHour(seed: UInt64) throws {
+    func waitsWithoutRetryAfterNeverShrinkAndStopAtFortyFiveMinutes(seed: UInt64) throws {
         var gen = Gen(seed: seed)
         var backoff = RateLimitBackoff()
         var waits: [TimeInterval] = []
@@ -48,16 +64,28 @@ struct RateLimitBackoffTests {
             waits.append(retryAt.timeIntervalSince(rateLimitedAt))
         }
         #expect(zip(waits, waits.dropFirst()).allSatisfy { $0 <= $1 }, "seed \(seed)")
-        #expect(waits.allSatisfy { $0 <= 60 * 60 }, "seed \(seed)")
+        #expect(waits.allSatisfy { $0 <= 45 * 60 }, "seed \(seed)")
     }
 
     @Test(arguments: Gen.seeds(200))
-    func retryAfterIsExactlyTheServerDate(seed: UInt64) {
+    func theWaitStaysBetweenTheStepAndFortyFiveMinutes(seed: UInt64) throws {
         var gen = Gen(seed: seed)
-        var backoff = rateLimited(by: &gen)
-        let serverDate = gen.date(around: now)
+        var backoff = RateLimitBackoff()
+        let earlierRateLimits = gen.int(in: 0...12)
+        for _ in 0..<earlierRateLimits {
+            backoff.recordRateLimit(retryAt: nil, now: now)
+        }
+        // From an hour in the past to two hours ahead: before the step, inside the range, and past 45 minutes.
+        let serverWait = TimeInterval(gen.int(in: -3_600...7_200))
+        let serverDate = now.addingTimeInterval(serverWait)
         backoff.recordRateLimit(retryAt: serverDate, now: now)
-        #expect(backoff.retryAt == serverDate, "seed \(seed)")
+
+        let step = TimeInterval(60 << min(earlierRateLimits, 6))
+        let wait = try #require(backoff.retryAt, "seed \(seed)").timeIntervalSince(now)
+        #expect(wait >= min(step, 45 * 60) && wait <= 45 * 60, "seed \(seed)")
+        if serverWait >= step && serverWait <= 45 * 60 {
+            #expect(backoff.retryAt == serverDate, "seed \(seed)")
+        }
     }
 
     @Test(arguments: Gen.seeds(200))

@@ -29,10 +29,13 @@ struct HTTPClientFetchTests {
         #expect(try await fetch(from: FakeHTTPClient(status: 200, body: Data("ok".utf8))) == Data("ok".utf8))
     }
 
-    @Test("B-24 a 429 is rate limited until its Retry-After, in seconds or as an HTTP date", arguments: [
+    @Test("B-24 a 429 is rate limited until its Retry-After, in seconds or as an HTTP date; other values read as none", arguments: [
         ("120", Date.iso("2026-10-10T20:02:00Z")),
         ("Sat, 10 Oct 2026 21:00:00 GMT", Date.iso("2026-10-10T21:00:00Z")),
         ("soon", nil),
+        ("-5", nil),
+        ("inf", nil),
+        ("nan", nil),
         (nil, nil),
     ] as [(String?, Date?)])
     func rateLimitedUntilRetryAfter(retryAfter: String?, retryAt: Date?) async {
