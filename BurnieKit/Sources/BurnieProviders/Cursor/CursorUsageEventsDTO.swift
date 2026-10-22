@@ -1,6 +1,7 @@
 import Foundation
 
-/// One page of `cursor.com/api/dashboard/get-filtered-usage-events`, keeping only what adds up the money spent.
+/// One page of `cursor.com/api/dashboard/get-filtered-usage-events`, keeping only what adds up the money spent and whose
+/// it was.
 ///
 /// Cursor sends some numbers as strings, so every number here accepts both. A query without events answers `{}`.
 struct CursorUsageEventsDTO: Decodable {
@@ -9,6 +10,8 @@ struct CursorUsageEventsDTO: Decodable {
         let timestamp: Number?
         /// What the event charged the plan, in cents; may carry fractions of a cent.
         let chargedCents: Number?
+        /// The id of the member the event belongs to, only compared with the others' (B-47).
+        let owningUser: Number?
     }
 
     /// A JSON number, or a string that holds one.
