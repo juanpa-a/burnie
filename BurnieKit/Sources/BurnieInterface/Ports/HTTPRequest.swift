@@ -1,19 +1,11 @@
 import Foundation
 
-/// What a provider hands the HTTP port to send.
+/// What a provider hands the HTTP port to send: a GET, the only method Burnie sends, so it only ever reads.
 public struct HTTPRequest: Hashable, Sendable {
-    public enum Method: Hashable, Sendable {
-        case get
-        /// Only for endpoints that have no GET; the body is JSON.
-        case post(Data)
-    }
-
-    public let method: Method
     public let url: URL
     public let headers: [String: String]
 
-    public init(_ method: Method, url: URL, headers: [String: String]) {
-        self.method = method
+    public init(url: URL, headers: [String: String]) {
         self.url = url
         self.headers = headers
     }

@@ -19,7 +19,7 @@ struct CursorUsageMapperTests {
 
     @Test("B-48 individual plans show Cursor Models and Other Models as percents, in tokens")
     func proShowsBothPoolsLikeTheDashboard() throws {
-        #expect(try limits("cursor-summary-pro.json") == LimitsPart(plan: PlanName(rawValue: "PRO"), meters: Self.pools, unit: .tokens))
+        #expect(try limits("cursor-summary-pro.json") == LimitsPart(plan: PlanName(rawValue: "PRO"), meters: Self.pools))
     }
 
     @Test("B-48 enabled on-demand comes as a money feature, drawn after the meters")
@@ -69,14 +69,14 @@ struct CursorUsageMapperTests {
             scope: .team,
             period: Self.cycle
         )
-        #expect(try limits("cursor-summary-team.json") == LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: meter), unit: .money))
+        #expect(try limits("cursor-summary-team.json") == LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: meter)))
     }
 
     @Test("B-48 enterprise shows the member's own budget, not the team pool, and the team's on-demand as Team on-demand")
     func enterpriseShowsTheMembersOwnBudgetNotTheTeamPool() throws {
         let budget = Meter(id: .included, fill: Fraction(0.421), value: .money(used: Cents(4_210), limit: Cents(10_000)), caption: .cycleEnds(Self.cycleEnd), period: Self.cycle)
         let teamOnDemand = Meter(id: .teamOnDemand, fill: .zero, value: .money(used: .zero, limit: Cents(100_000)), caption: .onDemandIdle, scope: .team)
-        let expected = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: budget), unit: .money, features: SnapshotFeatures(onDemand: teamOnDemand))
+        let expected = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: MeterSet(primary: budget), features: SnapshotFeatures(onDemand: teamOnDemand))
         #expect(try limits("cursor-summary-enterprise.json") == expected)
     }
 

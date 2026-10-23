@@ -89,29 +89,6 @@ struct AppStateDeriveTests {
         #expect(try #require(AppState.derive(from: harness.state).weekChart).days.last == TestProviders.today.advanced(by: 1))
     }
 
-    @Test("B-78 the week chart carries the latest activity's spend only for a provider whose plan measures money")
-    func weekChartSpendFollowsThePlansUnit() throws {
-        let activity = ActivityPart(tokens: TestProviders.activity.tokens, spent: [TestProviders.today: Cents(412)])
-        var outcomes = ReducerHarness.healthyOutcomes
-        outcomes[TestProviders.alphaActivityJob] = .success(.activity(activity))
-        outcomes[TestProviders.betaActivityJob] = .success(.activity(activity))
-
-        let chart = try #require(AppState.derive(from: ReducerHarness.launched(finishing: outcomes).state).weekChart)
-        #expect(chart.spent(of: .beta, on: TestProviders.today) == Cents(412))
-        #expect(chart.spent[.alpha] == nil)
-    }
-
-    @Test("B-78 the week chart has no spend before the first activity after a launch, nor a day the activity didn't add up")
-    func weekChartSpendNeedsAnActivity() throws {
-        var outcomes = ReducerHarness.healthyOutcomes
-        outcomes[TestProviders.betaActivityJob] = nil
-        let beforeActivity = try #require(AppState.derive(from: ReducerHarness.launched(finishing: outcomes).state).weekChart)
-        #expect(beforeActivity.spent.isEmpty)
-
-        let withoutSpend = try #require(AppState.derive(from: ReducerHarness.launched().state).weekChart)
-        #expect(withoutSpend.spent[.beta] == Array(repeating: nil, count: WeekChart.dayCount))
-    }
-
     @Test("B-79 a cycle total counts from the local day the shown snapshot's cycle starts on, in the latest event's time zone")
     func cycleTotalsStartOnTheCyclesLocalDay() throws {
         // 03:00 GMT on the 3rd is still the 2nd in Mexico City.

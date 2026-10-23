@@ -5,18 +5,18 @@ import Testing
 
 struct UsageSnapshotMergeTests {
     static let meters = MeterSet(primary: Meter(id: .monthly, fill: Fraction(0.2), value: .percent(20), caption: .noActiveSession))
-    static let cachedView = Stamped(LimitsPart(plan: PlanName(rawValue: "PRO"), meters: meters, unit: .money), at: .iso("2026-10-10T18:00:00Z"))
-    static let cached = UsageSnapshot(provider: .alpha, content: .limits(view: cachedView, today: .tokens(Tokens(10))))
+    static let cachedView = Stamped(LimitsPart(plan: PlanName(rawValue: "PRO"), meters: meters), at: .iso("2026-10-10T18:00:00Z"))
+    static let cached = UsageSnapshot(provider: .alpha, content: .limits(view: cachedView, today: TodayUsage(tokens: Tokens(10))))
 
     @Test("B-17 a snapshot without limits keeps the cached limits part and its stamp")
     func activityOnlyKeepsTheCachedLimits() {
         let partial = UsageSnapshot(
             provider: .alpha,
-            content: .activityOnly(Stamped(.tokens(Tokens(99)), at: .iso("2026-10-10T20:00:00Z"))),
+            content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(99)), at: .iso("2026-10-10T20:00:00Z"))),
             issue: .signInExpired
         )
         let shown = UsageSnapshot.merge(Self.cached, partial)
-        #expect(shown == UsageSnapshot(provider: .alpha, content: .limits(view: Self.cachedView, today: .tokens(Tokens(99))), issue: .signInExpired))
+        #expect(shown == UsageSnapshot(provider: .alpha, content: .limits(view: Self.cachedView, today: TodayUsage(tokens: Tokens(99))), issue: .signInExpired))
         #expect(shown.fetchedAt == Self.cachedView.at)
     }
 
@@ -28,8 +28,8 @@ struct UsageSnapshotMergeTests {
 
     @Test("B-17 over a snapshot without limits, a snapshot without limits stays as it is")
     func withoutCachedLimitsTheSnapshotStays() {
-        let earlier = UsageSnapshot(provider: .alpha, content: .activityOnly(Stamped(.tokens(Tokens(5)), at: .iso("2026-10-10T19:00:00Z"))))
-        let partial = UsageSnapshot(provider: .alpha, content: .activityOnly(Stamped(.tokens(Tokens(99)), at: .iso("2026-10-10T20:00:00Z"))))
+        let earlier = UsageSnapshot(provider: .alpha, content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(5)), at: .iso("2026-10-10T19:00:00Z"))))
+        let partial = UsageSnapshot(provider: .alpha, content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(99)), at: .iso("2026-10-10T20:00:00Z"))))
         #expect(UsageSnapshot.merge(earlier, partial) == partial)
     }
 

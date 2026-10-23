@@ -1,0 +1,30 @@
+{
+  "content": {
+    "limits": {
+      "today": {"tokens": 1250000},
+      "view": {
+        "at": 1791661800,
+        "value": {
+          "features": {
+            "onDemand": {"caption": {"onDemandIdle": {}}, "fill": 0, "id": "extra", "value": {"money": {"used": 0}}}
+          },
+          "meters": {
+            "others": [
+              {"caption": {"resetsAt": 1792076400}, "fill": 0.38, "id": "weekly", "value": {"percent": 38}}
+            ],
+            "primary": {
+              "caption": {"cycleEnds": 1793491200},
+              "fill": 0.421,
+              "id": "budget",
+              "period": {"duration": 2678400, "start": 1790812800},
+              "value": {"money": {"limit": 10000, "used": 4210}}
+            }
+          },
+          "plan": "ENTERPRISE"
+        }
+      }
+    }
+  },
+  "issue": {"rateLimited": {"retryAt": 1791662700}},
+  "provider": "alpha"
+}

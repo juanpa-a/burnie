@@ -13,7 +13,7 @@ struct LatestTests {
         #expect(latest.recording(.success(value), at: at).issue == nil, "seed \(seed)")
     }
 
-    @Test("B-8 a failure never loses the last success", arguments: Gen.seeds(200))
+    @Test("a failure never loses the last success", arguments: Gen.seeds(200))
     func aFailureKeepsTheLastSuccess(seed: UInt64) {
         var gen = Gen(seed: seed)
         let latest = gen.latest { $0.tokens() }

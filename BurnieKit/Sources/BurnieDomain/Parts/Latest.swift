@@ -14,7 +14,7 @@ public enum Latest<Value> {
         }
     }
 
-    /// The only way forward: a success replaces everything, and a failure keeps the last success (B-8).
+    /// The only way forward: a success replaces everything, and a failure keeps the last success.
     public func recording(_ outcome: Result<Value, ProviderIssue>, at date: Date) -> Latest {
         guard case .failure(let issue) = outcome else { return Latest(outcome, at: date) }
         return .failure(issue, at: date, lastSuccess: lastSuccess)

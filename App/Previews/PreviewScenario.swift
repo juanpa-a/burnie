@@ -41,7 +41,7 @@ enum PreviewScenario: CaseIterable {
         case .claudeMissingScope:
             PreviewData.state(claude: .ready(UsageSnapshot(
                 provider: claude,
-                content: .activityOnly(Stamped(.tokens(Tokens(1_250_000)), at: PreviewData.now)),
+                content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(1_250_000)), at: PreviewData.now)),
                 issue: .specific(SpecificIssue(code: "missingScope"))
             )))
         case .claudeLogsUnreadable:
@@ -51,7 +51,7 @@ enum PreviewScenario: CaseIterable {
         case .cursorSessionExpired:
             PreviewData.state(cursor: .ready(stale(PreviewData.cursorSnapshot, minutesAgo: 40, issue: .signInExpired)))
         case .cursorEnterprise:
-            PreviewData.state(cursor: .ready(PreviewData.cursorEnterprise), weekSpend: [cursor: PreviewData.cursorEnterpriseSpend])
+            PreviewData.state(cursor: .ready(PreviewData.cursorEnterprise))
         case .rateLimited:
             PreviewData.state(
                 claude: .ready(stale(PreviewData.claudeSnapshot, minutesAgo: 8, issue: .rateLimited(retryAt: nil))),

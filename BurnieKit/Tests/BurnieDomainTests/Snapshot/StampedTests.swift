@@ -16,7 +16,7 @@ struct StampedTests {
         var gen = Gen(seed: seed)
         let stamped = gen.stamped { $0.tokens() }
         let double = { (tokens: Tokens) in tokens + tokens }
-        let usage = { (tokens: Tokens) in TodayUsage.tokens(tokens) }
+        let usage = { (tokens: Tokens) in TodayUsage(tokens: tokens) }
         #expect(stamped.map(double).map(usage) == stamped.map { usage(double($0)) }, "seed \(seed)")
     }
 

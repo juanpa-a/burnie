@@ -9,7 +9,7 @@ import Testing
 extension RuntimeStateTests {
     static let cachedAlpha = UsageSnapshot(
         provider: .alpha,
-        content: .limits(view: Stamped(TestProviders.alphaLimits, at: ReducerHarness.start.addingTimeInterval(-3_600)), today: .tokens(Tokens(900_000)))
+        content: .limits(view: Stamped(TestProviders.alphaLimits, at: ReducerHarness.start.addingTimeInterval(-3_600)), today: TodayUsage(tokens: Tokens(900_000)))
     )
 
     /// Runs `key` with the Refresh button and finishes it with `outcome`, returning the effects of the finish.
@@ -23,7 +23,7 @@ extension RuntimeStateTests {
         let harness = ReducerHarness.launched()
         let shown = try #require(harness.shown(.alpha))
         #expect(shown.meters == TestProviders.alphaMeters)
-        #expect(shown.today == .tokens(Tokens(1_800_000)))
+        #expect(shown.today == TodayUsage(tokens: Tokens(1_800_000)))
     }
 
     @Test("B-11 refreshing a provider's limits keeps its latest activity")
@@ -33,7 +33,7 @@ extension RuntimeStateTests {
         _ = refresh(&harness, TestProviders.alphaLimitsJob, with: .success(.limits(newLimits)))
         let shown = try #require(harness.shown(.alpha))
         #expect(shown.plan == PlanName(rawValue: "TEAMS"))
-        #expect(shown.today == .tokens(Tokens(1_800_000)))
+        #expect(shown.today == TodayUsage(tokens: Tokens(1_800_000)))
     }
 
     @Test("B-11 refreshing a provider's activity keeps its latest limits")
@@ -42,7 +42,7 @@ extension RuntimeStateTests {
         _ = refresh(&harness, TestProviders.alphaActivityJob, with: .success(.activity(ActivityPart(tokens: [TestProviders.today: Tokens(2_000_000)]))))
         let shown = try #require(harness.shown(.alpha))
         #expect(shown.meters == TestProviders.alphaMeters)
-        #expect(shown.today == .tokens(Tokens(2_000_000)))
+        #expect(shown.today == TodayUsage(tokens: Tokens(2_000_000)))
     }
 
     @Test("B-17 B-19 failed limits keep the shown meters, and the cache saves the merged snapshot with its partial issue")
@@ -82,17 +82,6 @@ extension RuntimeStateTests {
         let saves = runs.flatMap { key, run in harness.send(.taskFinished(key, run, .failure(.notFound), jitter: 0)) }
             .filter { if case .saveSnapshot = $0 { true } else { false } }
         #expect(saves.isEmpty)
-    }
-
-    @Test("B-8 after a relaunch, the cached snapshot's unit stands in until limits succeed again")
-    func theCachedUnitStandsInAfterARelaunch() throws {
-        let cachedBeta = UsageSnapshot(provider: .beta, content: .limits(view: Stamped(TestProviders.betaLimits, at: ReducerHarness.start), today: .money(Cents(500))))
-        let spend = ActivityPart(tokens: [TestProviders.today: Tokens(1_800_000)], spent: [TestProviders.today: Cents(1_240)])
-        let outcomes: [JobKey: Result<Part, ProviderIssue>] = [
-            TestProviders.betaLimitsJob: .failure(.offline), TestProviders.betaActivityJob: .success(.activity(spend)),
-        ]
-        let harness = ReducerHarness.launched(cached: [.beta: cachedBeta], finishing: outcomes)
-        #expect(try #require(harness.shown(.beta)).today == .money(Cents(1_240)))
     }
 
     @Test("B-42 each activity records the history's window and saves it")

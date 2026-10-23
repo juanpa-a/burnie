@@ -19,12 +19,11 @@ struct WeekChartAccessibilityValueTests {
             history: history,
             providers: [.alpha, .beta],
             today: today,
-            spent: [.beta: [today: Cents(412), .day("2026-10-09"): .zero]],
             cycleStarts: [.alpha: .day("2026-10-01"), .beta: .day("2026-10-01")]
         )
     }
 
-    @Test("B-76 VoiceOver reads the cycle totals, then every day; B-77 B-78 with each day's spend where it's known")
+    @Test("B-76 B-77 VoiceOver reads the cycle totals, then every day")
     func readsTheCycleTotalsThenEveryDay() {
         let text = WeekChartAccessibilityValue.text(for: Self.chart, providers: [.alpha, .beta], locale: .enUS)
         #expect(text == [
@@ -34,8 +33,8 @@ struct WeekChartAccessibilityValueTests {
             "Tue: Alpha 0 tokens, Beta 0 tokens",
             "Wed: Alpha 0 tokens, Beta 0 tokens",
             "Thu: Alpha 400K tokens, Beta 0 tokens",
-            "Fri: Alpha 0 tokens, Beta 0 tokens ($0.00)",
-            "Sat: Alpha 1.8M tokens, Beta 2.6M tokens ($4.12)",
+            "Fri: Alpha 0 tokens, Beta 0 tokens",
+            "Sat: Alpha 1.8M tokens, Beta 2.6M tokens",
         ].joined(separator: "; "))
     }
 

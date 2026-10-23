@@ -73,9 +73,8 @@ struct ComponentsRenderTests {
             history.record(gen.activityPart(around: today).tokens, for: .beta, today: today)
         }
         let providers: [ProviderID] = gen.coinFlip() ? [.alpha] : [.alpha, .beta]
-        let spent = gen.coinFlip() ? [ProviderID.beta: gen.activityPart(around: today).spent] : [:]
         let cycleStarts = gen.coinFlip() ? [ProviderID.alpha: gen.localDay(around: today)] : [:]
-        let chart = WeekChart.make(history: history, providers: providers, today: today, spent: spent, cycleStarts: cycleStarts)
+        let chart = WeekChart.make(history: history, providers: providers, today: today, cycleStarts: cycleStarts)
         #expect(RenderedSize.isDrawn(WeekChartView(chart: chart, descriptors: [.alpha, .beta])), "seed \(seed)")
         #expect(RenderedSize.isDrawn(WeekChartTooltip(chart: chart, day: today, providers: [.alpha, .beta]), width: 160), "seed \(seed)")
     }

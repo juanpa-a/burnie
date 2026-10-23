@@ -7,8 +7,8 @@ A small macOS menu bar app that shows how much of your Claude Code and Cursor pl
 Click the flame icon in the menu bar to see:
 
 - **Claude Code:** your plan, the 5-hour session and weekly limits with their reset times, and today's tokens.
-- **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens (today's spend on team and enterprise plans).
-- **Activity chart:** daily tokens for each provider over the last 7 days, with each one's total for its current cycle: Cursor's billing cycle, Claude's weekly limit. Hover a day to see its tokens, and its spend on team and enterprise plans.
+- **Cursor:** your plan, the Cursor Models and Other Models pools (or included usage on team plans), on-demand spend when it's on, and today's tokens.
+- **Activity chart:** daily tokens for each provider over the last 7 days, with each one's total for its current cycle: Cursor's billing cycle, Claude's weekly limit. Hover a day to see its tokens.
 
 Every bar except on-demand has a small tick where you'd be at an even pace: halfway through a 5-hour session, it sits in the middle. If you're using it faster than that, the part of the bar past the tick turns red.
 
@@ -47,7 +47,7 @@ Burnie checks for a new version once a day. When there is one, a blue dot shows 
 - **What it reads.**
   - Claude Code, only when `~/.claude` or `~/.config/claude` exists: its sign-in, from the Keychain item `Claude Code-credentials` (read with `/usr/bin/security` before each limits refresh) or `~/.claude/.credentials.json`, and the token counts in its local logs in `~/.claude/projects` and `~/.config/claude/projects`. Burnie never reads the messages in those logs.
   - Cursor: its sign-in token from `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`, read-only and never copied, sent only to `cursor.com` as the dashboard's session cookie. Only your own usage is shown: a team-wide budget shows as **Team pool** or **Team on-demand**, never as yours and never in the menu bar ring.
-- **Who it talks to.** `api.anthropic.com` and `cursor.com` for usage, and `github.com` once a day to check for a new Burnie. Updates come only from a signed feed, are verified before they're opened, and never install without you. No analytics or telemetry.
+- **Who it talks to.** `api.anthropic.com` and `cursor.com` for usage, only ever reading (every request is a `GET`), and `github.com` once a day to check for a new Burnie. Updates come only from a signed feed, are verified before they're opened, and never install without you. No analytics or telemetry.
 - **What it writes.** Only its cache and history in `~/Library/Application Support/Burnie/`. Tokens and cookies never touch the disk or the logs.
 - **What it runs.** Only when you press **Refresh sign-in** under an expired Claude sign-in: your installed `claude`, asking Haiku for a one-word reply. Claude Code then renews and saves its own sign-in; Burnie never handles the refresh token.
 

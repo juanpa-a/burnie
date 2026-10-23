@@ -11,7 +11,7 @@ struct HTTPClientFetchTests {
     static let url = URL(string: "https://example.com/usage")!
 
     func fetch(from http: FakeHTTPClient, classify: (HTTPResponse) -> ProviderIssue? = { _ in nil }) async throws(ProviderIssue) -> Data {
-        try await http.fetch(HTTPRequest(.get, url: Self.url, headers: [:]), now: Self.now, classify: classify)
+        try await http.fetch(HTTPRequest(url: Self.url, headers: [:]), now: Self.now, classify: classify)
     }
 
     @Test("B-24 no response, because of no network or a timeout, reads as offline")

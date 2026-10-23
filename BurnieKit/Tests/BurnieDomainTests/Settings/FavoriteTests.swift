@@ -11,7 +11,7 @@ struct FavoriteTests {
         let at = Date.iso("2026-10-11T20:00:00Z")
         let meters = fills.map { Meter(id: .daily, fill: Fraction($0), value: .percent(Int($0 * 100)), caption: .noActiveSession) }
         guard let meterSet = MeterSet(meters) else {
-            return .ready(UsageSnapshot(provider: provider, content: .activityOnly(Stamped(.tokens(.zero), at: at))))
+            return .ready(UsageSnapshot(provider: provider, content: .activityOnly(Stamped(TodayUsage(tokens: .zero), at: at))))
         }
         return .ready(UsageSnapshot(provider: provider, content: .limits(view: Stamped(LimitsPart(plan: nil, meters: meterSet), at: at), today: nil)))
     }

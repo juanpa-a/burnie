@@ -66,8 +66,7 @@ extension RuntimeState {
             provider: id,
             limits: parts[id]?.limits,
             activity: parts[id]?.activity,
-            today: today,
-            cachedUnit: previous?.unit
+            today: today
         )
         switch composed {
         case .success(let snapshot):

@@ -3,8 +3,8 @@ import Foundation
 
 /// From `CursorUsageSummaryDTO` to Cursor's limits part (B-48).
 ///
-/// Individual plans: the Cursor Models and Other Models pools as percentages, like the dashboard; today reads in tokens.
-/// Plans without pools (teams, enterprise): a single included usage meter in money; today reads in money.
+/// Individual plans: the Cursor Models and Other Models pools as percentages, like the dashboard.
+/// Plans without pools (teams, enterprise): a single included usage meter in money.
 /// On-demand is a feature, only when enabled, without a period: it has no pace to keep (B-4).
 /// The member's own buckets come first; the team's stand in only without them, as team meters (scope team), so a
 /// team's spend never reads as the member's.
@@ -14,11 +14,9 @@ enum CursorUsageMapper {
             throw .unexpectedResponse("Cursor summary without billing cycle end")
         }
         let period = billingCycle(start: summary.billingCycleStart, end: cycleEnd)
-        let included = try includedUsage(in: summary, cycleEnd: cycleEnd, period: period)
         return LimitsPart(
             plan: CursorPlanChip.label(membershipType: summary.membershipType),
-            meters: included.meters,
-            unit: included.unit,
+            meters: try includedUsage(in: summary, cycleEnd: cycleEnd, period: period),
             features: SnapshotFeatures(onDemand: onDemandMeter(in: summary, cycleEnd: cycleEnd))
         )
     }
@@ -28,14 +26,13 @@ enum CursorUsageMapper {
         in summary: CursorUsageSummaryDTO,
         cycleEnd: Date,
         period: DateInterval?
-    ) throws(ProviderIssue) -> (meters: MeterSet, unit: UsageUnit) {
+    ) throws(ProviderIssue) -> MeterSet {
         let individual = summary.individualUsage
         if let plan = individual?.plan, let cursorModels = plan.autoPercentUsed, let otherModels = plan.apiPercentUsed {
-            let pools = MeterSet(
+            return MeterSet(
                 primary: .percent(.cursorModels, used: cursorModels, caption: .cycleEnds(cycleEnd), period: period),
                 others: [.percent(.otherModels, used: otherModels, caption: .cycleEnds(cycleEnd), period: period)]
             )
-            return (pools, .tokens)
         }
         guard let (bucket, scope) = ownOrTeam(own: individual?.plan ?? individual?.overall, team: summary.teamUsage?.pooled),
               let used = bucket.used
@@ -50,7 +47,7 @@ enum CursorUsageMapper {
             scope: scope,
             period: period
         )
-        return (MeterSet(primary: budget), .money)
+        return MeterSet(primary: budget)
     }
 
     /// "Kicks in after included usage runs out" while nothing was spent (B-48).

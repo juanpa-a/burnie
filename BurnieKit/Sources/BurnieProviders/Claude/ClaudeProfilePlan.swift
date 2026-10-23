@@ -37,7 +37,7 @@ actor ClaudeProfilePlan {
     }
 
     private func organization(headers: [String: String], now: Date) async -> ClaudeProfileDTO.Organization? {
-        let request = HTTPRequest(.get, url: Self.url, headers: headers)
+        let request = HTTPRequest(url: Self.url, headers: headers)
         guard let body = try? await http.fetch(request, now: now, classify: { _ in nil }) else { return nil }
         return (try? Self.decoder.decode(ClaudeProfileDTO.self, from: body))?.organization
     }
