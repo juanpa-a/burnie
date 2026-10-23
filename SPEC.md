@@ -1163,12 +1163,16 @@ A case without payload holds `{}` (`{"offline": {}}`); a single unlabeled payloa
 
 `Meter.scope` (decision 61) is the one field added since. It's written only for a team's meter, like any enum
 (`"scope": {"team": {}}`), so a meter of the user's own is saved exactly as before; a meter without it, as every snapshot
-written before 0.4.2, decodes as `own`, so those caches still load. `snapshot-team-meters.json` pins it (`T-7`).
+written before 0.4.2, decodes as `own`, so those caches still load. `snapshot-team-meters.json` pinned it until 0.5.0,
+and `snapshot-team-meters-v0.5.json` since (`T-7`).
 
 Since 0.5.0 (decision 65) a snapshot carries no usage unit and today's usage is always tokens. `TodayUsage` is a struct
 whose one property keeps the old case's wire format, `{"tokens": 1250000}`, so caches with today's usage in tokens load
 as before, and a cached `unit` is ignored. A cache whose today's usage is money (`{"money": 655}`, written by a Cursor team
 or enterprise plan before 0.5.0) doesn't decode and reads as no cache: loading, once, until the first refresh.
+`snapshot-limits-v0.5.json` and `snapshot-team-meters-v0.5.json` pin the new shape, `snapshot-unit-before-v0.5.json` a
+cached unit that is ignored, and `snapshot-limits.json` and `snapshot-team-meters.json` now pin that a money today's
+usage doesn't decode (`T-7`: fixtures are never edited).
 
 ---
 
