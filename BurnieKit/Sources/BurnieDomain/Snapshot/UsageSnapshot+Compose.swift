@@ -8,19 +8,14 @@ extension UsageSnapshot {
     /// - Without them, a successful activity gives today's usage alone, stamped when it arrived, with the limits' issue
     ///   (B-12, B-15). Failed limits never bring back their last meters here: merge does (B-17).
     /// - With neither, the limits' issue, else the activity's, else not found (B-14).
-    ///
-    /// Today's usage reads in the unit of the latest limits that succeeded since launch; before any, in `cachedUnit`,
-    /// the shown snapshot's, and in tokens without one (B-7, B-8).
     public static func compose(
         provider: ProviderID,
         limits: Latest<LimitsPart>?,
         activity: Latest<ActivityPart>?,
-        today: LocalDay,
-        cachedUnit: UsageUnit?
+        today: LocalDay
     ) -> Result<UsageSnapshot, ProviderIssue> {
-        let unit = limits?.lastSuccess?.value.unit ?? cachedUnit ?? .tokens
         let usage: Stamped<TodayUsage>? = if case .success(let part)? = activity {
-            part.map { $0.usage(on: today, in: unit) }
+            part.map { $0.usage(on: today) }
         } else {
             nil
         }

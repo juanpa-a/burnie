@@ -45,8 +45,8 @@ struct ClaudeLimitsFetcherTests {
         #expect(reading.plan == PlanName(rawValue: "MAX"))
         #expect(reading.meters.all == ClaudeUsageMapperTests.fixtureMeters)
         #expect(http.requests == [
-            HTTPRequest(.get, url: ClaudeLimitsFetcher.usageURL, headers: Self.headers),
-            HTTPRequest(.get, url: ClaudeProfilePlan.url, headers: Self.headers),
+            HTTPRequest(url: ClaudeLimitsFetcher.usageURL, headers: Self.headers),
+            HTTPRequest(url: ClaudeProfilePlan.url, headers: Self.headers),
         ])
     }
 

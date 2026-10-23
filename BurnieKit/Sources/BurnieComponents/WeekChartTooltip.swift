@@ -2,8 +2,7 @@ import BurnieDomain
 import BurnieInterface
 import SwiftUI
 
-/// One day of the week chart, over its column while it's hovered: the day, then each provider's tokens and, where its
-/// plan measures money and the day's spend is known, the spend (B-77, B-78).
+/// One day of the week chart, over its column while it's hovered: the day, then each provider's tokens (B-77).
 struct WeekChartTooltip: View {
     let chart: WeekChart
     let day: LocalDay
@@ -43,10 +42,6 @@ struct WeekChartTooltip: View {
             Spacer(minLength: DesignTokens.Spacing.tooltipValues)
             Text(TokenCountFormatter(locale: locale).string(from: chart.tokens(of: provider.id, on: day)))
                 .foregroundStyle(DesignTokens.Palette.fg)
-            if let spent = chart.spent(of: provider.id, on: day) {
-                Text(Copy.weekChartSpend(MoneyFormatter(locale: locale).amount(spent)))
-                    .foregroundStyle(DesignTokens.Palette.fg2)
-            }
         }
         .font(DesignTokens.Typography.caption)
     }

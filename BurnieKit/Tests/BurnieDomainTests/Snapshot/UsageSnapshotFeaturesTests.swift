@@ -8,8 +8,8 @@ struct UsageSnapshotFeaturesTests {
     static let included = MeterSet(primary: Meter(id: .budget, fill: Fraction(0.4), value: .money(used: Cents(200), limit: Cents(500)), caption: .noActiveSession))
 
     static func snapshot(onDemand: Meter?) -> UsageSnapshot {
-        let limits = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: included, unit: .money, features: SnapshotFeatures(onDemand: onDemand))
-        return UsageSnapshot(provider: .alpha, content: .limits(view: Stamped(limits, at: .iso("2026-10-10T20:00:00Z")), today: .money(Cents(10))))
+        let limits = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: included, features: SnapshotFeatures(onDemand: onDemand))
+        return UsageSnapshot(provider: .alpha, content: .limits(view: Stamped(limits, at: .iso("2026-10-10T20:00:00Z")), today: TodayUsage(tokens: Tokens(10))))
     }
 
     @Test("B-40 hiding on-demand removes only its meter")
@@ -62,7 +62,7 @@ struct UsageSnapshotFeaturesTests {
         let snapshot = gen.snapshot()
         let hidden = snapshot.hiding(Set(FeatureToggle.allCases))
         #expect(hidden.meters == snapshot.meters, "seed \(seed)")
-        #expect(hidden.plan == snapshot.plan && hidden.unit == snapshot.unit, "seed \(seed)")
+        #expect(hidden.plan == snapshot.plan, "seed \(seed)")
         #expect(hidden.today == snapshot.today && hidden.issue == snapshot.issue, "seed \(seed)")
         #expect(hidden.fetchedAt == snapshot.fetchedAt, "seed \(seed)")
     }

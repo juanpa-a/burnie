@@ -2,8 +2,7 @@ import BurnieDomain
 import BurnieInterface
 import Foundation
 
-/// Cursor: meters from usage-summary, tokens from the events CSV and each day's spend from the usage events, all with the
-/// desktop app's session (SPEC 6.3).
+/// Cursor: meters from usage-summary and tokens from the events CSV, both with the desktop app's session (SPEC 6.3).
 public enum CursorProvider {
     public static let descriptor = ProviderDescriptor(
         id: .cursor,
@@ -37,10 +36,7 @@ public enum CursorProvider {
             userAgent: ports.userAgent
         )
         let limits = CursorSummaryFetcher(dashboard: dashboard)
-        let activity = CursorActivity(
-            tokens: CursorEventsFetcher(dashboard: dashboard, clock: ports.clock),
-            spend: CursorSpendFetcher(dashboard: dashboard, clock: ports.clock, backoff: CursorSpendBackoff())
-        )
+        let events = CursorEventsFetcher(dashboard: dashboard, clock: ports.clock)
         return ProviderBundle(
             descriptor: descriptor,
             capabilities: ProviderCapabilities(),
@@ -49,7 +45,9 @@ public enum CursorProvider {
                     await .outcome { () async throws(ProviderIssue) in .limits(try await limits.limits()) }
                 },
                 RefreshTask(name: "activity", part: .activity, policy: activityPolicy) {
-                    await .outcome { () async throws(ProviderIssue) in .activity(try await activity.activity()) }
+                    await .outcome { () async throws(ProviderIssue) in
+                        .activity(ActivityPart(tokens: try await events.dailyTokens()))
+                    }
                 },
             ]
         )

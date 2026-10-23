@@ -9,18 +9,12 @@ struct UsageSnapshotComposeTests {
     static let today = LocalDay.day("2026-10-10")
     static let meters = MeterSet(primary: Meter(id: .daily, fill: Fraction(0.64), value: .percent(64), caption: .noActiveSession))
     static let plan = LimitsPart(plan: PlanName(rawValue: "PRO"), meters: meters)
-    static let budget = LimitsPart(plan: PlanName(rawValue: "ENTERPRISE"), meters: meters, unit: .money)
     static let tokens: [LocalDay: Tokens] = [today: Tokens(1_800_000), .day("2026-10-08"): Tokens(400)]
     static let activity = ActivityPart(tokens: tokens)
-    static let activityWithSpend = ActivityPart(tokens: tokens, spent: [today: Cents(1_240)])
     static let missingScope = ProviderIssue.specific(SpecificIssue(code: "missingScope"))
 
-    func compose(
-        limits: Latest<LimitsPart>?,
-        activity: Latest<ActivityPart>?,
-        cachedUnit: UsageUnit? = nil
-    ) -> Result<UsageSnapshot, ProviderIssue> {
-        UsageSnapshot.compose(provider: .alpha, limits: limits, activity: activity, today: Self.today, cachedUnit: cachedUnit)
+    func compose(limits: Latest<LimitsPart>?, activity: Latest<ActivityPart>?) -> Result<UsageSnapshot, ProviderIssue> {
+        UsageSnapshot.compose(provider: .alpha, limits: limits, activity: activity, today: Self.today)
     }
 
     func succeeded<Value>(_ value: Value, at date: Date) -> Latest<Value> {
@@ -35,13 +29,13 @@ struct UsageSnapshotComposeTests {
     func limitsAndActivityCombine() {
         let shown = compose(limits: succeeded(Self.plan, at: Self.limitsAt), activity: succeeded(Self.activity, at: Self.activityAt))
         let view = Stamped(Self.plan, at: Self.limitsAt)
-        #expect(shown == .success(UsageSnapshot(provider: .alpha, content: .limits(view: view, today: .tokens(Tokens(1_800_000))))))
+        #expect(shown == .success(UsageSnapshot(provider: .alpha, content: .limits(view: view, today: TodayUsage(tokens: Tokens(1_800_000))))))
     }
 
     @Test("B-12 failed limits with activity give a snapshot without meters, with today's usage and the limits issue")
     func failedLimitsWithActivityIsPartial() {
         let shown = compose(limits: failed(Self.missingScope, at: Self.limitsAt), activity: succeeded(Self.activity, at: Self.activityAt))
-        let usage = Stamped(TodayUsage.tokens(Tokens(1_800_000)), at: Self.activityAt)
+        let usage = Stamped(TodayUsage(tokens: Tokens(1_800_000)), at: Self.activityAt)
         #expect(shown == .success(UsageSnapshot(provider: .alpha, content: .activityOnly(usage), issue: Self.missingScope)))
     }
 
@@ -83,7 +77,7 @@ struct UsageSnapshotComposeTests {
     @Test("B-15 activity before any limits shows today's tokens alone, stamped when the activity arrived")
     func activityBeforeLimitsShowsTokensAlone() throws {
         let shown = try compose(limits: nil, activity: succeeded(Self.activity, at: Self.activityAt)).get()
-        #expect(shown.content == .activityOnly(Stamped(.tokens(Tokens(1_800_000)), at: Self.activityAt)))
+        #expect(shown.content == .activityOnly(Stamped(TodayUsage(tokens: Tokens(1_800_000)), at: Self.activityAt)))
         #expect(shown.issue == nil)
     }
 
@@ -100,51 +94,12 @@ struct UsageSnapshotComposeTests {
         #expect(shown.fetchedAt == Self.limitsAt)
     }
 
-    @Test("B-7 a dollar budget with today's spend reads money")
-    func budgetWithSpendReadsMoney() throws {
-        let shown = try compose(limits: succeeded(Self.budget, at: Self.limitsAt), activity: succeeded(Self.activityWithSpend, at: Self.activityAt)).get()
-        #expect(shown.today == .money(Cents(1_240)))
-    }
-
-    @Test("B-7 a dollar budget without today's spend reads tokens")
-    func budgetWithoutSpendReadsTokens() throws {
-        let shown = try compose(limits: succeeded(Self.budget, at: Self.limitsAt), activity: succeeded(Self.activity, at: Self.activityAt)).get()
-        #expect(shown.today == .tokens(Tokens(1_800_000)))
-    }
-
-    @Test("B-7 a token plan reads tokens even with spend")
-    func tokenPlanIgnoresSpend() throws {
-        let shown = try compose(limits: succeeded(Self.plan, at: Self.limitsAt), activity: succeeded(Self.activityWithSpend, at: Self.activityAt)).get()
-        #expect(shown.today == .tokens(Tokens(1_800_000)))
-    }
-
-    @Test("B-8 failed limits keep the unit of the last successful ones")
-    func failedLimitsKeepTheLastUnit() throws {
-        let limits: Latest<LimitsPart> = failed(.offline, at: Self.limitsAt, after: Self.budget)
-        let shown = try compose(limits: limits, activity: succeeded(Self.activityWithSpend, at: Self.activityAt), cachedUnit: .tokens).get()
-        #expect(shown.today == .money(Cents(1_240)))
-    }
-
-    @Test("B-8 before any limits since launch, the cached snapshot's unit stands in")
-    func theCachedUnitStandsInUntilLimitsSucceed() throws {
-        let limits: Latest<LimitsPart> = failed(.offline, at: Self.limitsAt)
-        let shown = try compose(limits: limits, activity: succeeded(Self.activityWithSpend, at: Self.activityAt), cachedUnit: .money).get()
-        #expect(shown.today == .money(Cents(1_240)))
-    }
-
-    @Test("B-8 limits that succeed again decide the unit over the cached one")
-    func freshLimitsOverrideTheCachedUnit() throws {
-        let shown = try compose(limits: succeeded(Self.plan, at: Self.limitsAt), activity: succeeded(Self.activityWithSpend, at: Self.activityAt), cachedUnit: .money).get()
-        #expect(shown.today == .tokens(Tokens(1_800_000)))
-    }
-
     @Test(arguments: Gen.seeds(200))
     func composeIsTotal(seed: UInt64) {
         var gen = Gen(seed: seed)
         let limits = gen.maybe { $0.latest { $0.limitsPart() } }
         let activity = gen.maybe { $0.latest { $0.activityPart() } }
-        let cachedUnit = gen.maybe { $0.unit() }
-        let shown = UsageSnapshot.compose(provider: .alpha, limits: limits, activity: activity, today: Gen.referenceDay, cachedUnit: cachedUnit)
+        let shown = UsageSnapshot.compose(provider: .alpha, limits: limits, activity: activity, today: Gen.referenceDay)
         let limitsSucceeded = if case .success? = limits { true } else { false }
         let activitySucceeded = if case .success? = activity { true } else { false }
         switch shown {

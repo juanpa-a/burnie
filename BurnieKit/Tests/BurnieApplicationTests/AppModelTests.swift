@@ -151,7 +151,7 @@ struct AppModelTests {
         providers.watcher.reportChange()
         await sleeper.nextSleeps(1)
         #expect(providers.alphaRuns == [1, 2])
-        #expect(model.state.providers.first?.state.snapshot?.today == .tokens(Tokens(1_800_000)))
+        #expect(model.state.providers.first?.state.snapshot?.today == TodayUsage(tokens: Tokens(1_800_000)))
     }
 
     @Test("B-58 turning launch at login on when macOS wants approval opens System Settings")

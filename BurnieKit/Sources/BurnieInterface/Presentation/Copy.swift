@@ -25,16 +25,9 @@ public enum Copy {
     /// Before the cycle totals VoiceOver reads (B-76).
     public static let thisCycle = "This cycle"
 
-    /// One provider's cycle or day for VoiceOver: "Claude 1.8M tokens", or with the day's spend
-    /// "Cursor 2.6M tokens ($4.12)".
-    public static func providerUsage(provider shortName: String, tokens: String, spent: String? = nil) -> String {
-        guard let spent else { return "\(shortName) \(tokens) tokens" }
-        return "\(shortName) \(tokens) tokens (\(spent))"
-    }
-
-    /// A day's spend after its tokens in the week chart's tooltip: "· $6.55" (B-78).
-    public static func weekChartSpend(_ amount: String) -> String {
-        "· \(amount)"
+    /// One provider's cycle or day for VoiceOver: "Claude 1.8M tokens".
+    public static func providerUsage(provider shortName: String, tokens: String) -> String {
+        "\(shortName) \(tokens) tokens"
     }
 
     // MARK: Providers screen

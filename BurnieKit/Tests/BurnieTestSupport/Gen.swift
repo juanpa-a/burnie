@@ -128,29 +128,21 @@ public struct Gen: RandomNumberGenerator {
         SnapshotFeatures(onDemand: maybe { $0.meter() })
     }
 
-    public mutating func unit() -> UsageUnit {
-        coinFlip() ? .tokens : .money
-    }
-
     public mutating func limitsPart() -> LimitsPart {
-        LimitsPart(plan: maybe { $0.element(of: Self.plans) }, meters: meterSet(), unit: unit(), features: features())
+        LimitsPart(plan: maybe { $0.element(of: Self.plans) }, meters: meterSet(), features: features())
     }
 
-    /// Tokens for up to ten days around `today`, and spend for some of them.
+    /// Tokens for up to ten days around `today`.
     public mutating func activityPart(around today: LocalDay = Gen.referenceDay) -> ActivityPart {
         var part = ActivityPart(tokens: [:])
         for _ in 0..<int(in: 0...10) {
-            let day = localDay(around: today)
-            part.tokens[day] = tokens()
-            if coinFlip() {
-                part.spent[day] = cents()
-            }
+            part.tokens[localDay(around: today)] = tokens()
         }
         return part
     }
 
     public mutating func todayUsage() -> TodayUsage {
-        coinFlip() ? .tokens(tokens()) : .money(cents())
+        TodayUsage(tokens: tokens())
     }
 
     /// A success or a failure of `value`, with or without an earlier success.

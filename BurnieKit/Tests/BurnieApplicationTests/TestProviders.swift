@@ -13,7 +13,7 @@ final class TestProviders: Sendable {
     static let betaMeters = MeterSet(primary: Meter(id: .budget, fill: Fraction(0.37), value: .money(used: Cents(18_420), limit: Cents(50_000)), caption: .noActiveSession))
     static let onDemand = Meter(id: .extra, fill: .zero, value: .money(used: .zero, limit: Cents(2_000)), caption: .onDemandIdle)
     static let alphaLimits = LimitsPart(plan: PlanName(rawValue: "MAX"), meters: alphaMeters)
-    static let betaLimits = LimitsPart(plan: PlanName(rawValue: "PRO"), meters: betaMeters, unit: .money, features: SnapshotFeatures(onDemand: onDemand))
+    static let betaLimits = LimitsPart(plan: PlanName(rawValue: "PRO"), meters: betaMeters, features: SnapshotFeatures(onDemand: onDemand))
     static let activity = ActivityPart(tokens: [today: Tokens(1_800_000), .day("2026-10-08"): Tokens(400_000)])
 
     static let alphaLimitsPolicy = RefreshPolicy(interval: 300, jitter: 30, staleOnOpen: 60, needsNetwork: true)

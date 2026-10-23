@@ -13,13 +13,11 @@ struct WeekChartViewTests {
     /// The chart's right edge, where both the legend and the last day's tooltip end.
     static let trailingEdge = Int(width - DesignTokens.Insets.weekChart.trailing)
 
-    /// One provider with spend, so the last day's tooltip is wide and rises over the end of the legend.
+    /// One provider whose last day's tooltip rises over the end of the legend.
     static var chart: WeekChart {
         var history = UsageHistory()
         history.record([today: Tokens(283_000_000), .day("2026-10-08"): Tokens(197_000_000)], for: .beta, today: today)
-        return WeekChart.make(
-            history: history, providers: [.beta], today: today, spent: [.beta: [today: Cents(3_065)]], cycleStarts: [.beta: .day("2026-10-01")]
-        )
+        return WeekChart.make(history: history, providers: [.beta], today: today, cycleStarts: [.beta: .day("2026-10-01")])
     }
 
     @Test("B-77 a day's tooltip draws over the legend it rises over", arguments: [ColorScheme.light, .dark])

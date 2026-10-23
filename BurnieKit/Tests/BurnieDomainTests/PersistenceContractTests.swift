@@ -9,8 +9,9 @@ struct PersistenceContractTests {
     static let claude = ProviderID(rawValue: "claude")
     static let cursor = ProviderID(rawValue: "cursor")
 
-    /// What `snapshot-limits.json` holds: a money budget with a period, a percent meter, an idle on-demand feature
-    /// without a limit, today's spend and a partial issue.
+    /// What `snapshot-limits-v0.5.json` holds: a money budget with a period, a percent meter, an idle on-demand feature
+    /// without a limit, today's tokens and a partial issue. `snapshot-unit-before-v0.5.json` holds the same with the
+    /// usage unit written before 0.5.0.
     static let limits = UsageSnapshot(
         provider: .alpha,
         content: .limits(
@@ -27,18 +28,17 @@ struct PersistenceContractTests {
                         ),
                         others: [Meter(id: MeterID(rawValue: "weekly"), fill: Fraction(0.38), value: .percent(38), caption: .resetsAt(.iso("2026-10-15T15:00:00Z")))]
                     ),
-                    unit: .money,
                     features: SnapshotFeatures(onDemand: Meter(id: .extra, fill: .zero, value: .money(used: .zero, limit: nil), caption: .onDemandIdle))
                 ),
                 at: .iso("2026-10-10T19:50:00Z")
             ),
-            today: .money(Cents(1_240))
+            today: TodayUsage(tokens: Tokens(1_250_000))
         ),
         issue: .rateLimited(retryAt: .iso("2026-10-10T20:05:00Z"))
     )
 
-    /// What `snapshot-team-meters.json` holds: a team's budget as the primary meter and the team's idle on-demand, both
-    /// with scope team, which only a team's meter writes.
+    /// What `snapshot-team-meters-v0.5.json` holds: a team's budget as the primary meter and the team's idle on-demand,
+    /// both with scope team, which only a team's meter writes.
     static let teamMeters = UsageSnapshot(
         provider: .alpha,
         content: .limits(
@@ -53,7 +53,6 @@ struct PersistenceContractTests {
                         scope: .team,
                         period: DateInterval(start: .iso("2026-10-01T00:00:00Z"), end: .iso("2026-11-01T00:00:00Z"))
                     )),
-                    unit: .money,
                     features: SnapshotFeatures(onDemand: Meter(
                         id: .extra,
                         fill: .zero,
@@ -64,14 +63,14 @@ struct PersistenceContractTests {
                 ),
                 at: .iso("2026-10-10T19:50:00Z")
             ),
-            today: .money(Cents(1_240))
+            today: TodayUsage(tokens: Tokens(1_250_000))
         )
     )
 
     /// What `snapshot-activity-only.json` holds: today's tokens alone, with a specific issue.
     static let activityOnly = UsageSnapshot(
         provider: .beta,
-        content: .activityOnly(Stamped(.tokens(Tokens(1_250_000)), at: .iso("2026-10-10T19:55:00Z"))),
+        content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(1_250_000)), at: .iso("2026-10-10T19:55:00Z"))),
         issue: .specific(SpecificIssue(code: "missingScope"))
     )
 
@@ -85,8 +84,8 @@ struct PersistenceContractTests {
     }
 
     @Test("snapshots are saved in the new shape, every enum keyed by its case name; a meter of the user's own has no scope", arguments: [
-        ("snapshot-limits.json", limits),
-        ("snapshot-team-meters.json", teamMeters),
+        ("snapshot-limits-v0.5.json", limits),
+        ("snapshot-team-meters-v0.5.json", teamMeters),
         ("snapshot-activity-only.json", activityOnly),
     ])
     func snapshotKeepsItsShape(file: String, snapshot: UsageSnapshot) throws {
@@ -98,6 +97,18 @@ struct PersistenceContractTests {
         "snapshot-claude.json", "snapshot-cursor.json",
     ])
     func flatSnapshotDoesNotDecode(file: String) {
+        #expect(throws: DecodingError.self) { try Fixture.persisted(UsageSnapshot.self, from: file) }
+    }
+
+    @Test("a usage unit saved before 0.5.0 is ignored, so the snapshot still loads")
+    func unitSavedBeforeZeroFiveIsIgnored() throws {
+        #expect(try Fixture.persisted(UsageSnapshot.self, from: "snapshot-unit-before-v0.5.json") == Self.limits)
+    }
+
+    @Test("a snapshot whose today's usage is money, saved before 0.5.0, doesn't decode, so it reads as no cache", arguments: [
+        "snapshot-limits.json", "snapshot-team-meters.json",
+    ])
+    func moneyTodayDoesNotDecode(file: String) {
         #expect(throws: DecodingError.self) { try Fixture.persisted(UsageSnapshot.self, from: file) }
     }
 

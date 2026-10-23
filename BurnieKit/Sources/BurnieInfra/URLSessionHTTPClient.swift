@@ -45,13 +45,7 @@ public final class URLSessionHTTPClient: HTTPClient {
     /// What goes on the wire; separate so tests can check it without the network.
     static func urlRequest(for request: HTTPRequest) -> URLRequest {
         var urlRequest = URLRequest(url: request.url)
-        switch request.method {
-        case .get:
-            urlRequest.httpMethod = "GET"
-        case .post(let body):
-            urlRequest.httpMethod = "POST"
-            urlRequest.httpBody = body
-        }
+        urlRequest.httpMethod = "GET"
         for (field, value) in request.headers {
             urlRequest.setValue(value, forHTTPHeaderField: field)
         }

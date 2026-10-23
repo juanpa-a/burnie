@@ -36,10 +36,6 @@ public struct UsageSnapshot: Hashable, Codable, Sendable {
         limits?.meters
     }
 
-    public var unit: UsageUnit? {
-        limits?.unit
-    }
-
     /// None without a limits part.
     public var features: SnapshotFeatures {
         limits?.features ?? .empty

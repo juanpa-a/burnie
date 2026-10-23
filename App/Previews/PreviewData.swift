@@ -39,22 +39,21 @@ enum PreviewData {
         ))
     )
 
-    /// A dollar budget instead of pools, so today reads in money.
+    /// A dollar budget instead of pools.
     static let cursorEnterpriseLimits = LimitsPart(
         plan: PlanName(rawValue: "ENTERPRISE"),
         meters: MeterSet(primary: Meter(
             id: cursor.meters[2].id, fill: Fraction(0.37), value: .money(used: Cents(18_420), limit: Cents(50_000)),
             caption: .cycleEnds(cursorCycle.end), period: cursorCycle
         )),
-        unit: .money,
         features: SnapshotFeatures(onDemand: Meter(
             id: cursor.meters[3].id, fill: .zero, value: .money(used: .zero, limit: Cents(100_000)), caption: .onDemandIdle
         ))
     )
 
-    static let claudeSnapshot = snapshot(claude.id, limits: claudeLimits, today: .tokens(Tokens(1_250_000)))
-    static let cursorSnapshot = snapshot(cursor.id, limits: cursorLimits, today: .tokens(Tokens(2_400_000)))
-    static let cursorEnterprise = snapshot(cursor.id, limits: cursorEnterpriseLimits, today: .money(Cents(1_240)))
+    static let claudeSnapshot = snapshot(claude.id, limits: claudeLimits, today: TodayUsage(tokens: Tokens(1_250_000)))
+    static let cursorSnapshot = snapshot(cursor.id, limits: cursorLimits, today: TodayUsage(tokens: Tokens(2_400_000)))
+    static let cursorEnterprise = snapshot(cursor.id, limits: cursorEnterpriseLimits, today: TodayUsage(tokens: Tokens(2_400_000)))
 
     static let history: UsageHistory = {
         var history = UsageHistory()
@@ -62,9 +61,6 @@ enum PreviewData {
         history.record(week([1_100_000, 0, 4_000_000, 2_800_000, 1_100_000, 1_900_000, 2_400_000].map(Tokens.init)), for: cursor.id, today: today)
         return history
     }()
-
-    /// What the enterprise budget was charged each day of the week, ending with today's usage (B-78).
-    static let cursorEnterpriseSpend = week([412, 0, 1_310, 980, 412, 655, 1_240].map(Cents.init))
 
     /// A snapshot with limits, stamped `minutesAgo` before now.
     static func snapshot(_ provider: ProviderID, limits: LimitsPart, today: TodayUsage?, minutesAgo: Double = 2) -> UsageSnapshot {
@@ -82,7 +78,6 @@ enum PreviewData {
         showWeekChart: Bool = true,
         hiddenFeatures: Set<FeatureToggle> = [],
         history: UsageHistory = history,
-        weekSpend: [ProviderID: [LocalDay: Cents]] = [:],
         availableUpdate: String? = nil
     ) -> AppState {
         let enabled = enabled ?? [claude.id, cursor.id]
@@ -105,7 +100,6 @@ enum PreviewData {
                     history: history,
                     providers: order,
                     today: today,
-                    spent: weekSpend,
                     cycleStarts: cycleStarts
                 )
                 : nil,

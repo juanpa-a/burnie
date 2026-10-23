@@ -13,7 +13,7 @@ final class JSONFileStoreTests {
     }
 
     func snapshot(_ provider: ProviderID, at date: Date) -> UsageSnapshot {
-        UsageSnapshot(provider: provider, content: .activityOnly(Stamped(.tokens(Tokens(42)), at: date)))
+        UsageSnapshot(provider: provider, content: .activityOnly(Stamped(TodayUsage(tokens: Tokens(42)), at: date)))
     }
 
     func write(_ text: String, to name: String) throws {
