@@ -42,6 +42,18 @@ struct SchedulingTests {
     }
 
     @Test(arguments: Gen.seeds(200))
+    func aTrippedBreakerLetsOnlyRefreshRun(seed: UInt64) {
+        var gen = Gen(seed: seed)
+        let now = gen.date()
+        var job = job(&gen, now: now)
+        for _ in 0..<3 {
+            job.breaker.record(Result<Part, ProviderIssue>.failure(.unexpectedResponse("HTTP 404")))
+        }
+        let trigger = gen.element(of: Self.triggers.filter { $0 != .manual })
+        #expect(!Scheduling.canRun(job, trigger: trigger, isOnline: gen.coinFlip(), now: now), "seed \(seed)")
+    }
+
+    @Test(arguments: Gen.seeds(200))
     func offlineNothingThatNeedsTheNetworkRuns(seed: UInt64) {
         var gen = Gen(seed: seed)
         let now = gen.date()

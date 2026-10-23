@@ -28,6 +28,7 @@ extension RuntimeState {
         job.lastRun = now
         job.backoff.record(outcome, now: now)
         job.idle.record(outcome)
+        job.breaker.record(outcome)
         jobs[key] = job
         return show(outcome, of: job.part, for: key.provider, now: now)
             + armTimer(of: key, jitter: jitter, now: now)

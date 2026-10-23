@@ -6,7 +6,8 @@ import Testing
 @testable import BurnieApplication
 
 /// Reduces events one after another, stamped at a moment the test moves, and checks after each one the invariant of
-/// SPEC 7.3: every job has a run in flight or an armed timer, except a job that needs the network while offline.
+/// SPEC 7.3: every job has a run in flight or an armed timer, except a job that needs the network while offline and a
+/// job whose breaker is tripped.
 struct ReducerHarness {
     static let start = Date.iso("2026-10-10T20:00:00Z")
 
@@ -78,7 +79,11 @@ struct ReducerHarness {
     private func checkInvariant(sourceLocation: SourceLocation) {
         for (key, job) in state.jobs where job.running == nil && job.timer == nil {
             let waitsForTheNetwork = job.policy.needsNetwork && !state.isOnline
-            #expect(waitsForTheNetwork, "\(key.provider.rawValue).\(key.task) has neither a run nor a timer", sourceLocation: sourceLocation)
+            #expect(
+                waitsForTheNetwork || job.breaker.isTripped,
+                "\(key.provider.rawValue).\(key.task) has neither a run nor a timer",
+                sourceLocation: sourceLocation
+            )
         }
     }
 }

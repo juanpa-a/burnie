@@ -58,10 +58,16 @@ struct CursorFetchersTests {
         #expect(http.requests.isEmpty)
     }
 
-    @Test("B-26 a redirect, 401 or 403 is sign-in expired", arguments: [401, 403, 302])
+    @Test("B-26 a redirect or 401 is sign-in expired", arguments: [401, 302])
     func loginResponsesAreSignInExpired(status: Int) async {
         http.respond(status: status)
         await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
+    }
+
+    @Test("B-26 a 403 is Cursor refusing Burnie, so it reads as unexpected")
+    func forbiddenIsUnexpected() async {
+        http.respond(status: 403)
+        await #expect(throws: ProviderIssue.unexpectedResponse("HTTP 403")) { try await limits() }
     }
 
     @Test("B-26 HTML instead of data is sign-in expired")

@@ -19,10 +19,11 @@ struct CursorDashboardClient: Sendable {
         return try await http.fetch(HTTPRequest(url: url, headers: headers), now: clock.now, classify: Self.issue)
     }
 
-    /// 401, 403, a redirect, or HTML instead of data: the dashboard wants to send us to the login page (B-26).
+    /// 401, a redirect, or HTML instead of data: the dashboard wants to send us to the login page (B-26). A 403 isn't
+    /// a lost session but Cursor refusing Burnie, so it reads as unexpected, like any other non-2xx.
     private static func issue(for response: HTTPResponse) -> ProviderIssue? {
         switch response.status {
-        case 300..<400, 401, 403: .signInExpired
+        case 300..<400, 401: .signInExpired
         case 200..<300 where response.mimeType == "text/html": .signInExpired
         default: nil
         }
