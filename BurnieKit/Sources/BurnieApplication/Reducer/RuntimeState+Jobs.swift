@@ -23,9 +23,9 @@ extension RuntimeState {
     }
 
     /// Arm the timer (SPEC 7.3): take the next timer id and ask for a wait of the job's delay, which replaces any live
-    /// timer of the job (B-35).
+    /// timer of the job (B-35). A job whose breaker is tripped gets none: only Refresh runs it (B-81).
     mutating func armTimer(of key: JobKey, jitter: Double, now: Date) -> [Effect] {
-        guard let job = jobs[key] else { return [] }
+        guard let job = jobs[key], !job.breaker.isTripped else { return [] }
         let timer = nextTimer
         nextTimer = timer.successor
         jobs[key]?.timer = timer

@@ -2,7 +2,7 @@ import BurnieDomain
 import Foundation
 
 /// What the runtime knows about one job: its part kind and policy, the run in flight, the armed timer, when it last
-/// ran, its backoff and its idle backoff.
+/// ran, its backoff, its idle backoff and its circuit breaker.
 struct JobState: Equatable, Sendable {
     let part: PartKind
     let policy: RefreshPolicy
@@ -13,6 +13,7 @@ struct JobState: Equatable, Sendable {
     var lastRun: Date?
     var backoff = RateLimitBackoff()
     var idle = IdleBackoff()
+    var breaker = CircuitBreaker()
 
     init(part: PartKind, policy: RefreshPolicy) {
         self.part = part
