@@ -1,4 +1,5 @@
 import BurnieDomain
+import BurnieInterface
 import Foundation
 
 /// Everything the runtime knows. Only the reducer changes it.
@@ -26,6 +27,8 @@ struct RuntimeState: Equatable, Sendable {
     var isOnline = true
     var launchAtLogin = false
     var availableUpdate: String?
+    /// The "Check for updates" row's phase (B-76).
+    var updateCheck: UpdateCheck = .idle
 
     /// Before launch: every provider of the registry enabled and nothing shown, until `launched` brings what was saved.
     init(registry: [RegisteredProvider], today: LocalDay, timeZone: TimeZone) {

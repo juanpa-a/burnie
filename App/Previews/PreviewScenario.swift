@@ -26,6 +26,8 @@ enum PreviewScenario: CaseIterable {
     case onlyOneOn
     case ringOff
     case updateAvailable
+    case updateChecking
+    case updateUpToDate
 
     var state: AppState {
         let claude = PreviewData.claude.id
@@ -85,6 +87,10 @@ enum PreviewScenario: CaseIterable {
             PreviewData.state(favorite: claude, showRing: false)
         case .updateAvailable:
             PreviewData.state(availableUpdate: "0.3.0")
+        case .updateChecking:
+            PreviewData.state(updateCheck: .checking)
+        case .updateUpToDate:
+            PreviewData.state(updateCheck: .upToDate)
         }
     }
 

@@ -16,7 +16,8 @@ struct AppStateTests {
             settings: .defaults(enabled: [.beta]),
             visibleToggles: [],
             launchAtLogin: false,
-            availableUpdate: nil
+            availableUpdate: nil,
+            updateCheck: .idle
         )
         #expect(state.enabledProviders.map(\.id) == [.beta])
     }

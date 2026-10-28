@@ -36,6 +36,34 @@ extension RuntimeStateTests {
         #expect(harness.state.availableUpdate == nil)
     }
 
+    @Test("B-76 checking for updates starts one check at a time, and its result drives the row")
+    func checkUpdatesAsksTheUpdater() {
+        var harness = ReducerHarness.launched()
+        #expect(harness.send(.checkUpdatesRequested) == [.checkUpdates])
+        #expect(harness.state.updateCheck == .checking)
+        #expect(harness.send(.checkUpdatesRequested).isEmpty)
+        #expect(harness.state.updateCheck == .checking)
+        #expect(harness.send(.checkFinished(.found("0.3.1"))).isEmpty)
+        #expect(harness.state.updateCheck == .idle)
+        #expect(harness.state.availableUpdate == "0.3.1")
+        #expect(harness.send(.checkUpdatesRequested) == [.checkUpdates])
+        #expect(harness.send(.checkFinished(.failed)).isEmpty)
+        #expect(harness.state.updateCheck == .idle)
+        #expect(harness.state.availableUpdate == "0.3.1")
+    }
+
+    @Test("B-76 an \"up to date\" asks again on the next visit, and clears the dot")
+    func upToDateAsksAgainNextVisit() {
+        var harness = ReducerHarness.launched()
+        harness.send(.updateFound("0.3.0"))
+        harness.send(.checkUpdatesRequested)
+        harness.send(.checkFinished(.upToDate))
+        #expect(harness.state.availableUpdate == nil)
+        #expect(harness.state.updateCheck == .upToDate)
+        harness.send(.popoverOpened(RequestID(value: 0)))
+        #expect(harness.state.updateCheck == .idle)
+    }
+
     @Test("B-75 a dashboard link opens that provider's page, and Quit quits")
     func dashboardsAndQuit() {
         var harness = ReducerHarness.launched()

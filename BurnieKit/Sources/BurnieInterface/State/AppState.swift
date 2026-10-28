@@ -20,6 +20,8 @@ public struct AppState: Equatable, Sendable {
     public var launchAtLogin: Bool
     /// The version a newer Burnie on the release feed has (B-57).
     public var availableUpdate: String?
+    /// The "Check for updates" row's phase (B-76).
+    public var updateCheck: UpdateCheck
 
     public init(
         providers: [ProviderPanel],
@@ -30,7 +32,8 @@ public struct AppState: Equatable, Sendable {
         settings: AppSettings,
         visibleToggles: [FeatureToggle],
         launchAtLogin: Bool,
-        availableUpdate: String?
+        availableUpdate: String?,
+        updateCheck: UpdateCheck
     ) {
         self.providers = providers
         self.ring = ring
@@ -41,6 +44,7 @@ public struct AppState: Equatable, Sendable {
         self.visibleToggles = visibleToggles
         self.launchAtLogin = launchAtLogin
         self.availableUpdate = availableUpdate
+        self.updateCheck = updateCheck
     }
 
     /// The panels of the providers the user tracks, in registry order.

@@ -9,6 +9,7 @@ import Sparkle
 public final class SparkleUpdater: NSObject, Updater {
     private var controller: SPUStandardUpdaterController?
     private var onUpdate: (@Sendable (String?) -> Void)?
+    private var onResult: (@Sendable (UpdateCheckResult) -> Void)?
 
     override public init() {}
 
@@ -22,17 +23,41 @@ public final class SparkleUpdater: NSObject, Updater {
         NSApp.activate()
         controller?.checkForUpdates(nil)
     }
+
+    public func checkForUpdates(onResult: @escaping @Sendable (UpdateCheckResult) -> Void) {
+        self.onResult = onResult
+        // A background check opens no UI; the delegates below report how it went (B-76).
+        controller?.updater.checkForUpdatesInBackground()
+    }
+
+    /// A scheduled check can finish while the user's is in flight; either delegate answer reflects the latest feed
+    /// state, so reporting it to the waiting check is correct. With no check waiting (`onResult == nil`), reporting is
+    /// a no-op and scheduled checks stay quiet (B-57).
+    private func report(_ result: UpdateCheckResult) {
+        onResult?(result)
+        onResult = nil
+    }
 }
 
 extension SparkleUpdater: SPUUpdaterDelegate {
     nonisolated public func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
         let version = item.displayVersionString
-        MainActor.assumeIsolated { onUpdate?(version) }
+        MainActor.assumeIsolated {
+            onUpdate?(version)
+            report(.found(version))
+        }
     }
 
     /// Also what a skipped version reports on the next check, so the dot goes away.
     nonisolated public func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
-        MainActor.assumeIsolated { onUpdate?(nil) }
+        MainActor.assumeIsolated {
+            onUpdate?(nil)
+            report(.upToDate)
+        }
+    }
+
+    nonisolated public func updater(_ updater: SPUUpdater, didAbortWithError error: any Error) {
+        MainActor.assumeIsolated { report(.failed) }
     }
 }
 

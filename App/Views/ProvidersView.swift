@@ -45,6 +45,8 @@ struct ProvidersView: View {
             }
             LaunchAtLoginRow()
                 .padding(DesignTokens.Insets.list)
+            BurnieDivider()
+            CheckForUpdatesRow()
         }
     }
 

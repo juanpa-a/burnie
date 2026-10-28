@@ -37,7 +37,8 @@ extension AppState {
             // Judged before hiding, so turning a feature off keeps its switch (B-40).
             visibleToggles: FeatureToggle.allCases.filter { toggle in snapshots.contains { $0.features.has(toggle) } },
             launchAtLogin: state.launchAtLogin,
-            availableUpdate: state.availableUpdate
+            availableUpdate: state.availableUpdate,
+            updateCheck: state.updateCheck
         )
     }
 

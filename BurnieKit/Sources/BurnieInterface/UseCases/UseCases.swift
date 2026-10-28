@@ -15,6 +15,7 @@ public struct UseCases: Sendable {
         setLaunchAtLogin: SetLaunchAtLogin { _ in },
         readLaunchAtLogin: ReadLaunchAtLogin {},
         installUpdate: InstallUpdate {},
+        checkUpdates: CheckUpdates {},
         openDashboard: OpenDashboard { _ in },
         quit: Quit {}
     )
@@ -30,6 +31,7 @@ public struct UseCases: Sendable {
     public let setLaunchAtLogin: SetLaunchAtLogin
     public let readLaunchAtLogin: ReadLaunchAtLogin
     public let installUpdate: InstallUpdate
+    public let checkUpdates: CheckUpdates
     public let openDashboard: OpenDashboard
     public let quit: Quit
 
@@ -45,6 +47,7 @@ public struct UseCases: Sendable {
         setLaunchAtLogin: SetLaunchAtLogin,
         readLaunchAtLogin: ReadLaunchAtLogin,
         installUpdate: InstallUpdate,
+        checkUpdates: CheckUpdates,
         openDashboard: OpenDashboard,
         quit: Quit
     ) {
@@ -59,6 +62,7 @@ public struct UseCases: Sendable {
         self.setLaunchAtLogin = setLaunchAtLogin
         self.readLaunchAtLogin = readLaunchAtLogin
         self.installUpdate = installUpdate
+        self.checkUpdates = checkUpdates
         self.openDashboard = openDashboard
         self.quit = quit
     }

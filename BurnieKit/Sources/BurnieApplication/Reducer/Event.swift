@@ -35,6 +35,8 @@ struct Event: Equatable, Sendable {
         case launchAtLoginRead(LoginItemStatus)
         case updateFound(String?)
         case installUpdateRequested
+        case checkUpdatesRequested
+        case checkFinished(UpdateCheckResult)
         case dashboardRequested(ProviderID)
         case quitRequested
     }
