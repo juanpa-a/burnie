@@ -242,7 +242,7 @@ allowed_imports() {
 		BurnieInterface) echo 'Foundation BurnieDomain' ;;
 		BurnieProviders) echo 'Foundation BurnieDomain BurnieInterface' ;;
 		BurnieApplication) echo 'Foundation Observation BurnieDomain BurnieInterface' ;;
-		BurnieInfra) echo 'Foundation os AppKit CoreServices Network ServiceManagement SQLite3 Sparkle BurnieDomain BurnieInterface' ;;
+		BurnieInfra) echo 'Foundation os AppKit CoreServices Network ServiceManagement SQLite3 CommonCrypto Security Sparkle BurnieDomain BurnieInterface' ;;
 		BurnieComponents) echo 'Foundation SwiftUI BurnieDomain BurnieInterface' ;;
 	esac
 }

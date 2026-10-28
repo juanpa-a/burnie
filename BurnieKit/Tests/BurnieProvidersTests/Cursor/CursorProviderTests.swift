@@ -12,6 +12,8 @@ struct CursorProviderTests {
         CursorProvider.bundle(CursorPorts(
             clock: FixedClock(now: .iso("2026-10-10T20:00:00Z")),
             database: FakeKeyValueDatabase(),
+            secrets: FakeSecretReader(),
+            decryptor: FakeSafeStorageDecryptor(),
             log: RecordingDiagnosticsLog(),
             home: URL(filePath: "/Users/dev"),
             userAgent: "Burnie/0.1.0",
@@ -25,12 +27,13 @@ struct CursorProviderTests {
 
     // MARK: Descriptor
 
-    @Test("the provider and meter ids are frozen (SPEC 12)")
+    @Test("the provider and meter ids and the missingKeychainAccess code are frozen (SPEC 12)")
     func idsAreFrozen() {
         #expect(ProviderID.cursor.rawValue == "cursor")
         #expect([MeterID.cursorModels, .otherModels, .included, .teamPool, .onDemand, .teamOnDemand].map(\.rawValue) == [
             "cursorModels", "otherModels", "included", "teamPool", "onDemand", "teamOnDemand",
         ])
+        #expect(SpecificIssue.missingKeychainAccess.code == "missingKeychainAccess")
     }
 
     @Test("B-21 Cursor's issue rows")
@@ -38,6 +41,7 @@ struct CursorProviderTests {
         let copy = CursorProvider.descriptor.copy
         #expect(IssueMessage.message(for: .notFound, copy: copy) == "Cursor not found. Sign in to the Cursor app.")
         #expect(IssueMessage.message(for: .signInExpired, copy: copy) == "Session expired. Open Cursor to sign in again.")
+        #expect(IssueMessage.message(for: .specific(.missingKeychainAccess), copy: copy) == "Burnie needs Keychain access to read Cursor's session. Refresh and choose Always Allow.")
         #expect(IssueMessage.message(for: .unexpectedResponse("HTTP 404"), copy: copy) == "Couldn't read usage. Burnie may need an update.")
     }
 

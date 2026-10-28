@@ -9,13 +9,18 @@ struct CursorFetchersTests {
     static let now = Date.iso("2026-10-11T02:00:00Z") // 20:00 on the 10th in Mexico City
 
     var database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
+    let keychain = CursorSafeStorageTests.keychain()
     /// What the dashboard's clock reads, so a test can expire the session; the fetchers' own clocks stay at `Self.now`.
     var now = Self.now
     let http = FakeHTTPClient(status: 200, body: Fixture.data("cursor-summary-pro.json"), headers: ["Content-Type": "application/json; charset=utf-8"])
 
     var dashboard: CursorDashboardClient {
         CursorDashboardClient(
-            credentials: CursorCredentialsReader(database: database, paths: CursorPaths(home: URL(filePath: "/home"))),
+            credentials: CursorCredentialsReader(
+                database: database,
+                safeStorage: CursorSafeStorage(secrets: keychain, decryptor: CursorSafeStorageTests.decryptor),
+                paths: CursorPaths(home: URL(filePath: "/home"))
+            ),
             http: http,
             clock: FixedClock(now: now),
             userAgent: "Burnie/0.1.0"
@@ -55,6 +60,21 @@ struct CursorFetchersTests {
     mutating func expiredSessionNeverReachesTheNetwork() async {
         now = .iso("2026-11-27T00:00:00Z") // the fixture's token expired on November 18
         await #expect(throws: ProviderIssue.signInExpired) { try await limits() }
+        #expect(http.requests.isEmpty)
+    }
+
+    @Test("B-26 a session Cursor encrypted at rest reaches the dashboard as the JWT it holds")
+    mutating func encryptedSessionReachesTheDashboard() async throws {
+        database.rows = [CursorCredentialsReader.tokenKey: CursorSafeStorageTests.stored]
+        #expect(try await limits().meters == CursorUsageMapperTests.pools)
+        #expect(http.requests.first?.headers["Cookie"] == (try CursorAccessToken(jwt: CursorAccessTokenTests.jwt).sessionCookie))
+    }
+
+    @Test("B-26 an encrypted session without Keychain access never reaches the network")
+    mutating func encryptedSessionWithoutKeychainAccessNeverReachesTheNetwork() async {
+        database.rows = [CursorCredentialsReader.tokenKey: CursorSafeStorageTests.stored]
+        keychain.deniesAccess = true
+        await #expect(throws: ProviderIssue.specific(.missingKeychainAccess)) { try await limits() }
         #expect(http.requests.isEmpty)
     }
 

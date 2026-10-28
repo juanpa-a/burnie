@@ -11,9 +11,10 @@ struct CursorDashboardClient: Sendable {
     let userAgent: String
 
     func get(_ url: URL, accept: String) async throws(ProviderIssue) -> Data {
+        let token = try await credentials.validToken(at: clock.now)
         let headers = [
             "Accept": accept,
-            "Cookie": try credentials.validToken(at: clock.now).sessionCookie,
+            "Cookie": token.sessionCookie,
             "User-Agent": userAgent,
         ]
         return try await http.fetch(HTTPRequest(url: url, headers: headers), now: clock.now, classify: Self.issue)

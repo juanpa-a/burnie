@@ -14,6 +14,7 @@ enum PreviewScenario: CaseIterable {
     case claudeLogsUnreadable
     case cursorNotFound
     case cursorSessionExpired
+    case cursorMissingKeychainAccess
     case cursorEnterprise
     case rateLimited
     case offline
@@ -50,6 +51,12 @@ enum PreviewScenario: CaseIterable {
             PreviewData.state(cursor: .failed(.notFound))
         case .cursorSessionExpired:
             PreviewData.state(cursor: .ready(stale(PreviewData.cursorSnapshot, minutesAgo: 40, issue: .signInExpired)))
+        case .cursorMissingKeychainAccess:
+            PreviewData.state(cursor: .ready(stale(
+                PreviewData.cursorSnapshot,
+                minutesAgo: 40,
+                issue: .specific(SpecificIssue(code: "missingKeychainAccess"))
+            )))
         case .cursorEnterprise:
             PreviewData.state(cursor: .ready(PreviewData.cursorEnterprise))
         case .rateLimited:

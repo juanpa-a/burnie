@@ -134,7 +134,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | --- | --- | --- | --- |
 | **Issue** | Why a provider can't show something. Common cases are shared; a provider adds its own as `specific`. | `ProviderIssue` | Domain |
 | **Common issue** | `notFound`, `signInExpired`, `rateLimited(retryAt:)`, `offline`, `unexpectedResponse(String)`. | `ProviderIssue` cases | Domain |
-| **Specific issue** | An issue only one provider has (Claude's missing `user:profile` scope). Identified by a code; its copy lives in the provider's descriptor. | `ProviderIssue.specific(SpecificIssue)` | Domain |
+| **Specific issue** | An issue only one provider has (Claude's missing `user:profile` scope, Cursor's missing Keychain access). Identified by a code; its copy lives in the provider's descriptor. | `ProviderIssue.specific(SpecificIssue)` | Domain |
 | **Partial issue** | An issue shown inside a section that still has data. | `UsageSnapshot.issue` | Domain |
 | **Total failure** | An issue with nothing to show: the section shows only the issue row. | `ProviderState.failed` | Domain |
 
@@ -171,7 +171,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Timer ID** | Identifies one armed timer of a job. Drawn from a counter in `RuntimeState`, never reused, so a `timerFired` already on its way when its timer was cancelled or replaced is recognized and dropped. | `TimerID` (newtype over `Int`), `JobState.timer: TimerID?` | Application |
 | **Sleeper** | The only way the runtime waits: `sleep(for:)`, which tests drive by hand. | `Sleeper` port | Interface |
 | **Refresh request** | One use case call that refreshes (the Refresh button, opening the popover, a sign-in renewal) and the runs it started. Open until all of them finish; the Refresh spinner shows while any is open. | `RequestID`, `PendingRequest` in `RuntimeState.requests` | Application |
-| **Memo** | A provider's private state that only avoids repeated work (the log index, the hourly profile plan). Losing it only costs time (`P-5`). | an `actor` inside the provider | Providers |
+| **Memo** | A provider's private state that only avoids repeated work (the log index, the hourly profile plan, Cursor's Keychain password, kept in memory only). Losing it only costs time (`P-5`). | an `actor` inside the provider | Providers |
 | **Scheduling** | The pure decisions over a job: whether a trigger runs it now, and how long until its next timer. | `Scheduling.canRun`, `Scheduling.delay` | Application |
 
 ### 2.7 Settings and the menu bar
@@ -210,6 +210,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **HTTP response** | What the HTTP port returns: status, headers (looked up case-insensitively), MIME type, body. Never an `HTTPURLResponse`. | Interface (`HTTPResponse`) |
 | **HTTP failure** | Why the HTTP port got no response: offline (any URL loading error: no network, timeout…), or another error. | Interface (`HTTPFailure`) |
 | **Key-value database failure** | Why the key-value database port read nothing: the database is missing, busy (still locked when the timeout runs out), or unreadable. | Interface (`KeyValueDatabaseFailure`) |
+| **Safe storage decryptor** | The port that opens a value an Electron app encrypted at rest with its safe storage (Chromium's OSCrypt on macOS: `v10` and AES-128-CBC ciphertext), with the password the app keeps in the Keychain. Computation only: the password comes through `SecretReader`, and CommonCrypto stays in Infra. | Interface (`SafeStorageDecryptor`) |
 | **App environment** | What the composition root hands Application: every port and the provider bundles. | Application (`AppEnvironment`) |
 | **Runtime state** | Everything Application knows: the registry, settings, parts, what is shown, history, jobs and open requests. Only the reducer changes it. | Application (`RuntimeState`) |
 | **Registered provider** | What the reducer keeps of a bundle: its descriptor, its renewal's failed copy if it can renew sign-in, its source location, and its tasks as name, part kind and policy. No closures; those stay with the interpreter. | Application (`RegisteredProvider`, `RegisteredTask`) |
@@ -264,7 +265,7 @@ Dependencies go one way. The table is the whole truth; `Package.swift` and `proj
 | `BurnieInterface` | `Foundation`, `BurnieDomain` | `Observation`, SwiftUI, AppKit, any Burnie module above |
 | `BurnieProviders` | `Foundation`, `BurnieDomain`, `BurnieInterface` | `os`, AppKit, SwiftUI, `Application`, `Infra` |
 | `BurnieApplication` | `Foundation`, `Observation`, `BurnieDomain`, `BurnieInterface` | `Providers`, `Infra`, SwiftUI, AppKit |
-| `BurnieInfra` | `Foundation`, `os`, `AppKit`, `CoreServices`, `Network`, `ServiceManagement`, `SQLite3`, `Sparkle`, `BurnieDomain`, `BurnieInterface` | `Providers`, `Application`, `Components`, SwiftUI |
+| `BurnieInfra` | `Foundation`, `os`, `AppKit`, `CoreServices`, `Network`, `ServiceManagement`, `SQLite3`, `CommonCrypto`, `Security`, `Sparkle`, `BurnieDomain`, `BurnieInterface` | `Providers`, `Application`, `Components`, SwiftUI |
 | `BurnieComponents` | `SwiftUI`, `BurnieDomain`, `BurnieInterface` | `Application`, `Providers`, `Infra`, AppKit |
 | App target, views | `SwiftUI`, `AppKit`, `BurnieDomain`, `BurnieInterface`, `BurnieComponents`, `BurnieApplication` (only `AppModel`) | `Providers`, `Infra` |
 | App target, composition root (`App/Composition/`) | everything | — |
@@ -527,7 +528,8 @@ The contract between the UI, the runtime and the providers. Types, protocols and
 | `Sleeper` | `sleep(for:)` that tests can drive. | `TaskSleeper` | Application interpreter (timers) |
 | `HTTPClient` | Send an `HTTPRequest`, get an `HTTPResponse` or throw an `HTTPFailure`. Only the hosts it was built for. | `URLSessionHTTPClient` | Providers |
 | `FileReading` | List, attributes, read from offset, exists, is executable. Read-only. | `LocalFileReader` | Providers |
-| `SecretReader` | Read a generic password from the Keychain. Never writes. | `SecurityCLIKeychain` | Providers |
+| `SecretReader` | Read a generic password from the Keychain. Never writes. | `SecurityCLIKeychain` (Claude), `SecurityFrameworkKeychain` (Cursor) | Providers |
+| `SafeStorageDecryptor` | Open a value an Electron app encrypted with its safe storage, with the password from the app's Keychain item: the plaintext, or nil when it isn't such a value or the password doesn't open it. Computation only. | `CommonCryptoSafeStorageDecryptor` | Providers |
 | `KeyValueDatabase` | Read one row of a SQLite key-value table: the value, or nil without the row; it throws a `KeyValueDatabaseFailure` otherwise. Read-only; never copies the database. | `SQLiteKeyValueReader` | Providers |
 | `ProviderStorage` | Load and save one provider's private JSON (Claude's log index) by name. The composition root binds it to the provider's id: `name` is stored as `<provider id>-<name>.json`, so Claude's `log-index` stays `claude-log-index.json` (section 12). | `JSONFileStore` | Providers |
 | `ProcessRunner` | Run an executable from the allowlist it was built with, with fixed arguments, clean environment, no output, a timeout; return the exit status. | `FoundationProcessRunner` | Providers |
@@ -741,8 +743,17 @@ what it reads, how often, or in how many calls.
 - **Tasks:** `limits` (usage summary; 10 min ± 30 s, stale on open 60 s, needs network) and `activity`
   (events CSV for tokens; 30 min, no jitter, stale on open 10 min, needs network). Both are `GET`s, and neither sends
   an `Origin` (B-47).
+- **Session:** the Cursor app's `cursorAuth/accessToken` row in `state.vscdb` (`ItemTable`), read before each
+  request. A plain JWT is used as it is. With Cursor's encryption at rest on (`cursor.storage.authTokenEncryptionAtRest`,
+  since Cursor 3.27), the row holds `cursor-safe-storage:v1:` and the base64 of an Electron safe storage value; only
+  then does Burnie read Cursor's Keychain item `Cursor Safe Storage` (account `Cursor Key`) through `SecretReader`,
+  and decrypt the value through `SafeStorageDecryptor` (decision 67). Cursor made that item, so macOS asks the user
+  before the first read; the composition root gives Cursor `SecurityFrameworkKeychain`, so Always Allow grants Burnie
+  alone. The password stays in memory once read, never on disk (a memo, P-5): one Keychain read per launch, shared by
+  both tasks, so macOS asks once; a missing item or a denial keeps nothing, and a kept password that stops opening the
+  session is read again.
 - **Capabilities:** none today.
-- **Specific issues:** none today.
+- **Specific issues:** `missingKeychainAccess` (an encrypted session whose Keychain item isn't there or can't be read).
 - **Hosts:** `cursor.com`.
 
 ---
@@ -946,6 +957,8 @@ Dumb adapters. Each implements one port and nothing else.
 | `URLSessionHTTPClient` | `HTTPClient` | `BurnieSystem` |
 | `LocalFileReader` | `FileReading` | `BurnieSystem` (+ `exists`, `isExecutable`) |
 | `SecurityCLIKeychain` | `SecretReader` | `BurnieSystem` |
+| `SecurityFrameworkKeychain` | `SecretReader` | new (decision 67) |
+| `CommonCryptoSafeStorageDecryptor` | `SafeStorageDecryptor` | new (decision 67) |
 | `SQLiteKeyValueReader` | `KeyValueDatabase` | `BurnieSystem` |
 | `JSONFileStore` | `SnapshotCache`, `ProviderStorage` | `BurnieSystem` |
 | `FoundationProcessRunner` | `ProcessRunner` | generic half of `ClaudeCodeSignInRenewer` |
@@ -1048,12 +1061,12 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | ID | Behavior | Layer |
 | --- | --- | --- |
 | B-20 | `rateLimited` and `offline` show no issue row: the header's age already says the data is old. | Interface |
-| B-21 | Issue copy per provider: not found, sign-in expired, missing scope (Claude), unexpected ("Couldn't read usage. Burnie may need an update."). | Interface + Providers |
+| B-21 | Issue copy per provider: not found, sign-in expired, missing scope (Claude), missing Keychain access (Cursor), unexpected ("Couldn't read usage. Burnie may need an update."). | Interface + Providers |
 | B-22 | An expired sign-in shows "Refresh sign-in" only when the provider can renew; on failure the row shows the renewal's `failedCopy`. | Components + Application |
 | B-23 | A successful renewal triggers a manual refresh of that provider's limits. | Application |
 | B-24 | HTTP: no network or timeout → offline; 429 → rate limited with `Retry-After` (seconds or HTTP date; a negative or non-finite number of seconds reads as none); 5xx → offline; other non-2xx → unexpected. | Providers |
 | B-25 | Claude: 401 → sign-in expired; 403 mentioning `user:profile` → missing scope; other 403 → sign-in expired; an expired token is detected before any request. | Providers |
-| B-26 | Cursor: 3xx, 401 or HTML instead of data → sign-in expired; 403 → unexpected (Cursor refusing Burnie, not a lost session); no database or row → not found; a database still locked when the timeout runs out → offline (no issue row; the next refresh tries again), never a copy of it; a database that can't be read otherwise → unexpected; malformed or expired JWT → sign-in expired without network. | Providers |
+| B-26 | Cursor: 3xx, 401 or HTML instead of data → sign-in expired; 403 → unexpected (Cursor refusing Burnie, not a lost session); no database or row → not found; a database still locked when the timeout runs out → offline (no issue row; the next refresh tries again), never a copy of it; a database that can't be read otherwise → unexpected; malformed or expired JWT → sign-in expired without network. A session Cursor encrypted at rest (`cursor-safe-storage:v1:`) is decrypted first, and only such a session reads the Keychain: no Keychain item or no access to it → missing Keychain access (specific), without network; an envelope that isn't base64, or a value the password doesn't open to text → unexpected; the decrypted JWT then reads like a plain one. The password is kept in memory once read, so the Keychain is read once per launch, both tasks sharing that read; a denial keeps nothing, and a kept password that no longer opens the session is read again. | Providers |
 | B-27 | Claude credentials: only when a Claude Code folder (`~/.claude` or `~/.config/claude`) exists; without one, not found, and neither the Keychain nor the file is read. With one, the Keychain first, then the credentials file. | Providers |
 | B-28 | Claude's plan comes from the profile at most once an hour, keeps the last good one, and falls back to the credentials' plan. | Providers |
 | B-29 | Providers screen status line: "Off" while disabled; "{displayName} not found"; "Sign-in expired · open {displayName}"; any other state, a specific issue included, shows the provider's healthy line. | Interface + Providers |
@@ -1147,7 +1160,7 @@ and invented values (`T-7`).
 | Claude log index | `Application Support/Burnie/claude-log-index.json` (Claude's `ProviderStorage` name `log-index`) | `ClaudeLogIndex` | **May** be invalidated (costs one full window rescan); never crash. |
 
 Provider id strings (`claude`, `cursor`), meter id strings (`session`, `weekly`, `cursorModels`, `otherModels`,
-`included`, `teamPool`, `onDemand`, `teamOnDemand`) and specific issue codes (`missingScope`) are frozen: the newtypes encode exactly these raw
+`included`, `teamPool`, `onDemand`, `teamOnDemand`) and specific issue codes (`missingScope`, `missingKeychainAccess`) are frozen: the newtypes encode exactly these raw
 values, and `SpecificIssue` encodes as its bare code. Every newtype encodes as its bare
 raw value through a single-value container (`ProviderID` as `"claude"`, `Tokens` as `1250000`, never
 `{"count": 1250000}`), and `ProviderID` and `LocalDay` are `CodingKeyRepresentable`, so `history.json` stays a JSON
@@ -1246,6 +1259,7 @@ usage doesn't decode (`T-7`: fixtures are never edited).
 | 64 | 2026-10-22 | The README installs Burnie only from the release DMG, which is signed with a Developer ID and notarized. Building from source moves to Development, with a note that it signs for one Mac only, and the prompts for installing and updating with an agent go. | Agreed |
 | 65 | 2026-10-22 | Cursor reads no spend. The paged usage events (`POST /api/dashboard/get-filtered-usage-events`) were the only request that needed a browser's `Origin`, and up to 80 pages every 30 minutes, so they go: Cursor reads its usage summary and its events CSV, two `GET`s. What goes with them is each day's money: today's usage in money on team and enterprise plans, and the day's spend in the week chart's tooltip and in VoiceOver. The meters still read money from the usage summary (included usage, team pool, on-demand), and the dashboard link opens Cursor's spending page. Nothing else reported a day's money, so the usage unit goes too: today's usage is always tokens, and a cached snapshot whose today's usage is money reads as no cache once (section 12). Nothing else sent a `POST` either, so the HTTP port sends only `GET`s and `HTTPRequest` loses its method: Burnie only ever reads. B-7, B-8 and B-78 go; supersedes decisions 52 and 58, and the usage-events half of 62. | Agreed |
 | 66 | 2026-10-22 | A circuit breaker per job (`CircuitBreaker`, B-81): three unexpected issues in a row stop the job until Refresh, a relaunch, or turning its provider off and on; any other outcome resets it. The issues that wait for the user (idle backoff), a 429 (backoff) and offline (a 5xx) already slow down on their own, so they don't count. Before it, an unexpected answer reset the idle backoff, so a service that kept refusing Burnie was asked again every interval and on every popover open, for good. Cursor's 403 reads as unexpected, not sign-in expired: Cursor answers a lost session with 401 or a redirect to sign in, while a 403 is a refusal (an edge or permission block), and telling the user to sign in again was wrong. | Agreed |
+| 67 | 2026-10-27 | Cursor's session can be encrypted at rest. Since Cursor 3.27, with `cursor.storage.authTokenEncryptionAtRest` on, `cursorAuth/accessToken` holds `cursor-safe-storage:v1:` and the base64 of an Electron safe storage value, which Burnie read as a malformed JWT and showed as an expired session that signing in again didn't fix. Burnie decrypts it only when that prefix is there: the password comes from Cursor's Keychain item (`Cursor Safe Storage`, account `Cursor Key`: Electron names it after the app followed by " Key", not `Cursor` as first assumed) through `SecretReader`, and the decryption (Chromium's OSCrypt: PBKDF2-HMAC-SHA1, AES-128-CBC) goes behind a new port, `SafeStorageDecryptor`, which Infra implements with CommonCrypto, since Providers can't import it. A plain JWT never reads the Keychain. Cursor reads its item with `SecurityFrameworkKeychain`, from Burnie's own process, and not with `/usr/bin/security` as Claude does: Claude Code writes its item with `security`, so that read asks nothing, but the Cursor app made its own, so macOS asks, and Always Allow would let `security`, which any process can run, read Cursor's key from then on without asking. From Burnie's process it grants Burnie alone, by its signature: a Developer ID build keeps it across updates, an ad hoc build asks again after each rebuild. Cursor keeps the password in memory once read (a memo, P-5), so the Keychain is read once per launch instead of before every request, and the limits and activity tasks share that read instead of raising two prompts at once; a denial keeps nothing, so Refresh asks again, and a kept password that stops opening the session is read again, so the memo never shows what a fresh read wouldn't. Without the item or access to it, Cursor shows its first specific issue, `missingKeychainAccess`, which waits for the user like any specific issue (idle backoff); a value that doesn't decrypt is unexpected; the decrypted JWT reads like a plain one, expiry included. | Agreed |
 
 ---
 
@@ -1550,6 +1564,7 @@ state can't be reproduced live. Each row is checked in light and dark mode.
 | Claude missing scope | today's tokens, no meters, specific copy |
 | Claude logs unreadable | meters, no today's usage |
 | Cursor session expired | cached data, issue row, no renewal button |
+| Cursor session encrypted at rest | the first read asks for Keychain access; Always Allow shows the meters; Deny shows the Keychain copy, and Refresh asks again |
 | Cursor enterprise | Included usage in money, Team on-demand when the member has no on-demand of their own, today's tokens |
 | Cursor team pool | Team pool in money; with Cursor as the favorite, the flame alone in the menu bar |
 | rate limited / offline | cached data, no issue row, header shows age |

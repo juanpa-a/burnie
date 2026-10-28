@@ -8,12 +8,14 @@ struct CursorCredentialsReader: Sendable {
     static let tokenKey = "cursorAuth/accessToken"
 
     let database: any KeyValueDatabase
+    let safeStorage: CursorSafeStorage
     let paths: CursorPaths
 
     /// No database or no row → not found; an expired or malformed token → sign-in expired, without touching the
-    /// network (B-26).
-    func validToken(at now: Date) throws(ProviderIssue) -> CursorAccessToken {
-        guard let jwt = try storedToken() else { throw .notFound }
+    /// network. A token Cursor encrypted at rest is decrypted first; only such a token reads the Keychain (B-26).
+    func validToken(at now: Date) async throws(ProviderIssue) -> CursorAccessToken {
+        guard let stored = try storedToken() else { throw .notFound }
+        let jwt = try await plainJWT(from: CursorStoredToken(stored))
         let token = try CursorAccessToken(jwt: jwt)
         guard token.expiresAt > now else { throw .signInExpired }
         return token
@@ -29,6 +31,14 @@ struct CursorCredentialsReader: Sendable {
             case .busy: throw .offline
             case .unreadable: throw .unexpectedResponse("Cursor's state database can't be read")
             }
+        }
+    }
+
+    /// The JWT itself, decrypted when Cursor encrypted it.
+    private func plainJWT(from stored: CursorStoredToken) async throws(ProviderIssue) -> String {
+        switch stored {
+        case .plain(let jwt): jwt
+        case .encrypted(let value): try await safeStorage.jwt(decrypting: value)
         }
     }
 }
