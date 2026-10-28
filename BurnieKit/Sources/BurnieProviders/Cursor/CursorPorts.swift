@@ -6,6 +6,10 @@ import Foundation
 public struct CursorPorts: Sendable {
     public let clock: any Clock
     public let database: any KeyValueDatabase
+    /// Reads Cursor's Keychain item, only for a session Cursor encrypted at rest.
+    public let secrets: any SecretReader
+    /// Opens that session with the item's password.
+    public let decryptor: any SafeStorageDecryptor
     public let log: any DiagnosticsLog
     public let home: URL
     public let userAgent: String
@@ -14,6 +18,8 @@ public struct CursorPorts: Sendable {
     public init(
         clock: any Clock,
         database: any KeyValueDatabase,
+        secrets: any SecretReader,
+        decryptor: any SafeStorageDecryptor,
         log: any DiagnosticsLog,
         home: URL,
         userAgent: String,
@@ -21,6 +27,8 @@ public struct CursorPorts: Sendable {
     ) {
         self.clock = clock
         self.database = database
+        self.secrets = secrets
+        self.decryptor = decryptor
         self.log = log
         self.home = home
         self.userAgent = userAgent

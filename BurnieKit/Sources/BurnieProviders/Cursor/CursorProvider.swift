@@ -23,6 +23,9 @@ public enum CursorProvider {
         copy: ProviderCopy(
             notFound: "Cursor not found. Sign in to the Cursor app.",
             signInExpired: "Session expired. Open Cursor to sign in again.",
+            specific: [
+                .missingKeychainAccess: "Burnie needs Keychain access to read Cursor's session. Refresh and choose Always Allow.",
+            ],
             // The chip is uppercase ("PRO+"); here it reads as a name: "Pro+ plan".
             status: { context in context.plan.map { "Signed in · \($0.rawValue.capitalized) plan" } ?? "Signed in" }
         )
@@ -30,7 +33,11 @@ public enum CursorProvider {
 
     public static func bundle(_ ports: CursorPorts) -> ProviderBundle {
         let dashboard = CursorDashboardClient(
-            credentials: CursorCredentialsReader(database: ports.database, paths: CursorPaths(home: ports.home)),
+            credentials: CursorCredentialsReader(
+                database: ports.database,
+                safeStorage: CursorSafeStorage(secrets: ports.secrets, decryptor: ports.decryptor),
+                paths: CursorPaths(home: ports.home)
+            ),
             http: ports.makeHTTPClient(hosts),
             clock: ports.clock,
             userAgent: ports.userAgent

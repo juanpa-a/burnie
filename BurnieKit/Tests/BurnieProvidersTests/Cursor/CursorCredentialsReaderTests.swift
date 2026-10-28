@@ -9,12 +9,30 @@ struct CursorCredentialsReaderTests {
     let paths = CursorPaths(home: URL(filePath: "/home"))
     let beforeExpiry = Date.iso("2026-10-10T20:00:00Z")
 
-    func token(_ database: FakeKeyValueDatabase, at now: Date) throws(ProviderIssue) -> CursorAccessToken {
-        try CursorCredentialsReader(database: database, paths: paths).validToken(at: now)
+    func token(
+        _ database: FakeKeyValueDatabase,
+        secrets: FakeSecretReader = CursorSafeStorageTests.secrets,
+        at now: Date
+    ) throws(ProviderIssue) -> CursorAccessToken {
+        let safeStorage = CursorSafeStorage(secrets: secrets, decryptor: CursorSafeStorageTests.decryptor)
+        return try CursorCredentialsReader(database: database, safeStorage: safeStorage, paths: paths).validToken(at: now)
     }
 
     @Test func returnsAValidToken() throws {
         let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
+        #expect(try token(database, at: beforeExpiry).jwt == CursorAccessTokenTests.jwt)
+    }
+
+    @Test("B-26 a plain token never reads the Keychain")
+    func plainTokenNeverReadsTheKeychain() throws {
+        let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
+        let deniesEveryRead = FakeSecretReader(deniesAccess: true)
+        #expect(try token(database, secrets: deniesEveryRead, at: beforeExpiry).jwt == CursorAccessTokenTests.jwt)
+    }
+
+    @Test("B-26 a token Cursor encrypted at rest reads as the JWT it holds")
+    func encryptedTokenReadsAsItsJWT() throws {
+        let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorSafeStorageTests.stored])
         #expect(try token(database, at: beforeExpiry).jwt == CursorAccessTokenTests.jwt)
     }
 
@@ -36,9 +54,11 @@ struct CursorCredentialsReaderTests {
         }
     }
 
-    @Test("B-26 an expired token is sign-in expired")
-    func expiredTokenIsSignInExpired() {
-        let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
+    @Test("B-26 an expired token is sign-in expired, encrypted or not", arguments: [
+        CursorAccessTokenTests.jwt, CursorSafeStorageTests.stored,
+    ])
+    func expiredTokenIsSignInExpired(stored: String) {
+        let database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: stored])
         #expect(throws: ProviderIssue.signInExpired) { try token(database, at: .iso("2026-11-27T00:00:00Z")) }
     }
 

@@ -18,6 +18,7 @@ private func usage(_ scenario: PreviewScenario) -> some View {
 #Preview("Claude logs unreadable") { usage(.claudeLogsUnreadable) }
 #Preview("Cursor not found") { usage(.cursorNotFound) }
 #Preview("Cursor session expired") { usage(.cursorSessionExpired) }
+#Preview("Cursor Keychain access") { usage(.cursorMissingKeychainAccess) }
 #Preview("Cursor enterprise") { usage(.cursorEnterprise) }
 #Preview("Rate limited") { usage(.rateLimited) }
 #Preview("Offline") { usage(.offline) }

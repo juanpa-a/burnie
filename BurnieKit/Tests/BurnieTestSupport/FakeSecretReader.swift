@@ -1,15 +1,22 @@
 import BurnieInterface
 import Foundation
 
-/// A `SecretReader` whose Keychain items, by service, the test sets.
+/// A `SecretReader` whose Keychain items, by service, the test sets, or that denies every read, as macOS does when the
+/// user doesn't allow access.
 public struct FakeSecretReader: SecretReader {
-    public var items: [String: Data]
+    /// What a read throws while `deniesAccess` is on.
+    public struct AccessDenied: Error {}
 
-    public init(items: [String: Data] = [:]) {
+    public var items: [String: Data]
+    public var deniesAccess: Bool
+
+    public init(items: [String: Data] = [:], deniesAccess: Bool = false) {
         self.items = items
+        self.deniesAccess = deniesAccess
     }
 
     public func genericPassword(service: String, account: String?) throws -> Data? {
-        items[service]
+        if deniesAccess { throw AccessDenied() }
+        return items[service]
     }
 }
