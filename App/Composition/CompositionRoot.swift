@@ -36,7 +36,9 @@ enum CompositionRoot {
         let cursor = CursorProvider.bundle(CursorPorts(
             clock: clock,
             database: SQLiteKeyValueReader(),
-            secrets: SecurityCLIKeychain(),
+            // The Cursor app made its item, so reading it asks the user: from Burnie's own process, Always Allow grants
+            // Burnie alone, not `/usr/bin/security`.
+            secrets: SecurityFrameworkKeychain(),
             decryptor: CommonCryptoSafeStorageDecryptor(),
             log: cursorLog,
             home: home,

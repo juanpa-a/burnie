@@ -2,8 +2,7 @@ import BurnieInterface
 import Foundation
 
 /// Reads Keychain items with `/usr/bin/security`, the same binary Claude Code writes its item with:
-/// that way no access prompt appears and reading survives Burnie rebuilds. An item another app made (Cursor's safe
-/// storage password) asks the user once; Always Allow grants `security`, so that too survives rebuilds.
+/// that way no access prompt appears and reading survives Burnie rebuilds.
 public struct SecurityCLIKeychain: SecretReader {
     /// `security`'s exit code when the item doesn't exist.
     private static let itemNotFound: Int32 = 44
