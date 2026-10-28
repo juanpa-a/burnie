@@ -9,7 +9,7 @@ struct CursorFetchersTests {
     static let now = Date.iso("2026-10-11T02:00:00Z") // 20:00 on the 10th in Mexico City
 
     var database = FakeKeyValueDatabase(rows: [CursorCredentialsReader.tokenKey: CursorAccessTokenTests.jwt])
-    var secrets = CursorSafeStorageTests.secrets
+    let keychain = CursorSafeStorageTests.keychain()
     /// What the dashboard's clock reads, so a test can expire the session; the fetchers' own clocks stay at `Self.now`.
     var now = Self.now
     let http = FakeHTTPClient(status: 200, body: Fixture.data("cursor-summary-pro.json"), headers: ["Content-Type": "application/json; charset=utf-8"])
@@ -18,7 +18,7 @@ struct CursorFetchersTests {
         CursorDashboardClient(
             credentials: CursorCredentialsReader(
                 database: database,
-                safeStorage: CursorSafeStorage(secrets: secrets, decryptor: CursorSafeStorageTests.decryptor),
+                safeStorage: CursorSafeStorage(secrets: keychain, decryptor: CursorSafeStorageTests.decryptor),
                 paths: CursorPaths(home: URL(filePath: "/home"))
             ),
             http: http,
@@ -73,7 +73,7 @@ struct CursorFetchersTests {
     @Test("B-26 an encrypted session without Keychain access never reaches the network")
     mutating func encryptedSessionWithoutKeychainAccessNeverReachesTheNetwork() async {
         database.rows = [CursorCredentialsReader.tokenKey: CursorSafeStorageTests.stored]
-        secrets.deniesAccess = true
+        keychain.deniesAccess = true
         await #expect(throws: ProviderIssue.specific(.missingKeychainAccess)) { try await limits() }
         #expect(http.requests.isEmpty)
     }
