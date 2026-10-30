@@ -21,7 +21,7 @@ extension RuntimeState {
         return []
     }
 
-    /// A "Check for updates" tap starts a check unless one is in flight (B-76).
+    /// A "Check for updates" tap starts a check unless one is in flight (B-82).
     mutating func requestUpdateCheck() -> [Effect] {
         guard updateCheck == .idle else { return [] }
         updateCheck = .checking
@@ -29,7 +29,7 @@ extension RuntimeState {
     }
 
     /// What the check came back with: an update to offer (B-57 takes over from there), nothing, or a failed check that
-    /// leaves the row ready to try again (B-76).
+    /// leaves the row ready to try again (B-82).
     mutating func finishUpdateCheck(_ result: UpdateCheckResult) -> [Effect] {
         switch result {
         case .found(let version):

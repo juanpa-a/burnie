@@ -20,7 +20,7 @@ public struct AppState: Equatable, Sendable {
     public var launchAtLogin: Bool
     /// The version a newer Burnie on the release feed has (B-57).
     public var availableUpdate: String?
-    /// The "Check for updates" row's phase (B-76).
+    /// The "Check for updates" row's phase (B-82).
     public var updateCheck: UpdateCheck
 
     public init(

@@ -3,7 +3,7 @@ import BurnieComponents
 import BurnieInterface
 import SwiftUI
 
-/// The "Check for updates" row on the providers screen: a check right now, reported in place (B-76); when there's a
+/// The "Check for updates" row on the providers screen: a check right now, reported in place (B-82); when there's a
 /// newer Burnie, the Update row takes over (B-57).
 struct CheckForUpdatesRow: View {
     @Environment(AppModel.self) private var model

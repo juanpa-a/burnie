@@ -189,7 +189,7 @@ A term that isn't here doesn't exist yet: adding one is a spec change (`G-2`).
 | **Launch at login** | Whether macOS opens Burnie at login. Owned by macOS, read on demand. | `LoginItem` port | Interface |
 | **Login item status** | What macOS reports for launch at login: enabled, disabled, or waiting for the user's approval in System Settings. | `LoginItemStatus` | Interface |
 | **Update** | A newer Burnie on the release feed. | `availableUpdate: String?` | Interface |
-| **Update check** | The "Check for updates" row's phase: ready, checking, or just found nothing newer (B-76). | `UpdateCheck` | Interface |
+| **Update check** | The "Check for updates" row's phase: ready, checking, or just found nothing newer (B-82). | `UpdateCheck` | Interface |
 | **Update check result** | What a user-initiated check of the feed came back with: a newer Burnie, up to date, or failed. | `UpdateCheckResult` | Interface |
 
 ### 2.8 Architecture terms
@@ -541,7 +541,7 @@ The contract between the UI, the runtime and the providers. Types, protocols and
 | `SettingsStore` | `load(defaultEnabled:) -> AppSettings` (synchronous) with the keys of section 12, where a missing key loads as its default and a missing `enabledProviders` as `defaultEnabled` (the registry's ids); `save(_ change: SettingChange)` writes only the key that changed. | `UserDefaultsSettingsStore` | Application |
 | `SystemEvents` | `start(onWake:onNetworkChange:)`: wake and network reachability callbacks. | `MacSystemEvents` | Application |
 | `LoginItem` | `status() -> LoginItemStatus`, `set(_ enabled:)`, `openSystemSettings()`. | `SMAppLoginItem` | Application |
-| `Updater` | `start(onUpdate:)` reports the available version or nil after each scheduled check; `install()` opens the installer; `checkForUpdates(onResult:)` checks the feed now, quietly, and reports `UpdateCheckResult` (found, up to date, failed) with no window (B-76). | `SparkleUpdater` | Application |
+| `Updater` | `start(onUpdate:)` reports the available version or nil after each scheduled check; `install()` opens the installer; `checkForUpdates(onResult:)` checks the feed now, quietly, and reports `UpdateCheckResult` (found, up to date, failed) with no window (B-82). | `SparkleUpdater` | Application |
 | `URLOpener` | Open an external URL. | `WorkspaceURLOpener` | Application |
 | `AppLifecycle` | Quit. | `NSAppLifecycle` | Application |
 
@@ -645,6 +645,7 @@ a struct of closures, so previews and tests replace them with no-ops or recorder
 | `SetLaunchAtLogin` | `(Bool) -> Void` | Launch at login. |
 | `ReadLaunchAtLogin` | `() -> Void` | Re-reads it when the providers screen appears (System Settings can change it). |
 | `InstallUpdate` | `() -> Void` | Opens the updater's window. |
+| `CheckUpdates` | `() -> Void` | Checks the release feed now, quietly; the row reports the result in place (B-82). |
 | `OpenDashboard` | `(ProviderID) -> Void` | Footer link to the provider's usage page. |
 | `Quit` | `() -> Void` | Footer Quit, ⌘Q. |
 
@@ -664,6 +665,7 @@ struct AppState: Equatable, Sendable {
                                          // hiding, so turning one off keeps its switch (B-40)
     var launchAtLogin: Bool
     var availableUpdate: String?
+    var updateCheck: UpdateCheck             // the Check for updates row's phase (B-82)
 }
 
 struct ProviderPanel: Equatable, Sendable {
@@ -805,6 +807,7 @@ struct RuntimeState: Equatable {
     var isOnline: Bool                           // true until SystemEvents reports otherwise (B-34)
     var launchAtLogin: Bool
     var availableUpdate: String?
+    var updateCheck: UpdateCheck             // the Check for updates row's phase (B-82)
 }
 
 struct RegisteredProvider: Equatable {           // a bundle without its closures
@@ -859,7 +862,7 @@ it isn't renewing.
 | Event | Reducer outcome | Effects |
 | --- | --- | --- |
 | `launched(settings, cached snapshots, history)` | `settings.enabled` keeps only ids in the registry (an unknown id is ignored, and dropped on the next `.enabled` save, section 12); ready states from cache, else loading; a `JobState` per task of each enabled provider. | `startSystemEvents`; `startUpdater`; `startWatcher` per enabled provider; start a run of every job with `.manual` (B-37) |
-| `popoverOpened(request)` | Ignored if < 1 s since `lastPopoverOpen` (B-39); else `lastPopoverOpen = now` and opens `request`; an `updateCheck` of `.upToDate` goes back to `.idle`, so a new visit asks again (B-76). | start a run of every job where `canRun(.popoverOpened)` |
+| `popoverOpened(request)` | Ignored if < 1 s since `lastPopoverOpen` (B-39); else `lastPopoverOpen = now` and opens `request`; an `updateCheck` of `.upToDate` goes back to `.idle`, so a new visit asks again (B-82). | start a run of every job where `canRun(.popoverOpened)` |
 | `refreshRequested(request)` | Opens `request`. | start a run of every job where `canRun(.manual)` |
 | `taskFinished(key, run, outcome, jitter)` | Removes `run` from every request. Then dropped if `key` is gone or `run` isn't its `running` (the provider was turned off, or off and on, B-51). Else `running = nil`; `lastRun = now`; backoff recorded on 429, reset otherwise (B-33); idle backoff and circuit breaker recorded (B-35, B-81); update `Latest`; compose: a `.success(snapshot)` is merged over the shown snapshot and shown, a `.failure(issue)` goes through `failing(issue, previous:)` (B-18); on activity success, record history (B-42). | after a compose `.success` only, `saveSnapshot(shown)` (B-19); a total failure saves nothing, so the cache keeps the last good snapshot; on activity success, `saveHistory`; arm the timer (B-35), unless the breaker is tripped (B-81) |
 | `timerFired(key, timer)` | Dropped unless `timer` is the job's `timer`; else `timer = nil`. | start a run if `canRun(.timer)`; otherwise nothing, and no new timer until another trigger runs the job (B-35) |
@@ -876,8 +879,8 @@ it isn't renewing.
 | `launchAtLoginChanged(status)` / `launchAtLoginRead(status)` | `launchAtLogin = status == .enabled`. | after a set only, `openLoginItemsSettings` if `.requiresApproval` (B-58) |
 | `updateFound(String?)` | Store it (B-57). | — |
 | `installUpdateRequested` | — | `installUpdate` |
-| `checkUpdatesRequested` | `updateCheck = .checking`, ignored while a check is in flight (B-76). | `checkUpdates` |
-| `checkFinished(UpdateCheckResult)` | `.found(version)` stores it like `updateFound`; `.upToDate` clears it and marks `updateCheck`; `.failed` goes back to `.idle` (B-76). | — |
+| `checkUpdatesRequested` | `updateCheck = .checking`, ignored while a check is in flight (B-82). | `checkUpdates` |
+| `checkFinished(UpdateCheckResult)` | `.found(version)` stores it like `updateFound`; `.upToDate` clears it and marks `updateCheck`; `.failed` goes back to `.idle` (B-82). | — |
 | `dashboardRequested(id)` / `quitRequested` | — | `openURL(id's dashboard URL)` / `quit` |
 
 The effects, complete: `runTask(key, run)`, `scheduleTimer(key, timer, after:)`, `cancelTimer(key)`, `wait(_:then:)`,
@@ -1145,7 +1148,7 @@ Each item has an ID; the test that pins it includes the ID in its name (`@Test("
 | B-73 | Without a usable `Application Support/Burnie/`, the cache and history go to a temporary directory and the app still runs. | Infra + App |
 | B-74 | The "Ring in menu bar" switch is disabled without an effective favorite and keeps its stored value; its subtitle says how to mark one, or whose ring it shows. | Interface + App |
 | B-75 | The footer has one dashboard link per enabled provider, in registry order, then Quit (⌘Q). | App |
-| B-76 | The providers screen has a "Check for updates" row; its button runs a quiet user-initiated check and reports in place: a spinner while checking, "Already up to date" when none (asked again on the next visit), or the Update row when it finds one (B-57 takes over; install still opens Sparkle's window). A failed check leaves the row ready to try again. Scheduled checks stay quiet too (B-57). | Application + Infra + App |
+| B-82 | The providers screen has a "Check for updates" row; its button runs a quiet user-initiated check and reports in place: a spinner while checking, "Already up to date" when none (asked again on the next visit), or the Update row when it finds one (B-57 takes over; install still opens Sparkle's window). A failed check leaves the row ready to try again. Scheduled checks stay quiet too (B-57). | Application + Infra + App |
 
 ---
 

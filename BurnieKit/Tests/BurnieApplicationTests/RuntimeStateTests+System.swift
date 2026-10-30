@@ -36,7 +36,7 @@ extension RuntimeStateTests {
         #expect(harness.state.availableUpdate == nil)
     }
 
-    @Test("B-76 checking for updates starts one check at a time, and its result drives the row")
+    @Test("B-82 checking for updates starts one check at a time, and its result drives the row")
     func checkUpdatesAsksTheUpdater() {
         var harness = ReducerHarness.launched()
         #expect(harness.send(.checkUpdatesRequested) == [.checkUpdates])
@@ -52,7 +52,7 @@ extension RuntimeStateTests {
         #expect(harness.state.availableUpdate == "0.3.1")
     }
 
-    @Test("B-76 an \"up to date\" asks again on the next visit, and clears the dot")
+    @Test("B-82 an \"up to date\" asks again on the next visit, and clears the dot")
     func upToDateAsksAgainNextVisit() {
         var harness = ReducerHarness.launched()
         harness.send(.updateFound("0.3.0"))

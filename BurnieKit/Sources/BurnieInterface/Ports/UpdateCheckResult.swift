@@ -1,6 +1,6 @@
 import Foundation
 
-/// What a user-initiated check of the release feed came back with (B-76).
+/// What a user-initiated check of the release feed came back with (B-82).
 public enum UpdateCheckResult: Equatable, Sendable {
     /// A newer Burnie is on the feed.
     case found(String)

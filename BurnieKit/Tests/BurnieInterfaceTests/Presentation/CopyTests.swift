@@ -57,7 +57,7 @@ struct CopyTests {
         #expect(Copy.update == "Update")
     }
 
-    @Test("B-76 a \"Check for updates\" row offers a check right now and reports it in place")
+    @Test("B-82 a \"Check for updates\" row offers a check right now and reports it in place")
     func checkForUpdatesRow() {
         #expect(Copy.checkForUpdates == "Check for updates")
         #expect(Copy.checkNow == "Check now")

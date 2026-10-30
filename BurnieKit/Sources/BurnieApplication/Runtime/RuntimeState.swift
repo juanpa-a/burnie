@@ -27,7 +27,7 @@ struct RuntimeState: Equatable, Sendable {
     var isOnline = true
     var launchAtLogin = false
     var availableUpdate: String?
-    /// The "Check for updates" row's phase (B-76).
+    /// The "Check for updates" row's phase (B-82).
     var updateCheck: UpdateCheck = .idle
 
     /// Before launch: every provider of the registry enabled and nothing shown, until `launched` brings what was saved.

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The "Check for updates" row's phase (B-76); while a newer Burnie is available the Update row takes over (B-57).
+/// The "Check for updates" row's phase (B-82); while a newer Burnie is available the Update row takes over (B-57).
 public enum UpdateCheck: Equatable, Sendable {
     /// Ready to check.
     case idle

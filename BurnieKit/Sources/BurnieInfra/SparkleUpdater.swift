@@ -25,9 +25,13 @@ public final class SparkleUpdater: NSObject, Updater {
     }
 
     public func checkForUpdates(onResult: @escaping @Sendable (UpdateCheckResult) -> Void) {
+        guard let updater = controller?.updater, !updater.sessionInProgress else {
+            onResult(.failed)
+            return
+        }
         self.onResult = onResult
-        // A background check opens no UI; the delegates below report how it went (B-76).
-        controller?.updater.checkForUpdatesInBackground()
+        // A background check opens no UI; the delegates below report how it went (B-82).
+        updater.checkForUpdatesInBackground()
     }
 
     /// A scheduled check can finish while the user's is in flight; either delegate answer reflects the latest feed
