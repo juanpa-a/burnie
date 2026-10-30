@@ -18,4 +18,6 @@ private func providers(_ scenario: PreviewScenario) -> some View {
 #Preview("Cursor session expired") { providers(.cursorSessionExpired) }
 #Preview("All off") { providers(.allOff) }
 #Preview("Update available") { providers(.updateAvailable) }
+#Preview("Checking for updates") { providers(.updateChecking) }
+#Preview("Up to date") { providers(.updateUpToDate) }
 #endif

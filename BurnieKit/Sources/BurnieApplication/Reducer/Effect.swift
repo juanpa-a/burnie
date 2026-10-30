@@ -22,6 +22,7 @@ enum Effect: Equatable, Sendable {
     case readLaunchAtLogin
     case openLoginItemsSettings
     case installUpdate
+    case checkUpdates
     case openURL(URL)
     case quit
 }

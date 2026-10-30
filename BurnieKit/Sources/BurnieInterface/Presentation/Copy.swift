@@ -81,6 +81,9 @@ public enum Copy {
     public static let launchAtLoginSubtitle = "Open Burnie when you log in to your Mac"
     public static let updateAvailable = "Update available"
     public static let update = "Update"
+    public static let checkForUpdates = "Check for updates"
+    public static let checkNow = "Check now"
+    public static let upToDate = "Already up to date"
 
     /// "Burnie 0.3.0"
     public static func appVersion(_ version: String) -> String {

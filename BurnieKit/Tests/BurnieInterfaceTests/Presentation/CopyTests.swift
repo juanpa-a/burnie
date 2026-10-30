@@ -57,6 +57,13 @@ struct CopyTests {
         #expect(Copy.update == "Update")
     }
 
+    @Test("B-82 a \"Check for updates\" row offers a check right now and reports it in place")
+    func checkForUpdatesRow() {
+        #expect(Copy.checkForUpdates == "Check for updates")
+        #expect(Copy.checkNow == "Check now")
+        #expect(Copy.upToDate == "Already up to date")
+    }
+
     @Test("B-75 the footer ends with Quit and its shortcut")
     func footer() {
         #expect(Copy.quit == "Quit")

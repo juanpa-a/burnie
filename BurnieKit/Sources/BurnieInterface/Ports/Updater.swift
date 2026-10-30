@@ -7,4 +7,6 @@ public protocol Updater {
     func start(onUpdate: @escaping @Sendable (_ version: String?) -> Void)
     /// Opens the updater's window.
     func install()
+    /// Checks the release feed now, user-initiated and quiet: the result comes back in `onResult`, no window (B-82).
+    func checkForUpdates(onResult: @escaping @Sendable (UpdateCheckResult) -> Void)
 }

@@ -1,4 +1,5 @@
 import BurnieDomain
+import BurnieInterface
 import Foundation
 
 extension RuntimeState {
@@ -9,6 +10,8 @@ extension RuntimeState {
     mutating func openPopover(_ request: RequestID, now: Date) -> [Effect] {
         if let lastPopoverOpen, now.timeIntervalSince(lastPopoverOpen) < Self.popoverDebounce { return [] }
         lastPopoverOpen = now
+        // A new visit asks again rather than showing yesterday's "up to date" (B-82).
+        if updateCheck == .upToDate { updateCheck = .idle }
         open(request)
         return startRuns(of: enabledJobKeys, for: .popoverOpened, request: request, now: now) + closeIfDone(request)
     }

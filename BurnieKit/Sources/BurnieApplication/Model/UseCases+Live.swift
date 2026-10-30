@@ -17,6 +17,7 @@ extension UseCases {
             setLaunchAtLogin: SetLaunchAtLogin { [weak interpreter] isEnabled in interpreter?.deliver(.launchAtLoginSet(isEnabled)) },
             readLaunchAtLogin: ReadLaunchAtLogin { [weak interpreter] in interpreter?.deliver(.launchAtLoginReadRequested) },
             installUpdate: InstallUpdate { [weak interpreter] in interpreter?.deliver(.installUpdateRequested) },
+            checkUpdates: CheckUpdates { [weak interpreter] in interpreter?.deliver(.checkUpdatesRequested) },
             openDashboard: OpenDashboard { [weak interpreter] id in interpreter?.deliver(.dashboardRequested(id)) },
             quit: Quit { [weak interpreter] in interpreter?.deliver(.quitRequested) }
         )

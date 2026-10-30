@@ -48,6 +48,10 @@ extension RuntimeState {
             findUpdate(version)
         case .installUpdateRequested:
             [.installUpdate]
+        case .checkUpdatesRequested:
+            requestUpdateCheck()
+        case .checkFinished(let result):
+            finishUpdateCheck(result)
         case .dashboardRequested(let id):
             provider(id).map { [.openURL($0.descriptor.dashboard.url)] } ?? []
         case .quitRequested:

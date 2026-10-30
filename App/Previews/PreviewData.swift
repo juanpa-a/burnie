@@ -78,7 +78,8 @@ enum PreviewData {
         showWeekChart: Bool = true,
         hiddenFeatures: Set<FeatureToggle> = [],
         history: UsageHistory = history,
-        availableUpdate: String? = nil
+        availableUpdate: String? = nil,
+        updateCheck: UpdateCheck = .idle
     ) -> AppState {
         let enabled = enabled ?? [claude.id, cursor.id]
         let settings = AppSettings(enabled: enabled, favorite: favorite, showRing: showRing, showWeekChart: showWeekChart, hiddenFeatures: hiddenFeatures)
@@ -108,7 +109,8 @@ enum PreviewData {
             settings: settings,
             visibleToggles: FeatureToggle.allCases.filter { toggle in snapshots.contains { $0.features.has(toggle) } },
             launchAtLogin: false,
-            availableUpdate: availableUpdate
+            availableUpdate: availableUpdate,
+            updateCheck: updateCheck
         )
     }
 

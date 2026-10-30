@@ -73,6 +73,8 @@ final class Interpreter {
         case .readLaunchAtLogin: deliver(.launchAtLoginRead(environment.loginItem.status()))
         case .openLoginItemsSettings: environment.loginItem.openSystemSettings()
         case .installUpdate: environment.updater.install()
+        case .checkUpdates:
+            environment.updater.checkForUpdates { [weak self] result in self?.deliverOnMain(.checkFinished(result)) }
         case .openURL(let url): environment.urlOpener.open(url)
         case .quit: environment.lifecycle.quit()
         }

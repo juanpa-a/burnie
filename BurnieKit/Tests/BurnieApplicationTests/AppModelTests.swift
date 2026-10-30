@@ -178,6 +178,28 @@ struct AppModelTests {
         try await waitUntil(model) { $0.availableUpdate == nil }
     }
 
+    @Test("B-82 \"Check for updates\" runs a check now and shows what it found")
+    func checkForUpdatesRunsACheckNow() async throws {
+        let model = await launch()
+        model.useCases.checkUpdates()
+        try await waitUntil(model) { $0.updateCheck == .checking }
+        #expect(updater.checks == 1)
+        updater.resolve(.found("0.3.0"))
+        try await waitUntil(model) { $0.availableUpdate == "0.3.0" }
+        #expect(model.state.updateCheck == .idle)
+        model.useCases.checkUpdates()
+        #expect(updater.checks == 2)
+        try await waitUntil(model) { $0.updateCheck == .idle }
+        updater.report(nil)
+        model.useCases.checkUpdates()
+        #expect(updater.checks == 3)
+        updater.resolve(.upToDate)
+        try await waitUntil(model) { $0.updateCheck == .upToDate }
+        #expect(model.state.availableUpdate == nil)
+        model.useCases.checkUpdates()
+        #expect(updater.checks == 3)
+    }
+
     @Test("B-75 a dashboard link opens the provider's page, and Quit quits")
     func dashboardsAndQuit() async {
         let model = await launch()
